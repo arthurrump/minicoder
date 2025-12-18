@@ -10,13 +10,12 @@
     <h1>Qualitative Data Coder</h1>
     <div id="controls">
         <input type="file" id="fileInput" accept=".txt">
-        <select id="codeSelect">
-            <option value="">Select Code</option>
-        </select>
-        <button id="applyCode">Apply Code</button>
         <button id="downloadJson">Download JSON</button>
     </div>
-    <div id="textDisplay" contenteditable="true"></div>
+    <div id="main">
+        <div id="textDisplay" contenteditable="true"></div>
+        <div id="codesList"></div>
+    </div>
     
     <script src="index.js"></script>
 </body>

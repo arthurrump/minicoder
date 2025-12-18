@@ -3,11 +3,39 @@ body {
     margin: 20px;
 }
 
+#main {
+    display: flex;
+    gap: 20px;
+}
+
 #textDisplay {
+    flex: 1;
     border: 1px solid #ccc;
     padding: 10px;
     min-height: 300px;
     white-space: pre-wrap;
+}
+
+#codesList {
+    width: 200px;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.code-item {
+    cursor: pointer;
+    padding: 5px;
+    margin: 2px 0;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+}
+
+.code-item:hover {
+    background-color: #e0e0e0;
+}
+
+.subcodes {
+    margin-left: 20px;
 }
 
 .highlight {
