@@ -1,6 +1,28 @@
+:root {
+    --bg-color: white;
+    --text-color: black;
+    --border-color: #ccc;
+    --code-bg: #f0f0f0;
+    --code-hover: #e0e0e0;
+    --label-bg: yellow;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-color: #121212;
+        --text-color: #e0e0e0;
+        --border-color: #555;
+        --code-bg: #333;
+        --code-hover: #444;
+        --label-bg: #666;
+    }
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 20px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
 }
 
 #main {
@@ -10,28 +32,32 @@ body {
 
 #textDisplay {
     flex: 1;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     padding: 10px;
     min-height: 300px;
     white-space: pre-wrap;
+    background-color: var(--bg-color);
+    color: var(--text-color);
 }
 
 #codesList {
     width: 200px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     padding: 10px;
+    background-color: var(--bg-color);
 }
 
 .code-item {
     cursor: pointer;
     padding: 5px;
     margin: 2px 0;
-    background-color: #f0f0f0;
+    background-color: var(--code-bg);
     border-radius: 3px;
+    color: var(--text-color);
 }
 
 .code-item:hover {
-    background-color: #e0e0e0;
+    background-color: var(--code-hover);
 }
 
 .subcodes {
@@ -47,9 +73,10 @@ body {
     position: absolute;
     top: -15px;
     right: 0;
-    background: yellow;
+    background: var(--label-bg);
     padding: 2px;
     font-size: 10px;
+    color: var(--text-color);
 }
 
 #controls {
@@ -59,4 +86,12 @@ body {
 select,
 button {
     margin-right: 10px;
+    background-color: var(--code-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 5px;
+}
+
+button:hover {
+    background-color: var(--code-hover);
 }
