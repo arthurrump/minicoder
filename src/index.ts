@@ -187,13 +187,24 @@ downloadJsonBtn.addEventListener('click', () => {
 // Function to get character offset in the textDisplay
 function getOffset(root: Node, container: Node, offset: number): number {
     let total = 0;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ALL, {
+        acceptNode: (node) => {
+            if (node.nodeType === Node.TEXT_NODE || node.nodeName === 'BR') {
+                return NodeFilter.FILTER_ACCEPT;
+            }
+            return NodeFilter.FILTER_SKIP;
+        }
+    });
     let node: Node | null = walker.firstChild();
     while (node) {
         if (node === container) {
             return total + offset;
         }
-        total += node.textContent?.length || 0;
+        if (node.nodeType === Node.TEXT_NODE) {
+            total += node.textContent?.length || 0;
+        } else if (node.nodeName === 'BR') {
+            total += 1; // <br> represents \n
+        }
         node = walker.nextNode();
     }
     return total;
