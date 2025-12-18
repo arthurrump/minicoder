@@ -89,9 +89,9 @@ fileInput.addEventListener('change', (e) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             originalText = e.target?.result as string;
-            textDisplay.textContent = originalText;
             codedSegments = [];
             currentRange = null;
+            rebuildDisplay();
         };
         reader.readAsText(file);
     }
@@ -107,12 +107,54 @@ function applyCode(code: string) {
 
     codedSegments.push({ start, end, code, text });
 
-    const span = document.createElement('span');
-    span.className = 'highlight ' + getColorForCode(code);
-    span.dataset.code = code;
-    currentRange.surroundContents(span);
+    rebuildDisplay();
     currentRange = null;
     window.getSelection()?.removeAllRanges();
+}
+
+function rebuildDisplay() {
+    if (!originalText) return;
+
+    interface Event {
+        pos: number;
+        type: 'start' | 'end';
+        code: string;
+        color: string;
+    }
+
+    const events: Event[] = [];
+    for (const seg of codedSegments) {
+        events.push({ pos: seg.start, type: 'start', code: seg.code, color: getColorForCode(seg.code) });
+        events.push({ pos: seg.end, type: 'end', code: seg.code, color: '' });
+    }
+
+    events.sort((a, b) => {
+        if (a.pos !== b.pos) return a.pos - b.pos;
+        return a.type === 'start' ? -1 : 1; // start before end
+    });
+
+    let html = '';
+    let lastPos = 0;
+    const stack: string[] = [];
+
+    for (const event of events) {
+        // Add text before
+        html += originalText.substring(lastPos, event.pos).replace(/\n/g, '<br>');
+        lastPos = event.pos;
+
+        if (event.type === 'start') {
+            html += `<span class="highlight ${event.color}" data-code="${event.code}">`;
+            stack.push(event.code);
+        } else {
+            html += '</span>';
+            stack.pop();
+        }
+    }
+
+    // Add remaining text
+    html += originalText.substring(lastPos).replace(/\n/g, '<br>');
+
+    textDisplay.innerHTML = html;
 }
 
 function getColorForCode(code: string): string {
