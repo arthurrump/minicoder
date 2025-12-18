@@ -116,44 +116,47 @@ function applyCode(code: string) {
 function rebuildDisplay() {
     if (!originalText) return;
 
-    interface Event {
-        pos: number;
-        type: 'start' | 'end';
-        code: string;
-        color: string;
-    }
-
-    const events: Event[] = [];
+    // Get all unique positions from segment boundaries
+    const positions = new Set<number>([0, originalText.length]);
     for (const seg of codedSegments) {
-        events.push({ pos: seg.start, type: 'start', code: seg.code, color: getColorForCode(seg.code) });
-        events.push({ pos: seg.end, type: 'end', code: seg.code, color: '' });
+        positions.add(seg.start);
+        positions.add(seg.end);
     }
 
-    events.sort((a, b) => {
-        if (a.pos !== b.pos) return a.pos - b.pos;
-        return a.type === 'start' ? -1 : 1; // start before end
-    });
+    const sortedPositions = Array.from(positions).sort((a, b) => a - b);
 
     let html = '';
-    let lastPos = 0;
-    const stack: string[] = [];
 
-    for (const event of events) {
-        // Add text before
-        html += originalText.substring(lastPos, event.pos).replace(/\n/g, '<br>');
-        lastPos = event.pos;
+    // For each text segment between positions, find which codes apply and wrap accordingly
+    for (let i = 0; i < sortedPositions.length - 1; i++) {
+        const segStart = sortedPositions[i];
+        const segEnd = sortedPositions[i + 1];
 
-        if (event.type === 'start') {
-            html += `<span class="highlight ${event.color}" data-code="${event.code}">`;
-            stack.push(event.code);
-        } else {
+        // Find all codes that cover this segment
+        const activeCodes = codedSegments.filter(
+            seg => seg.start <= segStart && segEnd <= seg.end
+        );
+
+        // Sort by start position (outer spans first) then by end position (inner spans last)
+        activeCodes.sort((a, b) => {
+            if (a.start !== b.start) return a.start - b.start;
+            return b.end - a.end; // reverse order for end to keep inner last
+        });
+
+        // Open spans for new codes
+        for (const code of activeCodes) {
+            html += `<span class="highlight ${getColorForCode(code.code)}" data-code="${code.code}">`;
+        }
+
+        // Add text
+        const text = originalText.substring(segStart, segEnd);
+        html += text.replace(/\n/g, '<br>');
+
+        // Close spans in reverse order
+        for (let j = activeCodes.length - 1; j >= 0; j--) {
             html += '</span>';
-            stack.pop();
         }
     }
-
-    // Add remaining text
-    html += originalText.substring(lastPos).replace(/\n/g, '<br>');
 
     textDisplay.innerHTML = html;
 }
@@ -187,25 +190,27 @@ downloadJsonBtn.addEventListener('click', () => {
 // Function to get character offset in the textDisplay
 function getOffset(root: Node, container: Node, offset: number): number {
     let total = 0;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ALL, {
-        acceptNode: (node) => {
-            if (node.nodeType === Node.TEXT_NODE || node.nodeName === 'BR') {
-                return NodeFilter.FILTER_ACCEPT;
-            }
-            return NodeFilter.FILTER_SKIP;
-        }
-    });
-    let node: Node | null = walker.firstChild();
-    while (node) {
+    
+    function traverse(node: Node): boolean {
         if (node === container) {
-            return total + offset;
+            total += offset;
+            return true;
         }
+        
         if (node.nodeType === Node.TEXT_NODE) {
             total += node.textContent?.length || 0;
         } else if (node.nodeName === 'BR') {
-            total += 1; // <br> represents \n
+            total += 1;
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            for (let i = 0; i < node.childNodes.length; i++) {
+                if (traverse(node.childNodes[i])) {
+                    return true;
+                }
+            }
         }
-        node = walker.nextNode();
+        return false;
     }
+    
+    traverse(root);
     return total;
 }
