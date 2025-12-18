@@ -41,7 +41,9 @@ body {
 }
 
 #codesList {
-    width: 200px;
+    width: fit-content;
+    min-width: 200px;
+    height: fit-content;
     border: 1px solid var(--border-color);
     padding: 10px;
     background-color: var(--bg-color);
