@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "serve": "npm run clean && node build.js serve",
+    "build": "npm run clean && node build.js build",
+    "clean": "rimraf dist"
+  },
+  "packageManager": "pnpm@10.24.0",
+  "devDependencies": {
+    "esbuild": "^0.27.1",
+    "rimraf": "^6.1.2",
+    "typescript": "^5.9.3"
+  }
+}

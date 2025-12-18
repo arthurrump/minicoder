@@ -1,0 +1,34 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
+
+#textDisplay {
+    border: 1px solid #ccc;
+    padding: 10px;
+    min-height: 300px;
+    white-space: pre-wrap;
+}
+
+.highlight {
+    position: relative;
+}
+
+.highlight::after {
+    content: attr(data-code);
+    position: absolute;
+    top: -15px;
+    right: 0;
+    background: yellow;
+    padding: 2px;
+    font-size: 10px;
+}
+
+#controls {
+    margin-bottom: 10px;
+}
+
+select,
+button {
+    margin-right: 10px;
+}
