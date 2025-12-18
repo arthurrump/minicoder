@@ -51,13 +51,12 @@ body {
     cursor: pointer;
     padding: 5px;
     margin: 2px 0;
-    background-color: var(--code-bg);
     border-radius: 3px;
-    color: var(--text-color);
+    color: black;
 }
 
 .code-item:hover {
-    background-color: var(--code-hover);
+    opacity: 0.8;
 }
 
 .subcodes {

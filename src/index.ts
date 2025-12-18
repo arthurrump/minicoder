@@ -56,6 +56,7 @@ function renderCodes(codes: Code[], container: HTMLElement) {
         const div = document.createElement('div');
         div.className = 'code-item';
         div.textContent = c.code;
+        div.style.backgroundColor = c.color;
         div.addEventListener('click', () => applyCode(c.code));
         container.appendChild(div);
         if (c.subcodes) {
