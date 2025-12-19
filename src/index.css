@@ -23,26 +23,58 @@
 body {
     font-family: Arial, sans-serif;
     margin: 0;
-    padding: 20px;
     background-color: var(--bg-color);
     color: var(--text-color);
     height: 100vh;
-    box-sizing: border-box;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
 }
 
+/* Top bar */
+#topbar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+}
+
+.app-title {
+    margin: 0;
+    font-size: 20px;
+}
+
+.top-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#currentFolder {
+    font-style: italic;
+    color: gray;
+}
+
+/* Main content grid */
 #main {
-    display: flex;
-    gap: 20px;
-    margin-top: 20px;
+    display: grid;
+    grid-template-columns: 280px 1fr 300px;
+    grid-template-rows: 1fr;
+    gap: 16px;
+    padding: 16px;
+    height: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 #sidebar {
-    width: 250px;
     border: 1px solid var(--border-color);
     background-color: var(--sidebar-bg);
     padding: 10px;
     overflow-y: auto;
-    max-height: 600px;
 }
 
 #fileTree {
@@ -75,22 +107,15 @@ body {
     color: var(--text-color);
 }
 
-#editor {
-    flex: 1;
-    display: flex;
-    gap: 20px;
-}
+/* Remove old editor wrapper in favor of grid columns */
 
 #textDisplay {
-    flex: 1;
     border: 1px solid var(--border-color);
     padding: 10px;
-    min-height: 400px;
     white-space: pre-wrap;
     background-color: var(--bg-color);
     color: var(--text-color);
     overflow-y: auto;
-    max-height: 600px;
     outline: none;
     font-family: 'Courier New', monospace;
 }
@@ -100,15 +125,10 @@ body {
 }
 
 #codesList {
-    width: fit-content;
-    min-width: 200px;
-    height: fit-content;
-    align-self: flex-start;
-    position: sticky;
-    top: 20px;
     border: 1px solid var(--border-color);
     padding: 10px;
     background-color: var(--bg-color);
+    overflow-y: auto;
 }
 
 .code-item {
@@ -142,15 +162,10 @@ body {
     color: var(--text-color);
 }
 
-#controls {
-    margin-bottom: 10px;
-}
+/* Legacy controls removed in favor of #topbar */
 
-#currentFile {
-    margin-left: 20px;
-    font-style: italic;
-    color: gray;
-}
+/* Current file is hidden in DOM to avoid TS nulls */
+#currentFile { display: none; }
 
 select,
 button {

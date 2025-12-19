@@ -56,6 +56,7 @@ const textDisplay = document.getElementById('textDisplay') as HTMLDivElement;
 const codesList = document.getElementById('codesList') as HTMLDivElement;
 const fileTree = document.getElementById('fileTree') as HTMLDivElement;
 const currentFileSpan = document.getElementById('currentFile') as HTMLSpanElement;
+const currentFolderSpan = document.getElementById('currentFolder') as HTMLSpanElement;
 
 // Render codes list
 function renderCodes(codes: Code[], container: HTMLElement) {
@@ -94,6 +95,7 @@ document.head.appendChild(style);
 openFolderBtn.addEventListener('click', async () => {
     try {
         dirHandle = await (window as any).showDirectoryPicker();
+        currentFolderSpan.textContent = `📂 ${dirHandle.name}`;
         await renderFileTree();
     } catch (err) {
         console.error('Error opening folder:', err);
