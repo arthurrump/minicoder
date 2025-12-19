@@ -44,6 +44,9 @@ body {
     width: fit-content;
     min-width: 200px;
     height: fit-content;
+    align-self: flex-start;
+    position: sticky;
+    top: 20px;
     border: 1px solid var(--border-color);
     padding: 10px;
     background-color: var(--bg-color);
