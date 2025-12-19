@@ -372,6 +372,22 @@ downloadJsonBtn.addEventListener('click', () => {
 
 // Function to get character offset in the textDisplay
 function getOffset(root: Node, container: Node, offset: number): number {
+    // If container is the root element itself, convert offset to position
+    if (container === root) {
+        let total = 0;
+        for (let i = 0; i < offset && i < root.childNodes.length; i++) {
+            const child = root.childNodes[i];
+            if (child.nodeType === Node.TEXT_NODE) {
+                total += child.textContent?.length || 0;
+            } else if (child.nodeName === 'BR') {
+                total += 1;
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+                total += getTextLength(child);
+            }
+        }
+        return total;
+    }
+    
     let total = 0;
     
     function traverse(node: Node): boolean {
@@ -394,6 +410,25 @@ function getOffset(root: Node, container: Node, offset: number): number {
         return false;
     }
     
-    traverse(root);
+    for (let i = 0; i < root.childNodes.length; i++) {
+        if (traverse(root.childNodes[i])) {
+            break;
+        }
+    }
+    
     return total;
+}
+
+function getTextLength(node: Node): number {
+    let length = 0;
+    if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent?.length || 0;
+    } else if (node.nodeName === 'BR') {
+        return 1;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+        for (let i = 0; i < node.childNodes.length; i++) {
+            length += getTextLength(node.childNodes[i]);
+        }
+    }
+    return length;
 }
