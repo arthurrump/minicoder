@@ -12,7 +12,7 @@ interface CodedSegment {
 }
 
 interface MCJData {
-    originalText: string;
+    fileHash: string;
     codedSegments: CodedSegment[];
 }
 
@@ -48,6 +48,7 @@ let currentFileHandle: FileSystemFileHandle | null = null;
 let currentFileDir: FileSystemDirectoryHandle | null = null;
 let dirHandle: FileSystemDirectoryHandle | null = null;
 let autoSaveTimeout: number | null = null;
+let currentFileHash: string = '';
 
 const openFolderBtn = document.getElementById('openFolder') as HTMLButtonElement;
 const downloadJsonBtn = document.getElementById('downloadJson') as HTMLButtonElement;
@@ -107,6 +108,15 @@ async function renderFileTree() {
     await renderDirectoryContents(dirHandle, fileTree, '');
 }
 
+// Simple hash function for file contents
+async function hashText(text: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function renderDirectoryContents(dir: FileSystemDirectoryHandle, container: HTMLElement, prefix: string) {
     const entries = await (dir as any).entries();
     
@@ -162,13 +172,21 @@ async function openFile(fileHandle: FileSystemFileHandle, parentDir: FileSystemD
         originalText = text;
         codedSegments = [];
         
+        // Calculate hash of current file
+        currentFileHash = await hashText(text);
+        
         // Try to load corresponding .mcj file
         const mcjFileName = fileHandle.name + '.mcj';
         try {
             const mcjHandle = await parentDir.getFileHandle(mcjFileName);
             const mcjFile = await mcjHandle.getFile();
             const mcjData: MCJData = JSON.parse(await mcjFile.text());
-            originalText = mcjData.originalText;
+            
+            // Check if file hash matches
+            if (mcjData.fileHash !== currentFileHash) {
+                alert(`Warning: The .mcj file was created from a different version of this file. The file may have changed. Proceeding with current file version.`);
+            }
+            
             codedSegments = mcjData.codedSegments;
         } catch {
             // .mcj file doesn't exist, that's okay
@@ -211,6 +229,12 @@ document.addEventListener('selectionchange', () => {
 async function saveCurrentFile() {
     if (!currentFileHandle || !currentFileDir) return;
     
+    // Don't save if there are no coded segments
+    if (codedSegments.length === 0) {
+        console.log('No coded segments to save, skipping .mcj file creation');
+        return;
+    }
+    
     try {
         // Save .mcj file to the same directory as the text file
         const mcjFileName = currentFileHandle.name + '.mcj';
@@ -218,7 +242,7 @@ async function saveCurrentFile() {
         const writable = await mcjHandle.createWritable();
         
         const mcjData: MCJData = {
-            originalText,
+            fileHash: currentFileHash,
             codedSegments
         };
         
