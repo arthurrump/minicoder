@@ -49,6 +49,7 @@ let currentFileDir: FileSystemDirectoryHandle | null = null;
 let dirHandle: FileSystemDirectoryHandle | null = null;
 let autoSaveTimeout: number | null = null;
 let currentFileHash: string = '';
+let activeFileElement: HTMLElement | null = null;
 
 const openFolderBtn = document.getElementById('openFolder') as HTMLButtonElement;
 const downloadJsonBtn = document.getElementById('downloadJson') as HTMLButtonElement;
@@ -132,7 +133,9 @@ async function renderDirectoryContents(dir: FileSystemDirectoryHandle, container
             fileItem.className = 'file-tree-file';
             fileItem.textContent = name;
             fileItem.style.marginLeft = prefix ? '20px' : '0';
-            fileItem.addEventListener('click', () => openFile(handle, dir));
+            fileItem.addEventListener('click', () => {
+                openFile(handle, dir, fileItem);
+            });
             container.appendChild(fileItem);
         } else if (handle.kind === 'directory') {
             const folderItem = document.createElement('div');
@@ -162,11 +165,20 @@ async function renderDirectoryContents(dir: FileSystemDirectoryHandle, container
 }
 
 // Open file
-async function openFile(fileHandle: FileSystemFileHandle, parentDir: FileSystemDirectoryHandle) {
+async function openFile(fileHandle: FileSystemFileHandle, parentDir: FileSystemDirectoryHandle, fileElement?: HTMLElement) {
     try {
         // Save previous file if exists
         if (currentFileHandle) {
             await saveCurrentFile();
+        }
+        
+        // Update highlighting
+        if (activeFileElement) {
+            activeFileElement.classList.remove('active');
+        }
+        if (fileElement) {
+            fileElement.classList.add('active');
+            activeFileElement = fileElement;
         }
         
         currentFileHandle = fileHandle;

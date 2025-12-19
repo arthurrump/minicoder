@@ -75,13 +75,28 @@ body {
 }
 
 .file-tree-folder {
-    font-weight: bold;
     margin-top: 5px;
+    cursor: pointer;
+}
+
+.file-tree-folder:hover {
+    background-color: var(--code-hover);
 }
 
 .file-tree-file {
     margin-left: 20px;
     color: var(--text-color);
+    padding: 4px;
+    cursor: pointer;
+}
+
+.file-tree-file:hover {
+    background-color: var(--code-hover);
+}
+
+.file-tree-file.active {
+    color: black;
+    font-weight: bold;
 }
 
 /* Remove old editor wrapper in favor of grid columns */
