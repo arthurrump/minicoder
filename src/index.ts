@@ -52,11 +52,9 @@ let currentFileHash: string = '';
 let activeFileElement: HTMLElement | null = null;
 
 const openFolderBtn = document.getElementById('openFolder') as HTMLButtonElement;
-const downloadJsonBtn = document.getElementById('downloadJson') as HTMLButtonElement;
 const textDisplay = document.getElementById('textDisplay') as HTMLDivElement;
 const codesList = document.getElementById('codesList') as HTMLDivElement;
 const fileTree = document.getElementById('fileTree') as HTMLDivElement;
-const currentFileSpan = document.getElementById('currentFile') as HTMLSpanElement;
 const currentFolderSpan = document.getElementById('currentFolder') as HTMLSpanElement;
 
 // Render codes list
@@ -183,7 +181,6 @@ async function openFile(fileHandle: FileSystemFileHandle, parentDir: FileSystemD
         
         currentFileHandle = fileHandle;
         currentFileDir = parentDir;
-        currentFileSpan.textContent = `📄 ${fileHandle.name}`;
         
         const file = await fileHandle.getFile();
         const text = await file.text();
@@ -359,17 +356,6 @@ function getColorForCode(code: string): string {
 }
 
 // Download JSON
-downloadJsonBtn.addEventListener('click', () => {
-    const dataStr = JSON.stringify(codedSegments, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'coded_segments.json';
-    a.click();
-    URL.revokeObjectURL(url);
-});
-
 // Function to get character offset in the textDisplay
 function getOffset(root: Node, container: Node, offset: number): number {
     // If container is the root element itself, convert offset to position

@@ -149,22 +149,3 @@ body {
     font-size: 10px;
     color: var(--text-color);
 }
-
-/* Legacy controls removed in favor of #topbar */
-
-/* Current file is hidden in DOM to avoid TS nulls */
-#currentFile { display: none; }
-
-select,
-button {
-    margin-right: 10px;
-    background-color: var(--code-bg);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    padding: 5px;
-    cursor: pointer;
-}
-
-button:hover {
-    background-color: var(--code-hover);
-}
