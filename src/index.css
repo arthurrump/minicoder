@@ -5,7 +5,6 @@
     --code-bg: #f0f0f0;
     --code-hover: #e0e0e0;
     --label-bg: yellow;
-    --sidebar-bg: #f9f9f9;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -16,7 +15,6 @@
         --code-bg: #333;
         --code-hover: #444;
         --label-bg: #666;
-        --sidebar-bg: #1e1e1e;
     }
 }
 
@@ -53,15 +51,10 @@ body {
     gap: 12px;
 }
 
-#currentFolder {
-    font-style: italic;
-    color: gray;
-}
-
 /* Main content grid */
 #main {
     display: grid;
-    grid-template-columns: 280px 1fr 300px;
+    grid-template-columns: auto 1fr auto;
     grid-template-rows: 1fr;
     gap: 16px;
     padding: 16px;
@@ -72,29 +65,13 @@ body {
 
 #sidebar {
     border: 1px solid var(--border-color);
-    background-color: var(--sidebar-bg);
     padding: 10px;
     overflow-y: auto;
+    min-width: 200px;
 }
 
 #fileTree {
-    font-family: monospace;
     font-size: 14px;
-}
-
-.file-tree-item {
-    padding: 5px;
-    cursor: pointer;
-    user-select: none;
-}
-
-.file-tree-item:hover {
-    background-color: var(--code-hover);
-}
-
-.file-tree-item.selected {
-    background-color: var(--label-bg);
-    color: black;
 }
 
 .file-tree-folder {
@@ -117,11 +94,6 @@ body {
     color: var(--text-color);
     overflow-y: auto;
     outline: none;
-    font-family: 'Courier New', monospace;
-}
-
-#textDisplay:focus {
-    border-color: var(--label-bg);
 }
 
 #codesList {
@@ -129,6 +101,7 @@ body {
     padding: 10px;
     background-color: var(--bg-color);
     overflow-y: auto;
+    min-width: 200px;
 }
 
 .code-item {
@@ -179,5 +152,4 @@ button {
 
 button:hover {
     background-color: var(--code-hover);
-}
 }
