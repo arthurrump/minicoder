@@ -11,6 +11,11 @@ interface CodedSegment {
     text: string;
 }
 
+interface MCJData {
+    originalText: string;
+    codedSegments: CodedSegment[];
+}
+
 const codes: Code[] = [
     { 
         code: 'theme1', 
@@ -39,22 +44,17 @@ const codes: Code[] = [
 let originalText = '';
 let codedSegments: CodedSegment[] = [];
 let currentRange: Range | null = null;
+let currentFileHandle: FileSystemFileHandle | null = null;
+let currentFileDir: FileSystemDirectoryHandle | null = null;
+let dirHandle: FileSystemDirectoryHandle | null = null;
+let autoSaveTimeout: number | null = null;
 
-const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+const openFolderBtn = document.getElementById('openFolder') as HTMLButtonElement;
 const downloadJsonBtn = document.getElementById('downloadJson') as HTMLButtonElement;
 const textDisplay = document.getElementById('textDisplay') as HTMLDivElement;
 const codesList = document.getElementById('codesList') as HTMLDivElement;
-
-// Listen for selection changes
-document.addEventListener('selectionchange', () => {
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        if (textDisplay.contains(range.commonAncestorContainer)) {
-            currentRange = range.cloneRange();
-        }
-    }
-});
+const fileTree = document.getElementById('fileTree') as HTMLDivElement;
+const currentFileSpan = document.getElementById('currentFile') as HTMLSpanElement;
 
 // Render codes list
 function renderCodes(codes: Code[], container: HTMLElement) {
@@ -89,20 +89,147 @@ function collectColors(codes: Code[]): string[] {
 style.textContent = collectColors(codes).map(color => `.${color} { background-color: ${color}; }`).join('\n');
 document.head.appendChild(style);
 
-// Load file
-fileInput.addEventListener('change', (e) => {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            originalText = e.target?.result as string;
-            codedSegments = [];
-            currentRange = null;
-            rebuildDisplay();
-        };
-        reader.readAsText(file);
+// Open folder using File System API
+openFolderBtn.addEventListener('click', async () => {
+    try {
+        dirHandle = await (window as any).showDirectoryPicker();
+        await renderFileTree();
+    } catch (err) {
+        console.error('Error opening folder:', err);
     }
 });
+
+// Render file tree
+async function renderFileTree() {
+    if (!dirHandle) return;
+    
+    fileTree.innerHTML = '';
+    await renderDirectoryContents(dirHandle, fileTree, '');
+}
+
+async function renderDirectoryContents(dir: FileSystemDirectoryHandle, container: HTMLElement, prefix: string) {
+    const entries = await (dir as any).entries();
+    
+    for await (const [name, handle] of entries) {
+        if (handle.kind === 'file') {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-tree-file';
+            fileItem.textContent = name;
+            fileItem.style.marginLeft = prefix ? '20px' : '0';
+            fileItem.addEventListener('click', () => openFile(handle, dir));
+            container.appendChild(fileItem);
+        } else if (handle.kind === 'directory') {
+            const folderItem = document.createElement('div');
+            folderItem.className = 'file-tree-folder';
+            folderItem.textContent = '📁 ' + name;
+            folderItem.style.marginLeft = prefix ? '20px' : '0';
+            container.appendChild(folderItem);
+            
+            const subContainer = document.createElement('div');
+            subContainer.style.display = 'none';
+            container.appendChild(subContainer);
+            
+            folderItem.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (subContainer.style.display === 'none') {
+                    subContainer.innerHTML = '';
+                    subContainer.style.display = 'block';
+                    await renderDirectoryContents(handle, subContainer, prefix + '  ');
+                    folderItem.textContent = '📂 ' + name;
+                } else {
+                    subContainer.style.display = 'none';
+                    folderItem.textContent = '📁 ' + name;
+                }
+            });
+        }
+    }
+}
+
+// Open file
+async function openFile(fileHandle: FileSystemFileHandle, parentDir: FileSystemDirectoryHandle) {
+    try {
+        // Save previous file if exists
+        if (currentFileHandle) {
+            await saveCurrentFile();
+        }
+        
+        currentFileHandle = fileHandle;
+        currentFileDir = parentDir;
+        currentFileSpan.textContent = `📄 ${fileHandle.name}`;
+        
+        const file = await fileHandle.getFile();
+        const text = await file.text();
+        originalText = text;
+        codedSegments = [];
+        
+        // Try to load corresponding .mcj file
+        const mcjFileName = fileHandle.name + '.mcj';
+        try {
+            const mcjHandle = await parentDir.getFileHandle(mcjFileName);
+            const mcjFile = await mcjHandle.getFile();
+            const mcjData: MCJData = JSON.parse(await mcjFile.text());
+            originalText = mcjData.originalText;
+            codedSegments = mcjData.codedSegments;
+        } catch {
+            // .mcj file doesn't exist, that's okay
+        }
+        
+        rebuildDisplay();
+    } catch (err) {
+        console.error('Error opening file:', err);
+    }
+}
+
+// Auto-save on text changes
+textDisplay.addEventListener('input', () => {
+    // Update original text from edited content
+    originalText = textDisplay.textContent || '';
+    
+    // Clear previous timeout
+    if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+    }
+    
+    // Set new timeout for auto-save
+    autoSaveTimeout = window.setTimeout(() => {
+        saveCurrentFile();
+    }, 1000);
+});
+
+// Listen for selection changes
+document.addEventListener('selectionchange', () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        if (textDisplay.contains(range.commonAncestorContainer)) {
+            currentRange = range.cloneRange();
+        }
+    }
+});
+
+// Save current file
+async function saveCurrentFile() {
+    if (!currentFileHandle || !currentFileDir) return;
+    
+    try {
+        // Save .mcj file to the same directory as the text file
+        const mcjFileName = currentFileHandle.name + '.mcj';
+        const mcjHandle = await currentFileDir.getFileHandle(mcjFileName, { create: true });
+        const writable = await mcjHandle.createWritable();
+        
+        const mcjData: MCJData = {
+            originalText,
+            codedSegments
+        };
+        
+        await writable.write(JSON.stringify(mcjData, null, 2));
+        await writable.close();
+        
+        console.log(`Saved ${mcjFileName}`);
+    } catch (err) {
+        console.error('Error saving file:', err);
+    }
+}
 
 // Apply code
 function applyCode(code: string) {
@@ -113,6 +240,14 @@ function applyCode(code: string) {
     const text = originalText.substring(start, end);
 
     codedSegments.push({ start, end, code, text });
+    
+    // Auto-save after applying code
+    if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+    }
+    autoSaveTimeout = window.setTimeout(() => {
+        saveCurrentFile();
+    }, 500);
 
     rebuildDisplay();
     currentRange = null;
