@@ -16,7 +16,13 @@ const codes: Code[] = [
         code: 'theme1', 
         color: 'yellow',
         subcodes: [
-            { code: 'sub1', color: 'lightyellow' },
+            { 
+                code: 'sub1', 
+                color: 'lightyellow', 
+                subcodes: [
+                    { code: 'sub1sub1', color: 'goldenrod' }
+                ] 
+            },
             { code: 'sub2', color: 'gold' }
         ]
     },
