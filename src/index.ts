@@ -122,6 +122,10 @@ async function renderDirectoryContents(dir: FileSystemDirectoryHandle, container
     
     for await (const [name, handle] of entries) {
         if (handle.kind === 'file') {
+            // Skip .mcj files
+            if (name.endsWith('.mcj')) {
+                continue;
+            }
             const fileItem = document.createElement('div');
             fileItem.className = 'file-tree-file';
             fileItem.textContent = name;
