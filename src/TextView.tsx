@@ -347,11 +347,15 @@ const TextView: Component<TextViewProps> = (props) => {
         const selection = findHoveredSelection(e.clientX, e.clientY);
         if (selection) {
             e.stopPropagation();
+            // Always update popover, even if clicking a different selection
             setPopover({
                 x: e.clientX,
                 y: e.clientY,
                 selection
             });
+        } else {
+            // Clicked outside any underline, close popover
+            setPopover(null);
         }
     }
     
@@ -414,7 +418,7 @@ const TextView: Component<TextViewProps> = (props) => {
         
             <Show when={popover()}>
                 {(p) => {
-                    const code = codeMap().get(p().selection.code_guid);
+                    const code = createMemo(() => codeMap().get(p().selection.code_guid));
                     return (
                         <div
                             class="highlight-popover"
@@ -424,13 +428,12 @@ const TextView: Component<TextViewProps> = (props) => {
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div class="popover-header">Applied Code</div>
                             <div class="popover-code-item">
                                 <span
                                     class="popover-code-color"
-                                    style={{ 'background-color': code?.color || '#888' }}
+                                    style={{ 'background-color': code()?.color || '#888' }}
                                 />
-                                <span class="popover-code-name">{code?.name || 'Unknown'}</span>
+                                <span class="popover-code-name">{code()?.name || 'Unknown'}</span>
                                 <button
                                     class="popover-remove-btn"
                                     onClick={() => handleRemoveCode(p().selection.guid)}
