@@ -63,7 +63,7 @@ function buildSegments(content: string, selections: TextSelection[]): Segment[] 
 }
 
 const UNDERLINE_HEIGHT = 4;
-const UNDERLINE_GAP = 0.5;
+const UNDERLINE_GAP = 1;
 
 /**
  * Compute a global layer index for each selection using greedy interval coloring.
@@ -120,15 +120,72 @@ function computeSelectionLayers(selections: TextSelection[]): { layers: Map<stri
 }
 
 /**
+ * Lighten a color by mixing it with white.
+ */
+function lightenColor(color: string, amount: number = 0.3): string {
+    // Handle hex colors
+    if (color.startsWith('#')) {
+        const hex = color.slice(1);
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        
+        const lightenChannel = (c: number) => Math.round(c + (255 - c) * amount);
+        
+        const lr = lightenChannel(r).toString(16).padStart(2, '0');
+        const lg = lightenChannel(g).toString(16).padStart(2, '0');
+        const lb = lightenChannel(b).toString(16).padStart(2, '0');
+        
+        return `#${lr}${lg}${lb}`;
+    }
+    return color;
+}
+
+/**
+ * Given mouse Y position relative to element bottom, determine which layer is being hovered.
+ * Returns the layer index, or -1 if not over any underline.
+ */
+function getHoveredLayer(yFromBottom: number, totalLayers: number): number {
+    if (yFromBottom < 0) return -1;
+    
+    const layerHeight = UNDERLINE_HEIGHT + UNDERLINE_GAP;
+    const totalHeight = totalLayers * layerHeight;
+    
+    if (yFromBottom > totalHeight) return -1;
+    
+    // Layer 0 is at the top (furthest from text), higher layers are closer to text
+    const layerFromBottom = Math.floor(yFromBottom / layerHeight);
+    // Convert to layer index (0 = furthest from text)
+    return totalLayers - 1 - layerFromBottom;
+}
+
+/**
+ * Find which selection is at the given layer within a segment's selections.
+ */
+function getSelectionAtLayer(
+    segmentSelections: TextSelection[],
+    selectionLayers: Map<string, number>,
+    targetLayer: number
+): TextSelection | null {
+    for (const sel of segmentSelections) {
+        if (selectionLayers.get(sel.guid) === targetLayer) {
+            return sel;
+        }
+    }
+    return null;
+}
+
+/**
  * Generate stacked underline styles using background layers.
  * Each underline is a discrete band of fixed height at a specific offset.
- * Uses global layer assignments for consistent offsets across segments.
+ * Applies hover lightening to the hovered selection.
  */
 function getUnderlineStyle(
     segmentSelections: TextSelection[],
     selectionLayers: Map<string, number>,
     codeMap: Map<string, Code>,
-    totalLayers: number
+    totalLayers: number,
+    hoveredSelectionGuid: string | null
 ): Record<string, string> {
     if (segmentSelections.length === 0) {
         return {
@@ -136,19 +193,31 @@ function getUnderlineStyle(
         };
     }
     
-    // Build background layers for each selection
+    // Build background layers for each selection, sorted by layer for consistent ordering
+    const layerData: { layer: number; sel: TextSelection }[] = [];
+    for (const sel of segmentSelections) {
+        const layer = selectionLayers.get(sel.guid) ?? 0;
+        layerData.push({ layer, sel });
+    }
+    // Sort by layer ascending
+    layerData.sort((a, b) => a.layer - b.layer);
+    
     const images: string[] = [];
     const sizes: string[] = [];
     const positions: string[] = [];
     
-    for (const sel of segmentSelections) {
+    for (const { layer, sel } of layerData) {
         const code = codeMap.get(sel.code_guid);
-        const color = code?.color || '#888';
-        const layer = selectionLayers.get(sel.guid) ?? 0;
-        // Offset from bottom: layer 0 (earliest) gets largest offset (furthest from text)
+        let color = code?.color || '#888';
+        
+        // Apply hover effect
+        if (sel.guid === hoveredSelectionGuid) {
+            color = lightenColor(color);
+        }
+        
+        // Offset from bottom: layer 0 gets largest offset (furthest from text)
         const offsetFromBottom = (totalLayers - layer - 1) * (UNDERLINE_HEIGHT + UNDERLINE_GAP);
         
-        // Each layer is a solid color gradient positioned as a discrete band
         images.push(`linear-gradient(${color}, ${color})`);
         sizes.push(`100% ${UNDERLINE_HEIGHT}px`);
         positions.push(`bottom ${offsetFromBottom}px left`);
@@ -163,8 +232,45 @@ function getUnderlineStyle(
     };
 }
 
+interface TextSegmentProps {
+    segment: Segment;
+    selectionLayers: Map<string, number>;
+    codeMap: Map<string, Code>;
+    totalLayers: number;
+    hoveredSelectionGuid: string | null;
+    segmentRef: (el: HTMLSpanElement) => void;
+}
+
+/**
+ * A text segment with background-based underlines.
+ * Hit detection is handled at the container level.
+ */
+const TextSegment: Component<TextSegmentProps> = (props) => {
+    return (
+        <span
+            ref={props.segmentRef}
+            class="text-segment"
+            data-segment-start={props.segment.start}
+            data-segment-end={props.segment.end}
+            style={getUnderlineStyle(
+                props.segment.selections,
+                props.selectionLayers,
+                props.codeMap,
+                props.totalLayers,
+                props.hoveredSelectionGuid
+            )}
+        >
+            {props.segment.text}
+        </span>
+    );
+};
+
 const TextView: Component<TextViewProps> = (props) => {
-    const [popover, setPopover] = createSignal<{ x: number; y: number; segment: Segment } | null>(null);
+    const [popover, setPopover] = createSignal<{ x: number; y: number; selection: TextSelection } | null>(null);
+    const [hoveredSelectionGuid, setHoveredSelectionGuid] = createSignal<string | null>(null);
+    
+    // Store refs to all segment elements, keyed by segment index
+    const segmentElements = new Map<number, HTMLSpanElement>();
     
     const segments = createMemo(() => buildSegments(props.content, props.selections));
     
@@ -188,15 +294,65 @@ const TextView: Component<TextViewProps> = (props) => {
         return map;
     });
     
-    function handleSegmentClick(e: MouseEvent, segment: Segment) {
-        if (segment.selections.length === 0) return;
+    /**
+     * Find which segment and selection (if any) is under the mouse at the given underline position.
+     * Checks all segments' rects to handle overlapping inline elements correctly.
+     */
+    function findHoveredSelection(clientX: number, clientY: number): TextSelection | null {
+        const paddingHeight = totalLayers() * (UNDERLINE_HEIGHT + UNDERLINE_GAP);
+        const segs = segments();
         
-        e.stopPropagation();
-        setPopover({
-            x: e.clientX,
-            y: e.clientY,
-            segment
-        });
+        for (let segIdx = 0; segIdx < segs.length; segIdx++) {
+            const segment = segs[segIdx];
+            if (segment.selections.length === 0) continue;
+            
+            const element = segmentElements.get(segIdx);
+            if (!element) continue;
+            
+            const rects = element.getClientRects();
+            
+            for (const rect of rects) {
+                // Check horizontal bounds
+                if (clientX < rect.left || clientX > rect.right) continue;
+                
+                // Check if in underline area (bottom paddingHeight pixels of rect)
+                const underlineTop = rect.bottom - paddingHeight;
+                if (clientY >= underlineTop && clientY <= rect.bottom) {
+                    const yFromBottom = rect.bottom - clientY;
+                    const hoveredLayer = getHoveredLayer(yFromBottom, totalLayers());
+                    
+                    if (hoveredLayer >= 0) {
+                        const selection = getSelectionAtLayer(segment.selections, selectionLayers(), hoveredLayer);
+                        if (selection) {
+                            return selection;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    function handleContainerMouseMove(e: MouseEvent) {
+        const selection = findHoveredSelection(e.clientX, e.clientY);
+        setHoveredSelectionGuid(selection?.guid ?? null);
+    }
+    
+    function handleContainerMouseLeave() {
+        setHoveredSelectionGuid(null);
+    }
+    
+    function handleContainerClick(e: MouseEvent) {
+        const selection = findHoveredSelection(e.clientX, e.clientY);
+        if (selection) {
+            e.stopPropagation();
+            setPopover({
+                x: e.clientX,
+                y: e.clientY,
+                selection
+            });
+        }
     }
     
     function handleBackgroundClick() {
@@ -228,54 +384,64 @@ const TextView: Component<TextViewProps> = (props) => {
     
     return (
         <div id="textDisplay" onClick={handleBackgroundClick}>
-            <div id="text-view-content" onMouseUp={handleMouseUp}>
+            <div 
+                id="text-view-content" 
+                style={{ cursor: hoveredSelectionGuid() ? 'pointer' : 'inherit' }}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleContainerMouseMove}
+                onMouseLeave={handleContainerMouseLeave}
+                onClick={handleContainerClick}
+            >
                 <For each={segments()}>
-                    {(segment) => (
-                        <span
-                            class={segment.selections.length > 0 ? 'highlighted-segment' : ''}
-                            style={getUnderlineStyle(segment.selections, selectionLayers(), codeMap(), totalLayers())}
-                            onClick={(e) => handleSegmentClick(e, segment)}
-                        >
-                            {segment.text}
-                        </span>
+                    {(segment, index) => (
+                        <TextSegment
+                            segment={segment}
+                            selectionLayers={selectionLayers()}
+                            codeMap={codeMap()}
+                            totalLayers={totalLayers()}
+                            hoveredSelectionGuid={hoveredSelectionGuid()}
+                            segmentRef={(el) => {
+                                if (el) {
+                                    segmentElements.set(index(), el);
+                                } else {
+                                    segmentElements.delete(index());
+                                }
+                            }}
+                        />
                     )}
                 </For>
             </div>
-            
+        
             <Show when={popover()}>
-                {(p) => (
-                    <div
-                        class="highlight-popover"
-                        style={{
-                            left: `${p().x}px`,
-                            top: `${p().y}px`
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div class="popover-header">Applied Codes</div>
-                        <For each={p().segment.selections}>
-                            {(sel) => {
-                                const code = codeMap().get(sel.code_guid);
-                                return (
-                                    <div class="popover-code-item">
-                                        <span
-                                            class="popover-code-color"
-                                            style={{ 'background-color': code?.color || '#888' }}
-                                        />
-                                        <span class="popover-code-name">{code?.name || 'Unknown'}</span>
-                                        <button
-                                            class="popover-remove-btn"
-                                            onClick={() => handleRemoveCode(sel.guid)}
-                                            title="Remove this code"
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                );
+                {(p) => {
+                    const code = codeMap().get(p().selection.code_guid);
+                    return (
+                        <div
+                            class="highlight-popover"
+                            style={{
+                                left: `${p().x}px`,
+                                top: `${p().y}px`
                             }}
-                        </For>
-                    </div>
-                )}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div class="popover-header">Applied Code</div>
+                            <div class="popover-code-item">
+                                <span
+                                    class="popover-code-color"
+                                    style={{ 'background-color': code?.color || '#888' }}
+                                />
+                                <span class="popover-code-name">{code?.name || 'Unknown'}</span>
+                                <button
+                                    class="popover-remove-btn"
+                                    onClick={() => handleRemoveCode(p().selection.guid)}
+                                    title="Remove this code"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }}
             </Show>
         </div>
     );

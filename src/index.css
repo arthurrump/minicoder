@@ -159,13 +159,16 @@ body {
     line-height: 1.8;
 }
 
-.highlighted-segment {
-    cursor: pointer;
-    transition: opacity 0.15s;
+/* Text segment wrapper */
+.text-segment {
+    /* Ensure proper inline-block for relative positioning of underlines */
+    display: inline;
 }
 
-.highlighted-segment:hover {
-    opacity: 0.8;
+/* Interactive underline segments */
+.underline-segment {
+    transition: background-color 0.15s ease;
+    pointer-events: auto;
 }
 
 /* Popover for showing applied codes */
