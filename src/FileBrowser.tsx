@@ -1,10 +1,15 @@
 import { createSignal, For, Show, createEffect, JSX } from 'solid-js';
 
+interface ExtensionFilter {
+  extensions: string[]; // e.g., ['.ts', '.tsx', '.js']
+  mode: 'include' | 'exclude';
+}
+
 interface FileBrowserProps {
   directoryHandle: FileSystemDirectoryHandle;
   onFileSelect?: (file: FileSystemFileHandle) => void;
   selectedFile?: FileSystemFileHandle;
-  fileExtensionFilter?: string[]; // e.g., ['.ts', '.tsx', '.js']
+  fileExtensionFilter?: ExtensionFilter; // Filter files by extension
 }
 
 interface FileNode {
@@ -38,12 +43,17 @@ export function FileBrowser(props: FileBrowserProps) {
     for await (const entry of dirHandle.values()) {
       if (entry.kind === 'file') {
         // Apply file extension filter if provided
-        if (props.fileExtensionFilter && props.fileExtensionFilter.length > 0) {
-          const hasMatchingExtension = props.fileExtensionFilter.some(ext => 
+        if (props.fileExtensionFilter && props.fileExtensionFilter.extensions.length > 0) {
+          const { extensions, mode } = props.fileExtensionFilter;
+          const hasMatchingExtension = extensions.some(ext => 
             entry.name.endsWith(ext)
           );
-          if (!hasMatchingExtension) {
-            continue;
+          
+          if (mode === 'include' && !hasMatchingExtension) {
+            continue; // Skip files that don't match included extensions
+          }
+          if (mode === 'exclude' && hasMatchingExtension) {
+            continue; // Skip files that match excluded extensions
           }
         }
         nodes.push({

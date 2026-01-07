@@ -31,7 +31,7 @@ const App: Component = () => {
     }
     
     try {
-      const codebookFile = await dir.getFileHandle("codebook.json");
+      const codebookFile = await dir.getFileHandle("codebook.mcc");
       const file = await codebookFile.getFile();
       const text = await file.text();
       const parsedCodebook = JSON.parse(text) as Codebook;
@@ -134,7 +134,7 @@ const App: Component = () => {
         <div id="main">
           <div id="sidebar">
             <div id="fileTree">
-              <FileBrowser directoryHandle={dirHandle()!} onFileSelect={setSelectedFile} fileExtensionFilter={[ ".txt" ]} />
+              <FileBrowser directoryHandle={dirHandle()!} onFileSelect={setSelectedFile} fileExtensionFilter={{ extensions: [".mcs", ".mcc"], mode: "exclude" }} />
             </div>
           </div>
           <Show when={selectedFile()} fallback={<p>Select a file to view its contents</p>}>
