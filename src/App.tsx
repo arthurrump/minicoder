@@ -148,12 +148,17 @@ const App: Component = () => {
             </Show>
           </Show>
           <div id="codesList">
-            <Show when={selectedCode()}>
-              <div class="selected-code-notice">
-                Selected: {selectedCode()!.name}
+            <div class="selected-code-notice">
+              <Show when={selectedCode()} fallback={
+                <span class="no-code-selected">No code selected</span>
+              }>
+                <span class="selected-code-info">
+                  <span class="selected-code-color" style={{ "background-color": selectedCode()!.color }}></span>
+                  <span>{selectedCode()!.name}</span>
+                </span>
                 <button onClick={() => setSelectedCode(null)}>×</button>
-              </div>
-            </Show>
+              </Show>
+            </div>
             <CodePicker codes={codebook().codes} onCodeClick={handleCodeClick} />
           </div>
         </div>

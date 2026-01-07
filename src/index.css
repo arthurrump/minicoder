@@ -218,8 +218,7 @@ body {
 }
 
 /* Pending selection and selected code notices */
-.pending-selection-notice,
-.selected-code-notice {
+.pending-selection-notice {
     background: var(--label-bg);
     padding: 8px;
     margin-bottom: 10px;
@@ -230,10 +229,45 @@ body {
     justify-content: space-between;
 }
 
+.selected-code-notice {
+    padding: 10px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 20px;
+}
+
+.selected-code-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.selected-code-color {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.no-code-selected {
+    color: #888;
+    font-style: italic;
+}
+
 .selected-code-notice button {
     background: none;
     border: none;
     font-size: 16px;
     cursor: pointer;
     padding: 0 4px;
+    color: #888;
+}
+
+.selected-code-notice button:hover {
+    color: var(--text-color);
 }
