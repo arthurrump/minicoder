@@ -222,6 +222,10 @@ const App: Component = () => {
         : s
     ));
   }
+
+  function handleSelectionClear() {
+    setPendingSelection(null);
+  }
   
   function handleFileSelect(info: { file: FileSystemFileHandle; directory: FileSystemDirectoryHandle; relativePath: string }) {
     setSelectedFile(info.file);
@@ -267,6 +271,7 @@ const App: Component = () => {
                     onSelectionCreate={handleSelectionCreate}
                     onSelectionRemove={handleSelectionRemove}
                     onSelectionUpdate={handleSelectionUpdate}
+                    onSelectionClear={handleSelectionClear}
                   />
                 )}
               </Show>
