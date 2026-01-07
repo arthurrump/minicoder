@@ -62,42 +62,104 @@ function buildSegments(content: string, selections: TextSelection[]): Segment[] 
     return segments;
 }
 
+const UNDERLINE_HEIGHT = 4;
+const UNDERLINE_GAP = 0.5;
+
 /**
- * Generate stacked underline styles using box-shadows
+ * Compute a global layer index for each selection using greedy interval coloring.
+ * Each selection gets the lowest layer index that doesn't conflict with overlapping selections.
+ * This minimizes the total number of layers needed.
  */
-function getUnderlineStyle(selections: TextSelection[], codes: Code[]): Record<string, string> {
-    if (selections.length === 0) return {};
+function computeSelectionLayers(selections: TextSelection[]): { layers: Map<string, number>; maxLayer: number } {
+    if (selections.length === 0) {
+        return { layers: new Map(), maxLayer: 0 };
+    }
     
-    const codeMap = new Map<string, Code>();
-    const collectCodes = (codeList: Code[]) => {
-        for (const code of codeList) {
-            codeMap.set(code.guid, code);
-            if (code.subcodes) {
-                collectCodes(code.subcodes);
+    // Sort by start position, then by end position for stability
+    const sorted = [...selections].sort((a, b) => {
+        if (a.start !== b.start) return a.start - b.start;
+        return a.end - b.end;
+    });
+    
+    const layers = new Map<string, number>();
+    // Track which selections are assigned to each layer (for overlap checking)
+    const layerAssignments: TextSelection[][] = [];
+    
+    for (const sel of sorted) {
+        // Find the lowest layer where this selection doesn't overlap with existing assignments
+        let assignedLayer = 0;
+        
+        while (true) {
+            // Ensure layer array exists
+            if (!layerAssignments[assignedLayer]) {
+                layerAssignments[assignedLayer] = [];
             }
+            
+            // Check if this selection overlaps with any selection already in this layer
+            const hasConflict = layerAssignments[assignedLayer].some(
+                existing => sel.start < existing.end && sel.end > existing.start
+            );
+            
+            if (!hasConflict) {
+                // Found a free layer
+                break;
+            }
+            
+            // Try next layer
+            assignedLayer++;
         }
+        
+        layers.set(sel.guid, assignedLayer);
+        layerAssignments[assignedLayer].push(sel);
+    }
+    
+    return { 
+        layers, 
+        maxLayer: layerAssignments.length 
     };
-    collectCodes(codes);
+}
+
+/**
+ * Generate stacked underline styles using background layers.
+ * Each underline is a discrete band of fixed height at a specific offset.
+ * Uses global layer assignments for consistent offsets across segments.
+ */
+function getUnderlineStyle(
+    segmentSelections: TextSelection[],
+    selectionLayers: Map<string, number>,
+    codeMap: Map<string, Code>,
+    totalLayers: number
+): Record<string, string> {
+    if (segmentSelections.length === 0) {
+        return {
+            'padding-bottom': `${totalLayers * (UNDERLINE_HEIGHT + UNDERLINE_GAP)}px`,
+        };
+    }
     
-    // Sort by start position: later starts get smaller offsets (bottom), earlier starts get larger offsets (top)
-    const sortedSelections = [...selections].sort((a, b) => b.start - a.start);
+    // Build background layers for each selection
+    const images: string[] = [];
+    const sizes: string[] = [];
+    const positions: string[] = [];
     
-    // Build stacked underlines using box-shadow
-    const underlineHeight = 3;
-    const gap = 1;
-    const shadows: string[] = [];
-    
-    for (let i = 0; i < sortedSelections.length; i++) {
-        const sel = sortedSelections[i];
+    for (const sel of segmentSelections) {
         const code = codeMap.get(sel.code_guid);
         const color = code?.color || '#888';
-        const offset = (i + 1) * (underlineHeight + gap);
-        shadows.push(`inset 0 -${offset}px 0 0 ${color}`);
+        const layer = selectionLayers.get(sel.guid) ?? 0;
+        // Offset from bottom: layer 0 (earliest) gets largest offset (furthest from text)
+        const offsetFromBottom = (totalLayers - layer - 1) * (UNDERLINE_HEIGHT + UNDERLINE_GAP);
+        
+        // Each layer is a solid color gradient positioned as a discrete band
+        images.push(`linear-gradient(${color}, ${color})`);
+        sizes.push(`100% ${UNDERLINE_HEIGHT}px`);
+        positions.push(`bottom ${offsetFromBottom}px left`);
     }
     
     return {
-        'box-shadow': shadows.join(', '),
-        'padding-bottom': `${selections.length * (underlineHeight + gap)}px`,
+        'background-image': images.join(', '),
+        'background-size': sizes.join(', '),
+        'background-position': positions.join(', '),
+        'background-repeat': 'no-repeat',
+        'padding-bottom': `${totalLayers * (UNDERLINE_HEIGHT + UNDERLINE_GAP)}px`,
     };
 }
 
@@ -105,6 +167,11 @@ const TextView: Component<TextViewProps> = (props) => {
     const [popover, setPopover] = createSignal<{ x: number; y: number; segment: Segment } | null>(null);
     
     const segments = createMemo(() => buildSegments(props.content, props.selections));
+    
+    // Compute global layer assignments for consistent underline offsets
+    const layerInfo = createMemo(() => computeSelectionLayers(props.selections));
+    const selectionLayers = createMemo(() => layerInfo().layers);
+    const totalLayers = createMemo(() => layerInfo().maxLayer);
     
     // Build a map of code_guid -> Code for quick lookup
     const codeMap = createMemo(() => {
@@ -166,7 +233,7 @@ const TextView: Component<TextViewProps> = (props) => {
                     {(segment) => (
                         <span
                             class={segment.selections.length > 0 ? 'highlighted-segment' : ''}
-                            style={getUnderlineStyle(segment.selections, props.codes)}
+                            style={getUnderlineStyle(segment.selections, selectionLayers(), codeMap(), totalLayers())}
                             onClick={(e) => handleSegmentClick(e, segment)}
                         >
                             {segment.text}
