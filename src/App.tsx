@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createResource, createSignal, Show, type Component } from 'solid-js';
 import FileBrowser from './FileBrowser';
 import CodePicker from './CodePicker';
+import TextView from './TextView';
 
 const App: Component = () => {
   const [dirHandle, setDirHandle] = createSignal<FileSystemDirectoryHandle>();
@@ -16,7 +17,10 @@ const App: Component = () => {
   });
 
   const [codebook, setCodebook] = createSignal<Codebook>({ name: "Codebook", codes: [] });
-  const [selectedFile, setSelectedFile] = createSignal<FileSystemFileHandle>()
+  const [selectedFile, setSelectedFile] = createSignal<FileSystemFileHandle>();
+  const [selections, setSelections] = createSignal<TextSelection[]>([]);
+  const [selectedCode, setSelectedCode] = createSignal<Code | null>(null);
+  const [pendingSelection, setPendingSelection] = createSignal<{ start: number; end: number } | null>(null);
   
   // Load codebook when directory changes
   createEffect(async () => {
@@ -61,8 +65,56 @@ const App: Component = () => {
     }
   }
 
-  function applyCode() {
+  function handleCodeClick(code: Code) {
+    const pending = pendingSelection();
+    if (pending) {
+      // We have a pending text selection, apply this code to it
+      const newSelection: TextSelection = {
+        guid: crypto.randomUUID(),
+        start: pending.start,
+        end: pending.end,
+        text: fileContent()?.slice(pending.start, pending.end) || '',
+        code_guid: code.guid
+      };
+      setSelections(prev => [...prev, newSelection]);
+      setPendingSelection(null);
+      setSelectedCode(null);
+      // Clear the browser's text selection now that the code is applied
+      window.getSelection()?.removeAllRanges();
+    } else {
+      // Just select this code for future use
+      setSelectedCode(code);
+    }
+  }
 
+  function handleSelectionCreate(start: number, end: number) {
+    const code = selectedCode();
+    if (code) {
+      // If a code is already selected, apply it immediately
+      const newSelection: TextSelection = {
+        guid: crypto.randomUUID(),
+        start,
+        end,
+        text: fileContent()?.slice(start, end) || '',
+        code_guid: code.guid
+      };
+      setSelections(prev => [...prev, newSelection]);
+    } else {
+      // Store the pending selection and wait for code selection
+      setPendingSelection({ start, end });
+    }
+  }
+
+  function handleSelectionRemove(selectionGuid: string) {
+    setSelections(prev => prev.filter(s => s.guid !== selectionGuid));
+  }
+
+  function handleSelectionUpdate(selectionGuid: string, start: number, end: number) {
+    setSelections(prev => prev.map(s => 
+      s.guid === selectionGuid 
+        ? { ...s, start, end, text: fileContent()?.slice(start, end) || '' }
+        : s
+    ));
   }
   
   return (
@@ -81,13 +133,28 @@ const App: Component = () => {
               <FileBrowser directoryHandle={dirHandle()!} onFileSelect={setSelectedFile} fileExtensionFilter={[ ".txt" ]} />
             </div>
           </div>
-          <div id="textDisplay">
-            <Show when={selectedFile()} fallback={<p>Select a file to view its contents</p>}>
-              {fileContent()}
+          <Show when={selectedFile()} fallback={<p>Select a file to view its contents</p>}>
+            <Show when={fileContent()}>
+              {(content) => (
+                <TextView
+                  content={content()}
+                  selections={selections()}
+                  codes={codebook().codes}
+                  onSelectionCreate={handleSelectionCreate}
+                  onSelectionRemove={handleSelectionRemove}
+                  onSelectionUpdate={handleSelectionUpdate}
+                />
+              )}
             </Show>
-          </div>
+          </Show>
           <div id="codesList">
-            <CodePicker codes={codebook().codes} onCodeClick={applyCode} />
+            <Show when={selectedCode()}>
+              <div class="selected-code-notice">
+                Selected: {selectedCode()!.name}
+                <button onClick={() => setSelectedCode(null)}>×</button>
+              </div>
+            </Show>
+            <CodePicker codes={codebook().codes} onCodeClick={handleCodeClick} />
           </div>
         </div>
       </Show>

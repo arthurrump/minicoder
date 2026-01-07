@@ -152,3 +152,95 @@ body {
     font-size: 10px;
     color: var(--text-color);
 }
+
+/* TextView styles */
+#text-view-content {
+    white-space: pre-wrap;
+    line-height: 1.8;
+}
+
+.highlighted-segment {
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.highlighted-segment:hover {
+    opacity: 0.8;
+}
+
+/* Popover for showing applied codes */
+.highlight-popover {
+    position: fixed;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 8px;
+    min-width: 150px;
+    z-index: 1000;
+    transform: translate(-50%, 8px);
+}
+
+.popover-header {
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.popover-code-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.popover-code-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.popover-code-name {
+    flex: 1;
+    font-size: 13px;
+}
+
+.popover-remove-btn {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.popover-remove-btn:hover {
+    color: #e74c3c;
+}
+
+/* Pending selection and selected code notices */
+.pending-selection-notice,
+.selected-code-notice {
+    background: var(--label-bg);
+    padding: 8px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.selected-code-notice button {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+}

@@ -11,7 +11,7 @@ interface Codebook {
     codes: Code[];
 }
 
-interface Selection {
+interface TextSelection {
     guid: string;
     start: number;
     end: number;
@@ -21,5 +21,5 @@ interface Selection {
 
 interface Source {
     fileHash: string;
-    selections: Selection[];
+    selections: TextSelection[];
 }
