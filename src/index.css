@@ -104,6 +104,12 @@ body {
 
 /* Remove old editor wrapper in favor of grid columns */
 
+.text-view-wrapper {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 #textDisplay {
     border: 1px solid var(--border-color);
     padding: 10px;
@@ -112,6 +118,7 @@ body {
     color: var(--text-color);
     overflow-y: auto;
     outline: none;
+    flex: 1;
 }
 
 #codesList {
@@ -295,4 +302,64 @@ body {
 
 .selection-handle-start {
     transform: translateX(-100%);
+}
+
+/* Save status indicators */
+.save-status-indicator {
+    margin-left: 6px;
+    font-size: 10px;
+}
+
+.save-status-indicator.saved {
+    color: #4caf50;
+}
+
+.save-status-indicator.pending {
+    color: #ff9800;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Hash mismatch warning */
+.hash-mismatch-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 10px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.hash-mismatch-warning button {
+    background: transparent;
+    border: 1px solid #856404;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: #856404;
+}
+
+.hash-mismatch-warning button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    .hash-mismatch-warning {
+        background-color: #3d3200;
+        color: #ffc107;
+        border-color: #665200;
+    }
+    
+    .hash-mismatch-warning button {
+        color: #ffc107;
+        border-color: #ffc107;
+    }
 }

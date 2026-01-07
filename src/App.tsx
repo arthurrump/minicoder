@@ -1,7 +1,10 @@
-import { createEffect, createMemo, createResource, createSignal, Show, type Component } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, on, Show, type Component } from 'solid-js';
 import FileBrowser from './FileBrowser';
 import CodePicker from './CodePicker';
 import TextView from './TextView';
+import { hashText, debounce } from './helpers';
+
+type SaveStatus = 'saved' | 'pending' | 'none';
 
 const App: Component = () => {
   const [dirHandle, setDirHandle] = createSignal<FileSystemDirectoryHandle>();
@@ -18,9 +21,13 @@ const App: Component = () => {
 
   const [codebook, setCodebook] = createSignal<Codebook>({ name: "Codebook", codes: [] });
   const [selectedFile, setSelectedFile] = createSignal<FileSystemFileHandle>();
+  const [selectedFileDir, setSelectedFileDir] = createSignal<FileSystemDirectoryHandle>();
+  const [selectedFilePath, setSelectedFilePath] = createSignal<string>("");
   const [selections, setSelections] = createSignal<TextSelection[]>([]);
   const [selectedCode, setSelectedCode] = createSignal<Code | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ start: number; end: number } | null>(null);
+  const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
+  const [fileStatuses, setFileStatuses] = createSignal<Map<string, SaveStatus>>(new Map());
   
   // Load codebook when directory changes
   createEffect(async () => {
@@ -53,6 +60,105 @@ const App: Component = () => {
       return undefined;
     }
   });
+
+  // Load selections from .mcs file when file changes
+  createEffect(on([selectedFile, () => fileContent()], async ([file, content]) => {
+    if (!file || !content) {
+      setSelections([]);
+      setHashMismatchWarning(false);
+      return;
+    }
+
+    const fileDir = selectedFileDir();
+    const filePath = selectedFilePath();
+    if (!fileDir || !filePath) return;
+
+    const mcsFileName = file.name + '.mcs';
+    try {
+      const mcsFile = await fileDir.getFileHandle(mcsFileName);
+      const mcsData = await mcsFile.getFile();
+      const mcsText = await mcsData.text();
+      const source = JSON.parse(mcsText) as Source;
+      
+      // Check hash
+      const currentHash = await hashText(content);
+      if (source.fileHash !== currentHash) {
+        setHashMismatchWarning(true);
+        console.warn("File content has changed since selections were saved");
+      } else {
+        setHashMismatchWarning(false);
+      }
+      
+      setSelections(source.selections);
+      updateFileStatus(filePath, 'saved');
+    } catch (err) {
+      // No .mcs file exists
+      setSelections([]);
+      setHashMismatchWarning(false);
+      updateFileStatus(filePath, 'none');
+    }
+  }));
+
+  // Helper to update file status map
+  function updateFileStatus(fileName: string, status: SaveStatus) {
+    setFileStatuses(prev => {
+      const newMap = new Map(prev);
+      newMap.set(fileName, status);
+      return newMap;
+    });
+  }
+
+  // Save selections to .mcs file
+  async function saveSelections() {
+    const file = selectedFile();
+    const content = fileContent();
+    const fileDir = selectedFileDir();
+    const filePath = selectedFilePath();
+    
+    if (!file || !content || !fileDir || !filePath) return;
+    
+    const currentSelections = selections();
+    const fileHash = await hashText(content);
+    
+    const source: Source = {
+      fileHash,
+      selections: currentSelections
+    };
+    
+    const mcsFileName = file.name + '.mcs';
+    try {
+      const mcsFile = await fileDir.getFileHandle(mcsFileName, { create: true });
+      const writable = await mcsFile.createWritable();
+      await writable.write(JSON.stringify(source, null, 2));
+      await writable.close();
+      updateFileStatus(filePath, 'saved');
+    } catch (err) {
+      console.error("Failed to save selections:", err);
+    }
+  }
+
+  // Debounced save function
+  const debouncedSave = debounce(saveSelections, 1000);
+
+  // Auto-save when selections change (but not on initial load)
+  let isInitialLoad = true;
+  createEffect(on(() => selections(), (currentSelections) => {
+    if (isInitialLoad) {
+      isInitialLoad = false;
+      return;
+    }
+    
+    const filePath = selectedFilePath();
+    if (!filePath) return;
+    
+    updateFileStatus(filePath, 'pending');
+    debouncedSave();
+  }, { defer: true }));
+
+  // Reset initial load flag when file changes
+  createEffect(on(selectedFile, () => {
+    isInitialLoad = true;
+  }));
 
   async function pickFolder() {
     try {
@@ -116,9 +222,11 @@ const App: Component = () => {
         : s
     ));
   }
-
-  function handleSelectionClear() {
-    setPendingSelection(null);
+  
+  function handleFileSelect(info: { file: FileSystemFileHandle; directory: FileSystemDirectoryHandle; relativePath: string }) {
+    setSelectedFile(info.file);
+    setSelectedFileDir(info.directory);
+    setSelectedFilePath(info.relativePath);
   }
   
   return (
@@ -134,23 +242,35 @@ const App: Component = () => {
         <div id="main">
           <div id="sidebar">
             <div id="fileTree">
-              <FileBrowser directoryHandle={dirHandle()!} onFileSelect={setSelectedFile} fileExtensionFilter={{ extensions: [".mcs", ".mcc"], mode: "exclude" }} />
+              <FileBrowser 
+                directoryHandle={dirHandle()!} 
+                onFileSelect={handleFileSelect} 
+                fileExtensionFilter={{ extensions: [".mcs", ".mcc"], mode: "exclude" }}
+                fileStatuses={fileStatuses()}
+              />
             </div>
           </div>
           <Show when={selectedFile()} fallback={<p>Select a file to view its contents</p>}>
-            <Show when={fileContent()}>
-              {(content) => (
-                              <TextView
-                  content={content()}
-                  selections={selections()}
-                  codes={codebook().codes}
-                  onSelectionCreate={handleSelectionCreate}
-                  onSelectionRemove={handleSelectionRemove}
-                  onSelectionUpdate={handleSelectionUpdate}
-                  onSelectionClear={handleSelectionClear}
-                />
-              )}
-            </Show>
+            <div class="text-view-wrapper">
+              <Show when={hashMismatchWarning()}>
+                <div class="hash-mismatch-warning">
+                  ⚠️ Warning: The file content has changed since these selections were saved. Positions may be incorrect.
+                  <button onClick={() => setHashMismatchWarning(false)}>Dismiss</button>
+                </div>
+              </Show>
+              <Show when={fileContent()}>
+                {(content) => (
+                                <TextView
+                    content={content()}
+                    selections={selections()}
+                    codes={codebook().codes}
+                    onSelectionCreate={handleSelectionCreate}
+                    onSelectionRemove={handleSelectionRemove}
+                    onSelectionUpdate={handleSelectionUpdate}
+                  />
+                )}
+              </Show>
+            </div>
           </Show>
           <div id="codesList">
             <div class="selected-code-notice">

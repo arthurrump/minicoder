@@ -1,15 +1,24 @@
 import { createSignal, For, Show, createEffect, JSX } from 'solid-js';
 
+type SaveStatus = 'saved' | 'pending' | 'none';
+
 interface ExtensionFilter {
   extensions: string[]; // e.g., ['.ts', '.tsx', '.js']
   mode: 'include' | 'exclude';
 }
 
+interface FileSelectInfo {
+  file: FileSystemFileHandle;
+  directory: FileSystemDirectoryHandle;
+  relativePath: string;
+}
+
 interface FileBrowserProps {
   directoryHandle: FileSystemDirectoryHandle;
-  onFileSelect?: (file: FileSystemFileHandle) => void;
+  onFileSelect?: (info: FileSelectInfo) => void;
   selectedFile?: FileSystemFileHandle;
   fileExtensionFilter?: ExtensionFilter; // Filter files by extension
+  fileStatuses?: Map<string, SaveStatus>; // Status indicators for files (keyed by relative path)
 }
 
 interface FileNode {
@@ -17,6 +26,8 @@ interface FileNode {
   handle: FileSystemFileHandle | FileSystemDirectoryHandle;
   type: 'file' | 'directory';
   children?: FileNode[];
+  parentDir: FileSystemDirectoryHandle;
+  relativePath: string;
 }
 
 export function FileBrowser(props: FileBrowserProps) {
@@ -27,7 +38,7 @@ export function FileBrowser(props: FileBrowserProps) {
   // Load directory contents
   createEffect(async () => {
     if (props.directoryHandle) {
-      const nodes = await loadDirectory(props.directoryHandle);
+      const nodes = await loadDirectory(props.directoryHandle, props.directoryHandle, "");
       setRootNodes(nodes);
     }
   });
@@ -37,10 +48,16 @@ export function FileBrowser(props: FileBrowserProps) {
     setSelectedFile(props.selectedFile);
   });
 
-  async function loadDirectory(dirHandle: FileSystemDirectoryHandle): Promise<FileNode[]> {
+  async function loadDirectory(
+    dirHandle: FileSystemDirectoryHandle, 
+    parentDir: FileSystemDirectoryHandle,
+    pathPrefix: string
+  ): Promise<FileNode[]> {
     const nodes: FileNode[] = [];
     
     for await (const entry of dirHandle.values()) {
+      const relativePath = pathPrefix ? `${pathPrefix}/${entry.name}` : entry.name;
+      
       if (entry.kind === 'file') {
         // Apply file extension filter if provided
         if (props.fileExtensionFilter && props.fileExtensionFilter.extensions.length > 0) {
@@ -60,12 +77,16 @@ export function FileBrowser(props: FileBrowserProps) {
           name: entry.name,
           handle: entry as FileSystemFileHandle,
           type: 'file',
+          parentDir: dirHandle,
+          relativePath,
         });
       } else if (entry.kind === 'directory') {
         nodes.push({
           name: entry.name,
           handle: entry as FileSystemDirectoryHandle,
           type: 'directory',
+          parentDir: dirHandle,
+          relativePath,
         });
       }
     }
@@ -92,9 +113,13 @@ export function FileBrowser(props: FileBrowserProps) {
     });
   }
 
-  function handleFileClick(fileHandle: FileSystemFileHandle) {
-    setSelectedFile(fileHandle);
-    props.onFileSelect?.(fileHandle);
+  function handleFileClick(node: FileNode) {
+    setSelectedFile(node.handle as FileSystemFileHandle);
+    props.onFileSelect?.({
+      file: node.handle as FileSystemFileHandle,
+      directory: node.parentDir,
+      relativePath: node.relativePath,
+    });
   }
 
   function FileTreeNode(nodeProps: { node: FileNode; depth?: number }): JSX.Element {
@@ -116,7 +141,7 @@ export function FileBrowser(props: FileBrowserProps) {
     createEffect(async () => {
       if (nodeProps.node.type === 'directory' && isExpanded()) {
         const dirHandle = nodeProps.node.handle as FileSystemDirectoryHandle;
-        const loadedChildren = await loadDirectory(dirHandle);
+        const loadedChildren = await loadDirectory(dirHandle, dirHandle, nodeProps.node.relativePath);
         setChildren(loadedChildren);
       }
     });
@@ -137,7 +162,7 @@ export function FileBrowser(props: FileBrowserProps) {
             if (nodeProps.node.type === 'directory') {
               toggleDirectory(nodeProps.node.handle as FileSystemDirectoryHandle);
             } else {
-              handleFileClick(nodeProps.node.handle as FileSystemFileHandle);
+              handleFileClick(nodeProps.node);
             }
           }}
         >
@@ -149,7 +174,22 @@ export function FileBrowser(props: FileBrowserProps) {
           <Show when={nodeProps.node.type === 'file'}>
             <span style={{ 'margin-right': '4px' }}>📄</span>
           </Show>
-          {nodeProps.node.name}
+          <span class="file-name">{nodeProps.node.name}</span>
+          <Show when={nodeProps.node.type === 'file'}>
+            {(() => {
+              const status = props.fileStatuses?.get(nodeProps.node.relativePath);
+              return (
+                <Show when={status && status !== 'none'}>
+                  <span 
+                    class={`save-status-indicator ${status}`}
+                    title={status === 'saved' ? 'Selections saved' : 'Saving...'}
+                  >
+                    {status === 'saved' ? '●' : '○'}
+                  </span>
+                </Show>
+              );
+            })()}
+          </Show>
         </div>
         <Show when={nodeProps.node.type === 'directory' && isExpanded()}>
           <For each={children()}>

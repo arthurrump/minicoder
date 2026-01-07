@@ -7,6 +7,7 @@ interface TextViewProps {
     onSelectionCreate?: (start: number, end: number) => void;
     onSelectionRemove?: (selectionGuid: string) => void;
     onSelectionUpdate?: (selectionGuid: string, start: number, end: number) => void;
+    onSelectionClear?: () => void;
 }
 
 interface Segment {
@@ -594,11 +595,15 @@ const TextView: Component<TextViewProps> = (props) => {
     function handleBackgroundClick() {
         setPopover(null);
         setActiveSelectionGuid(null);
+        props.onSelectionClear?.();
     }
     
     function handleMouseUp() {
         const selection = window.getSelection();
-        if (!selection || selection.isCollapsed) return;
+        if (!selection || selection.isCollapsed) {
+            props.onSelectionClear?.();
+            return;
+        }
         
         const range = selection.getRangeAt(0);
         const container = document.getElementById('text-view-content');
