@@ -157,6 +157,7 @@ body {
 #text-view-content {
     white-space: pre-wrap;
     line-height: 1.8;
+    position: relative;
 }
 
 /* Text segment wrapper */
@@ -270,4 +271,28 @@ body {
 
 .selected-code-notice button:hover {
     color: var(--text-color);
+}
+
+/* Selection resize handles */
+.selection-handle {
+    position: absolute;
+    width: 2px;
+    cursor: ew-resize;
+    z-index: 100;
+    opacity: 0.9;
+    transition: opacity 0.15s, width 0.15s;
+}
+
+.selection-handle:hover {
+    opacity: 1;
+    width: 4px;
+}
+
+.selection-handle.dragging {
+    opacity: 1;
+    width: 4px;
+}
+
+.selection-handle-start {
+    transform: translateX(-100%);
 }

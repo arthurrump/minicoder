@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, Show, type Component } from 'solid-js';
+import { createMemo, createSignal, For, Show, type Component, onMount, onCleanup, createEffect } from 'solid-js';
 
 interface TextViewProps {
     content: string;
@@ -7,7 +7,6 @@ interface TextViewProps {
     onSelectionCreate?: (start: number, end: number) => void;
     onSelectionRemove?: (selectionGuid: string) => void;
     onSelectionUpdate?: (selectionGuid: string, start: number, end: number) => void;
-    onSelectionClear?: () => void;
 }
 
 interface Segment {
@@ -15,6 +14,12 @@ interface Segment {
     end: number;
     text: string;
     selections: TextSelection[];
+}
+
+interface HandlePosition {
+    x: number;
+    y: number;
+    height: number;
 }
 
 /**
@@ -266,9 +271,232 @@ const TextSegment: Component<TextSegmentProps> = (props) => {
     );
 };
 
+interface SelectionHandlesProps {
+    selection: TextSelection;
+    segments: Segment[];
+    segmentElements: Map<number, HTMLSpanElement>;
+    containerRef: HTMLElement | null;
+    color: string;
+    onDragStart: (handle: 'start' | 'end') => void;
+    onDragMove: (charIndex: number) => void;
+    onDragEnd: () => void;
+    draggingHandle: 'start' | 'end' | null;
+}
+
+/**
+ * Calculate positions for start and end handles of a selection.
+ */
+function getHandlePositions(
+    selection: TextSelection,
+    segments: Segment[],
+    segmentElements: Map<number, HTMLSpanElement>,
+    containerRef: HTMLElement | null
+): { start: HandlePosition | null; end: HandlePosition | null } {
+    if (!containerRef) return { start: null, end: null };
+    
+    const containerRect = containerRef.getBoundingClientRect();
+    
+    let startPos: HandlePosition | null = null;
+    let endPos: HandlePosition | null = null;
+    
+    // Find segments containing this selection
+    for (let i = 0; i < segments.length; i++) {
+        const segment = segments[i];
+        const el = segmentElements.get(i);
+        if (!el) continue;
+        
+        const containsSelection = segment.selections.some(s => s.guid === selection.guid);
+        if (!containsSelection) continue;
+        
+        const rects = el.getClientRects();
+        if (rects.length === 0) continue;
+        
+        // Check if this segment contains the start of the selection
+        if (segment.start === selection.start) {
+            const firstRect = rects[0];
+            startPos = {
+                x: firstRect.left - containerRect.left,
+                y: firstRect.top - containerRect.top,
+                height: firstRect.height
+            };
+        }
+        
+        // Check if this segment contains the end of the selection
+        if (segment.end === selection.end) {
+            const lastRect = rects[rects.length - 1];
+            endPos = {
+                x: lastRect.right - containerRect.left,
+                y: lastRect.top - containerRect.top,
+                height: lastRect.height
+            };
+        }
+    }
+    
+    return { start: startPos, end: endPos };
+}
+
+/**
+ * Renders draggable handles at the start and end of an active selection.
+ */
+const SelectionHandles: Component<SelectionHandlesProps> = (props) => {
+    const [positions, setPositions] = createSignal<{ start: HandlePosition | null; end: HandlePosition | null }>({ start: null, end: null });
+    
+    // Update handle positions when selection or layout changes
+    const updatePositions = () => {
+        const pos = getHandlePositions(
+            props.selection,
+            props.segments,
+            props.segmentElements,
+            props.containerRef
+        );
+        setPositions(pos);
+    };
+    
+    // Update on mount and when dependencies change
+    createEffect(() => {
+        // Track dependencies
+        props.selection;
+        props.segments;
+        updatePositions();
+    });
+    
+    // Also update on resize
+    onMount(() => {
+        window.addEventListener('resize', updatePositions);
+        onCleanup(() => window.removeEventListener('resize', updatePositions));
+    });
+    
+    const handlePointerDown = (handle: 'start' | 'end', e: PointerEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        (e.target as Element).setPointerCapture(e.pointerId);
+        props.onDragStart(handle);
+    };
+    
+    const handlePointerMove = (e: PointerEvent) => {
+        if (!props.draggingHandle) return;
+        
+        // Find character index at mouse position
+        const charIndex = getCharIndexFromPoint(e.clientX, e.clientY, props.containerRef);
+        if (charIndex !== null) {
+            props.onDragMove(charIndex);
+        }
+    };
+    
+    const handlePointerUp = (e: PointerEvent) => {
+        if (props.draggingHandle) {
+            (e.target as Element).releasePointerCapture(e.pointerId);
+            props.onDragEnd();
+        }
+    };
+    
+    return (
+        <>
+            <Show when={positions().start}>
+                {(pos) => (
+                    <div
+                        class={`selection-handle selection-handle-start ${props.draggingHandle === 'start' ? 'dragging' : ''}`}
+                        style={{
+                            left: `${pos().x}px`,
+                            top: `${pos().y}px`,
+                            height: `${pos().height}px`,
+                            'background-color': props.color
+                        }}
+                        onPointerDown={(e) => handlePointerDown('start', e)}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                    />
+                )}
+            </Show>
+            <Show when={positions().end}>
+                {(pos) => (
+                    <div
+                        class={`selection-handle selection-handle-end ${props.draggingHandle === 'end' ? 'dragging' : ''}`}
+                        style={{
+                            left: `${pos().x}px`,
+                            top: `${pos().y}px`,
+                            height: `${pos().height}px`,
+                            'background-color': props.color
+                        }}
+                        onPointerDown={(e) => handlePointerDown('end', e)}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                    />
+                )}
+            </Show>
+        </>
+    );
+};
+
+/**
+ * Get the character index at a given screen position.
+ * Tries multiple Y positions to handle cases where the cursor is in padding/margins.
+ */
+function getCharIndexFromPoint(clientX: number, clientY: number, container: HTMLElement | null): number | null {
+    if (!container) return null;
+    
+    const containerRect = container.getBoundingClientRect();
+    
+    // Clamp X to container bounds
+    const clampedX = Math.max(containerRect.left + 1, Math.min(containerRect.right - 1, clientX));
+    
+    // Try multiple Y positions - the cursor might be in padding/underline area
+    const yPositionsToTry = [
+        clientY,
+        clientY - 10,  // Try a bit higher (in case we're in underline area)
+        clientY - 20,
+        clientY + 10,  // Try a bit lower
+    ];
+    
+    for (const tryY of yPositionsToTry) {
+        // Clamp Y to container bounds
+        const clampedY = Math.max(containerRect.top + 1, Math.min(containerRect.bottom - 1, tryY));
+        
+        const result = getCaretPositionAt(clampedX, clampedY, container);
+        if (result !== null) {
+            return result;
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Get caret position at exact coordinates.
+ */
+function getCaretPositionAt(clientX: number, clientY: number, container: HTMLElement): number | null {
+    // Use caretPositionFromPoint (standard) or caretRangeFromPoint (WebKit)
+    let range: Range | null = null;
+    
+    if (document.caretPositionFromPoint) {
+        const pos = document.caretPositionFromPoint(clientX, clientY);
+        if (pos && container.contains(pos.offsetNode)) {
+            range = document.createRange();
+            range.setStart(pos.offsetNode, pos.offset);
+            range.collapse(true);
+        }
+    } else if (document.caretRangeFromPoint) {
+        range = document.caretRangeFromPoint(clientX, clientY);
+        // Verify the range is within our container
+        if (range && !container.contains(range.startContainer)) {
+            range = null;
+        }
+    }
+    
+    if (!range) return null;
+    
+    // Calculate offset from container start
+    return getTextOffset(container, range.startContainer, range.startOffset);
+}
+
 const TextView: Component<TextViewProps> = (props) => {
     const [popover, setPopover] = createSignal<{ x: number; y: number; selection: TextSelection } | null>(null);
     const [hoveredSelectionGuid, setHoveredSelectionGuid] = createSignal<string | null>(null);
+    const [activeSelectionGuid, setActiveSelectionGuid] = createSignal<string | null>(null);
+    const [draggingHandle, setDraggingHandle] = createSignal<'start' | 'end' | null>(null);
+    
+    let containerRef: HTMLElement | null = null;
+    let lastValidDragPosition: number | null = null;
     
     // Store refs to all segment elements, keyed by segment index
     const segmentElements = new Map<number, HTMLSpanElement>();
@@ -348,6 +576,8 @@ const TextView: Component<TextViewProps> = (props) => {
         const selection = findHoveredSelection(e.clientX, e.clientY);
         if (selection) {
             e.stopPropagation();
+            // Set this selection as active (shows handles)
+            setActiveSelectionGuid(selection.guid);
             // Always update popover, even if clicking a different selection
             setPopover({
                 x: e.clientX,
@@ -355,22 +585,20 @@ const TextView: Component<TextViewProps> = (props) => {
                 selection
             });
         } else {
-            // Clicked outside any underline, close popover
+            // Clicked outside any underline, close popover and deactivate
             setPopover(null);
+            setActiveSelectionGuid(null);
         }
     }
     
     function handleBackgroundClick() {
         setPopover(null);
-        props.onSelectionClear?.();
+        setActiveSelectionGuid(null);
     }
     
     function handleMouseUp() {
         const selection = window.getSelection();
-        if (!selection || selection.isCollapsed) {
-            props.onSelectionClear?.();
-            return;
-        }
+        if (!selection || selection.isCollapsed) return;
         
         const range = selection.getRangeAt(0);
         const container = document.getElementById('text-view-content');
@@ -389,12 +617,74 @@ const TextView: Component<TextViewProps> = (props) => {
     function handleRemoveCode(selectionGuid: string) {
         props.onSelectionRemove?.(selectionGuid);
         setPopover(null);
+        setActiveSelectionGuid(null);
+    }
+    
+    // Get the active selection object
+    const activeSelection = createMemo(() => {
+        const guid = activeSelectionGuid();
+        if (!guid) return null;
+        return props.selections.find(s => s.guid === guid) ?? null;
+    });
+    
+    // Handle resize drag
+    function handleDragStart(handle: 'start' | 'end') {
+        setDraggingHandle(handle);
+        setPopover(null); // Close popover while dragging
+        
+        // Initialize last valid position based on which handle we're dragging
+        const sel = activeSelection();
+        if (sel) {
+            lastValidDragPosition = handle === 'start' ? sel.start : sel.end;
+        }
+    }
+    
+    function handleDragMove(charIndex: number) {
+        const sel = activeSelection();
+        const handle = draggingHandle();
+        if (!sel || !handle) return;
+        
+        // Limit jump distance to prevent wild jumps from bad caret detection
+        // Allow larger jumps only if moving in a consistent direction
+        const currentPos = handle === 'start' ? sel.start : sel.end;
+        const maxJump = 50; // Maximum characters to jump in one move
+        
+        if (Math.abs(charIndex - currentPos) > maxJump) {
+            // If jump is too large, only move by maxJump in that direction
+            if (charIndex > currentPos) {
+                charIndex = currentPos + maxJump;
+            } else {
+                charIndex = currentPos - maxJump;
+            }
+        }
+        
+        let newStart = sel.start;
+        let newEnd = sel.end;
+        
+        if (handle === 'start') {
+            newStart = Math.min(charIndex, sel.end - 1);
+            newStart = Math.max(0, newStart);
+        } else {
+            newEnd = Math.max(charIndex, sel.start + 1);
+            newEnd = Math.min(props.content.length, newEnd);
+        }
+        
+        if (newStart !== sel.start || newEnd !== sel.end) {
+            lastValidDragPosition = handle === 'start' ? newStart : newEnd;
+            props.onSelectionUpdate?.(sel.guid, newStart, newEnd);
+        }
+    }
+    
+    function handleDragEnd() {
+        setDraggingHandle(null);
+        lastValidDragPosition = null;
     }
     
     return (
         <div id="textDisplay" onClick={handleBackgroundClick}>
             <div 
-                id="text-view-content" 
+                id="text-view-content"
+                ref={(el) => containerRef = el}
                 style={{ cursor: hoveredSelectionGuid() ? 'pointer' : 'inherit' }}
                 onMouseUp={handleMouseUp}
                 onMouseMove={handleContainerMouseMove}
@@ -419,6 +709,26 @@ const TextView: Component<TextViewProps> = (props) => {
                         />
                     )}
                 </For>
+                
+                {/* Render handles for active selection */}
+                <Show when={activeSelection()}>
+                    {(sel) => {
+                        const code = () => codeMap().get(sel().code_guid);
+                        return (
+                            <SelectionHandles
+                                selection={sel()}
+                                segments={segments()}
+                                segmentElements={segmentElements}
+                                containerRef={containerRef}
+                                color={code()?.color ?? '#007acc'}
+                                onDragStart={handleDragStart}
+                                onDragMove={handleDragMove}
+                                onDragEnd={handleDragEnd}
+                                draggingHandle={draggingHandle()}
+                            />
+                        );
+                    }}
+                </Show>
             </div>
         
             <Show when={popover()}>
