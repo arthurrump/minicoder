@@ -116,6 +116,10 @@ const App: Component = () => {
         : s
     ));
   }
+
+  function handleSelectionClear() {
+    setPendingSelection(null);
+  }
   
   return (
     <>
@@ -136,13 +140,14 @@ const App: Component = () => {
           <Show when={selectedFile()} fallback={<p>Select a file to view its contents</p>}>
             <Show when={fileContent()}>
               {(content) => (
-                <TextView
+                              <TextView
                   content={content()}
                   selections={selections()}
                   codes={codebook().codes}
                   onSelectionCreate={handleSelectionCreate}
                   onSelectionRemove={handleSelectionRemove}
                   onSelectionUpdate={handleSelectionUpdate}
+                  onSelectionClear={handleSelectionClear}
                 />
               )}
             </Show>
