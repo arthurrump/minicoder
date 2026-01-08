@@ -66,15 +66,16 @@ body {
     overflow: hidden;
 }
 
-#sidebar {
+.sidebar {
     border: 1px solid var(--border-color);
     padding: 10px;
-    overflow-y: auto;
-    min-width: 200px;
+    overflow: auto;
+    max-width: 25vw;
 }
 
 #fileTree {
     font-size: 14px;
+    text-wrap: nowrap;
 }
 
 .file-tree-folder {
@@ -119,14 +120,6 @@ body {
     overflow-y: auto;
     outline: none;
     flex: 1;
-}
-
-#codesList {
-    border: 1px solid var(--border-color);
-    padding: 10px;
-    background-color: var(--bg-color);
-    overflow-y: auto;
-    min-width: 200px;
 }
 
 .code-item {

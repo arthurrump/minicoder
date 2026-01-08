@@ -278,7 +278,7 @@ const App: Component = () => {
       </div>
       <Show when={dirHandle()} fallback={<p>Open a folder to get started.</p>}>
         <div id="main">
-          <div id="sidebar">
+          <div class="sidebar">
             <div id="fileTree">
               <FileBrowser 
                 directoryHandle={dirHandle()!} 
@@ -311,7 +311,7 @@ const App: Component = () => {
               </Show>
             </div>
           </Show>
-          <div id="codesList">
+          <div id="codesList" class="sidebar">
             <div class="selected-code-notice">
               <Show when={selectedCode()} fallback={
                 <span class="no-code-selected">No code selected</span>
