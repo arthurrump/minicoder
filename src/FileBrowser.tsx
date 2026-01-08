@@ -151,9 +151,8 @@ export function FileBrowser(props: FileBrowserProps) {
         <div
           class="file-browser-item"
           style={{
-            'padding-left': `${depth * 16}px`,
             cursor: 'pointer',
-            padding: '4px 8px',
+            padding: `4px 4px 4px ${depth * 16}px`,
             'user-select': 'none',
             background: isSelected() ? '#0078d4' : 'transparent',
             color: isSelected() ? 'white' : 'inherit',
