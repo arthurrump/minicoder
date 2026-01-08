@@ -7,6 +7,7 @@ interface Code {
 }
 
 interface Codebook {
+    guid: string;
     name: string;
     codes: Code[];
 }

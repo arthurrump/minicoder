@@ -145,6 +145,55 @@ body {
     margin-left: 20px;
 }
 
+/* Codebook sections */
+.codebook-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.codebook-section {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.codebook-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background-color: var(--code-bg);
+    cursor: pointer;
+    user-select: none;
+}
+
+.codebook-header:hover {
+    background-color: var(--code-hover);
+}
+
+.codebook-toggle {
+    font-size: 10px;
+    width: 12px;
+    flex-shrink: 0;
+}
+
+.codebook-name {
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.codebook-codes {
+    padding: 8px;
+}
+
+/* Selected code notice */
+.selected-code-codebook {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-left: 4px;
+}
+
 .highlight {
     position: relative;
 }
@@ -207,8 +256,12 @@ body {
 }
 
 .popover-code-name {
-    flex: 1;
     font-size: 13px;
+}
+
+.popover-code-codebook {
+    font-size: 11px;
+    opacity: 0.7;
 }
 
 .popover-remove-btn {

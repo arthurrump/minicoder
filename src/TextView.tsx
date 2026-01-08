@@ -1,9 +1,14 @@
 import { createMemo, createSignal, For, Show, type Component, onMount, onCleanup, createEffect } from 'solid-js';
 
+interface CodeWithCodebook {
+    code: Code;
+    codebook: Codebook;
+}
+
 interface TextViewProps {
     content: string;
     selections: TextSelection[];
-    codes: Code[];
+    codebooks: Codebook[];
     onSelectionCreate?: (start: number, end: number) => void;
     onSelectionRemove?: (selectionGuid: string) => void;
     onSelectionUpdate?: (selectionGuid: string, start: number, end: number) => void;
@@ -190,7 +195,7 @@ function getSelectionAtLayer(
 function getUnderlineStyle(
     segmentSelections: TextSelection[],
     selectionLayers: Map<string, number>,
-    codeMap: Map<string, Code>,
+    codeMap: Map<string, CodeWithCodebook>,
     totalLayers: number,
     hoveredSelectionGuid: string | null
 ): Record<string, string> {
@@ -214,8 +219,8 @@ function getUnderlineStyle(
     const positions: string[] = [];
     
     for (const { layer, sel } of layerData) {
-        const code = codeMap.get(sel.code_guid);
-        let color = code?.color || '#888';
+        const codeInfo = codeMap.get(sel.code_guid);
+        let color = codeInfo?.code.color || '#888';
         
         // Apply hover effect
         if (sel.guid === hoveredSelectionGuid) {
@@ -242,7 +247,7 @@ function getUnderlineStyle(
 interface TextSegmentProps {
     segment: Segment;
     selectionLayers: Map<string, number>;
-    codeMap: Map<string, Code>;
+    codeMap: Map<string, CodeWithCodebook>;
     totalLayers: number;
     hoveredSelectionGuid: string | null;
     segmentRef: (el: HTMLSpanElement) => void;
@@ -509,18 +514,20 @@ const TextView: Component<TextViewProps> = (props) => {
     const selectionLayers = createMemo(() => layerInfo().layers);
     const totalLayers = createMemo(() => layerInfo().maxLayer);
     
-    // Build a map of code_guid -> Code for quick lookup
+    // Build a map of code_guid -> CodeWithCodebook for quick lookup
     const codeMap = createMemo(() => {
-        const map = new Map<string, Code>();
-        const collectCodes = (codeList: Code[]) => {
+        const map = new Map<string, CodeWithCodebook>();
+        const collectCodes = (codeList: Code[], codebook: Codebook) => {
             for (const code of codeList) {
-                map.set(code.guid, code);
+                map.set(code.guid, { code, codebook: codebook });
                 if (code.subcodes) {
-                    collectCodes(code.subcodes);
+                    collectCodes(code.subcodes, codebook);
                 }
             }
         };
-        collectCodes(props.codes);
+        for (const codebook of props.codebooks) {
+            collectCodes(codebook.codes, codebook);
+        }
         return map;
     });
     
@@ -718,14 +725,14 @@ const TextView: Component<TextViewProps> = (props) => {
                 {/* Render handles for active selection */}
                 <Show when={activeSelection()}>
                     {(sel) => {
-                        const code = () => codeMap().get(sel().code_guid);
+                        const codeInfo = () => codeMap().get(sel().code_guid);
                         return (
                             <SelectionHandles
                                 selection={sel()}
                                 segments={segments()}
                                 segmentElements={segmentElements}
                                 containerRef={containerRef}
-                                color={code()?.color ?? '#007acc'}
+                                color={codeInfo()?.code.color ?? '#007acc'}
                                 onDragStart={handleDragStart}
                                 onDragMove={handleDragMove}
                                 onDragEnd={handleDragEnd}
@@ -738,7 +745,7 @@ const TextView: Component<TextViewProps> = (props) => {
         
             <Show when={popover()}>
                 {(p) => {
-                    const code = createMemo(() => codeMap().get(p().selection.code_guid));
+                    const codeInfo = createMemo(() => codeMap().get(p().selection.code_guid));
                     return (
                         <div
                             class="highlight-popover"
@@ -751,9 +758,12 @@ const TextView: Component<TextViewProps> = (props) => {
                             <div class="popover-code-item">
                                 <span
                                     class="popover-code-color"
-                                    style={{ 'background-color': code()?.color || '#888' }}
+                                    style={{ 'background-color': codeInfo()?.code.color || '#888' }}
                                 />
-                                <span class="popover-code-name">{code()?.name || 'Unknown'}</span>
+                                <span class="popover-code-name">{codeInfo()?.code.name || 'Unknown'}</span>
+                                <Show when={codeInfo()?.codebook}>
+                                    <span class="popover-code-codebook">({codeInfo()!.codebook.name})</span>
+                                </Show>
                                 <button
                                     class="popover-remove-btn"
                                     onClick={() => handleRemoveCode(p().selection.guid)}

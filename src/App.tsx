@@ -19,33 +19,48 @@ const App: Component = () => {
     }
   });
 
-  const [codebook, setCodebook] = createSignal<Codebook>({ name: "Codebook", codes: [] });
+  const [codebooks, setCodebooks] = createSignal<Codebook[]>([]);
   const [selectedFile, setSelectedFile] = createSignal<FileSystemFileHandle>();
   const [selectedFileDir, setSelectedFileDir] = createSignal<FileSystemDirectoryHandle>();
   const [selectedFilePath, setSelectedFilePath] = createSignal<string>("");
   const [selections, setSelections] = createSignal<TextSelection[]>([]);
   const [selectedCode, setSelectedCode] = createSignal<Code | null>(null);
+  const [selectedCodebook, setSelectedCodebook] = createSignal<Codebook | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ start: number; end: number } | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
   const [fileStatuses, setFileStatuses] = createSignal<Map<string, SaveStatus>>(new Map());
   
-  // Load codebook when directory changes
+  // Load all codebooks when directory changes
   createEffect(async () => {
     const dir = dirHandle();
     if (!dir) {
-      setCodebook({ name: "Codebook", codes: [] });
+      setCodebooks([]);
       return;
     }
     
     try {
-      const codebookFile = await dir.getFileHandle("codebook.mcc");
-      const file = await codebookFile.getFile();
-      const text = await file.text();
-      const parsedCodebook = JSON.parse(text) as Codebook;
-      setCodebook(parsedCodebook);
+      const codebooks: Codebook[] = [];
+      
+      // Iterate through directory to find all .mcc files
+      for await (const [name, handle] of dir.entries()) {
+        if (handle.kind === 'file' && name.endsWith('.mcc')) {
+          try {
+            const file = await (handle as FileSystemFileHandle).getFile();
+            const text = await file.text();
+            const parsedCodebook = JSON.parse(text) as Codebook;
+            codebooks.push(parsedCodebook);
+          } catch (err) {
+            console.warn(`Failed to load codebook ${name}:`, err);
+          }
+        }
+      }
+      
+      // Sort by name for consistent ordering
+      codebooks.sort((a, b) => a.name.localeCompare(b.name));
+      setCodebooks(codebooks);
     } catch (err) {
-      console.warn("No codebook.json found or failed to load:", err);
-      setCodebook({ name: "Codebook", codes: [] });
+      console.warn("Failed to load codebooks:", err);
+      setCodebooks([]);
     }
   });
   
@@ -171,7 +186,7 @@ const App: Component = () => {
     }
   }
 
-  function handleCodeClick(code: Code) {
+  function handleCodeClick(code: Code, codebook: Codebook) {
     const pending = pendingSelection();
     if (pending) {
       // We have a pending text selection, apply this code to it
@@ -185,11 +200,13 @@ const App: Component = () => {
       setSelections(prev => [...prev, newSelection]);
       setPendingSelection(null);
       setSelectedCode(null);
+      setSelectedCodebook(null);
       // Clear the browser's text selection now that the code is applied
       window.getSelection()?.removeAllRanges();
     } else {
       // Just select this code for future use
       setSelectedCode(code);
+      setSelectedCodebook(codebook);
     }
   }
 
@@ -264,10 +281,10 @@ const App: Component = () => {
               </Show>
               <Show when={fileContent()}>
                 {(content) => (
-                                <TextView
+                  <TextView
                     content={content()}
                     selections={selections()}
-                    codes={codebook().codes}
+                    codebooks={codebooks()}
                     onSelectionCreate={handleSelectionCreate}
                     onSelectionRemove={handleSelectionRemove}
                     onSelectionUpdate={handleSelectionUpdate}
@@ -285,11 +302,14 @@ const App: Component = () => {
                 <span class="selected-code-info">
                   <span class="selected-code-color" style={{ "background-color": selectedCode()!.color }}></span>
                   <span>{selectedCode()!.name}</span>
+                  <Show when={selectedCodebook()}>
+                    <span class="selected-code-codebook">({selectedCodebook()!.name})</span>
+                  </Show>
                 </span>
-                <button onClick={() => setSelectedCode(null)}>×</button>
+                <button onClick={() => { setSelectedCode(null); setSelectedCodebook(null); }}>×</button>
               </Show>
             </div>
-            <CodePicker codes={codebook().codes} onCodeClick={handleCodeClick} />
+            <CodePicker codebooks={codebooks()} onCodeClick={handleCodeClick} />
           </div>
         </div>
       </Show>
