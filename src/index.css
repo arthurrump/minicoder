@@ -416,3 +416,32 @@ body {
         border-color: #ffc107;
     }
 }
+
+/* Unsupported browser message */
+.unsupported-browser {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    padding: 24px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.unsupported-browser h1 {
+    margin: 0 0 16px 0;
+    color: #d32f2f;
+}
+
+.unsupported-browser p {
+    margin: 8px 0;
+    max-width: 500px;
+    line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+    .unsupported-browser h1 {
+        color: #ef5350;
+    }
+}

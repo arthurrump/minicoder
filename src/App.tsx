@@ -6,7 +6,26 @@ import { hashText, debounce } from './helpers';
 
 type SaveStatus = 'saved' | 'pending' | 'none';
 
+function isFileSystemAccessSupported(): boolean {
+  return 'showDirectoryPicker' in window;
+}
+
 const App: Component = () => {
+  // Check for File System Access API support
+  if (!isFileSystemAccessSupported()) {
+    return (
+      <div class="unsupported-browser">
+        <h1>Browser Not Supported</h1>
+        <p>
+          minicoder requires the File System Access API, which is not available in your browser.
+        </p>
+        <p>
+          Please use a Chromium-based browser. Check out [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker#browser_compatibility) for supported browser versions.
+        </p>
+      </div>
+    );
+  }
+
   const [dirHandle, setDirHandle] = createSignal<FileSystemDirectoryHandle>();
 
   const currentDir = createMemo(() => dirHandle()?.name || "");
