@@ -20,7 +20,7 @@ const App: Component = () => {
           minicoder requires the File System Access API, which is not available in your browser.
         </p>
         <p>
-          Please use a Chromium-based browser. Check out [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker#browser_compatibility) for supported browser versions.
+          Please use a Chromium-based browser. Check out <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker#browser_compatibility">MDN</a> for supported browser versions.
         </p>
       </div>
     );
