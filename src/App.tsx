@@ -213,7 +213,6 @@ const App: Component = () => {
         guid: crypto.randomUUID(),
         start: pending.start,
         end: pending.end,
-        text: fileContent()?.slice(pending.start, pending.end) || '',
         code_guid: code.guid
       };
       setSelections(prev => [...prev, newSelection]);
@@ -237,7 +236,6 @@ const App: Component = () => {
         guid: crypto.randomUUID(),
         start,
         end,
-        text: fileContent()?.slice(start, end) || '',
         code_guid: code.guid
       };
       setSelections(prev => [...prev, newSelection]);
@@ -254,7 +252,7 @@ const App: Component = () => {
   function handleSelectionUpdate(selectionGuid: string, start: number, end: number) {
     setSelections(prev => prev.map(s => 
       s.guid === selectionGuid 
-        ? { ...s, start, end, text: fileContent()?.slice(start, end) || '' }
+        ? { ...s, start, end }
         : s
     ));
   }
