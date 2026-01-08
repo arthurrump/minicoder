@@ -18,7 +18,14 @@ const CodeList = (props: CodeListProps) => (
                 <div
                     class="code-item"
                     style={{ "background-color": code.color }}
-                    onClick={() => props.onCodeClick(code, props.codebook)}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        props.onCodeClick(code, props.codebook);
+                    }}
                 >
                     {code.name}
                 </div>

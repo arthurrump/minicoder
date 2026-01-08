@@ -593,6 +593,12 @@ const TextView: Component<TextViewProps> = (props) => {
                 selection
             });
         } else {
+            // Check if there's a text selection being made - don't clear it
+            const browserSelection = window.getSelection();
+            if (browserSelection && !browserSelection.isCollapsed) {
+                // User just finished selecting text, don't propagate to background
+                e.stopPropagation();
+            }
             // Clicked outside any underline, close popover and deactivate
             setPopover(null);
             setActiveSelectionGuid(null);
