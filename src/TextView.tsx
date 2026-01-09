@@ -11,7 +11,7 @@ interface TextViewProps {
     codebooks: Codebook[];
     onSelectionCreate?: (start: number, end: number) => void;
     onSelectionRemove?: (selectionGuid: string) => void;
-    onSelectionUpdate?: (selectionGuid: string, start: number, end: number) => void;
+    onSelectionUpdate?: (selectionGuid: string, start: number, end: number, note?: string) => void;
     onSelectionClear?: () => void;
 }
 
@@ -689,13 +689,22 @@ const TextView: Component<TextViewProps> = (props) => {
         
         if (newStart !== sel.start || newEnd !== sel.end) {
             lastValidDragPosition = handle === 'start' ? newStart : newEnd;
-            props.onSelectionUpdate?.(sel.guid, newStart, newEnd);
+            props.onSelectionUpdate?.(sel.guid, newStart, newEnd, sel.note);
         }
     }
     
     function handleDragEnd() {
         setDraggingHandle(null);
         lastValidDragPosition = null;
+    }
+    
+    function handleNoteChange(selectionGuid: string, note: string) {
+        const sel = activeSelection();
+        if (!sel) return;
+        
+        // Convert empty string to undefined
+        const noteValue = note.trim() === '' ? undefined : note;
+        props.onSelectionUpdate?.(selectionGuid, sel.start, sel.end, noteValue);
     }
     
     return (
@@ -761,15 +770,17 @@ const TextView: Component<TextViewProps> = (props) => {
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div class="popover-code-item">
-                                <span
-                                    class="popover-code-color"
-                                    style={{ 'background-color': codeInfo()?.code.color || '#888' }}
-                                />
-                                <span class="popover-code-name">{codeInfo()?.code.name || 'Unknown'}</span>
-                                <Show when={codeInfo()?.codebook}>
-                                    <span class="popover-code-codebook">({codeInfo()!.codebook.name})</span>
-                                </Show>
+                            <div class="popover-header">
+                                <div class="popover-code-item">
+                                    <span
+                                        class="popover-code-color"
+                                        style={{ 'background-color': codeInfo()?.code.color || '#888' }}
+                                    />
+                                    <span class="popover-code-name">{codeInfo()?.code.name || 'Unknown'}</span>
+                                    <Show when={codeInfo()?.codebook}>
+                                        <span class="popover-code-codebook">({codeInfo()!.codebook.name})</span>
+                                    </Show>
+                                </div>
                                 <button
                                     class="popover-remove-btn"
                                     onClick={() => handleRemoveCode(p().selection.guid)}
@@ -778,6 +789,13 @@ const TextView: Component<TextViewProps> = (props) => {
                                     ×
                                 </button>
                             </div>
+                            <textarea
+                                class="popover-note"
+                                placeholder="Add a note..."
+                                value={p().selection.note || ''}
+                                onInput={(e) => handleNoteChange(p().selection.guid, e.currentTarget.value)}
+                                rows={3}
+                            />
                         </div>
                     );
                 }}

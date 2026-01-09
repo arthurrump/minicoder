@@ -17,6 +17,7 @@ interface TextSelection {
     start: number;
     end: number;
     code_guid: string;
+    note?: string;
 }
 
 interface Source {

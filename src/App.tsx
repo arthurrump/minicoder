@@ -213,7 +213,8 @@ const App: Component = () => {
         guid: crypto.randomUUID(),
         start: pending.start,
         end: pending.end,
-        code_guid: code.guid
+        code_guid: code.guid,
+        note: undefined
       };
       setSelections(prev => [...prev, newSelection]);
       setPendingSelection(null);
@@ -236,7 +237,8 @@ const App: Component = () => {
         guid: crypto.randomUUID(),
         start,
         end,
-        code_guid: code.guid
+        code_guid: code.guid,
+        note: undefined
       };
       setSelections(prev => [...prev, newSelection]);
     } else {
@@ -249,10 +251,10 @@ const App: Component = () => {
     setSelections(prev => prev.filter(s => s.guid !== selectionGuid));
   }
 
-  function handleSelectionUpdate(selectionGuid: string, start: number, end: number) {
+  function handleSelectionUpdate(selectionGuid: string, start: number, end: number, note?: string) {
     setSelections(prev => prev.map(s => 
       s.guid === selectionGuid 
-        ? { ...s, start, end }
+        ? { ...s, start, end, note }
         : s
     ));
   }
