@@ -5,6 +5,9 @@
     --code-bg: #f0f0f0;
     --code-hover: #e0e0e0;
     --label-bg: yellow;
+
+    --font-system: system-ui, sans-serif;
+    --font-text: Charter, 'Bitstream Charter', 'Sitka Text', Cambria, serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -19,7 +22,7 @@
 }
 
 body {
-    font-family: Arial, sans-serif;
+    font-family: var(--font-system);
     margin: 0;
     background-color: var(--bg-color);
     color: var(--text-color);
@@ -30,28 +33,6 @@ body {
     display: grid;
     grid-template-rows: auto 1fr;
     overflow: hidden;
-}
-
-/* Top bar */
-#topbar {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: 16px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border-color);
-    background-color: var(--bg-color);
-}
-
-.app-title {
-    margin: 0;
-    font-size: 20px;
-}
-
-.top-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
 }
 
 /* Main content grid */
@@ -73,35 +54,7 @@ body {
     max-width: 25vw;
 }
 
-#fileTree {
-    font-size: 14px;
-    text-wrap: nowrap;
-}
 
-.file-tree-folder {
-    margin-top: 5px;
-    cursor: pointer;
-}
-
-.file-tree-folder:hover {
-    background-color: var(--code-hover);
-}
-
-.file-tree-file {
-    margin-left: 20px;
-    color: var(--text-color);
-    padding: 4px;
-    cursor: pointer;
-}
-
-.file-tree-file:hover {
-    background-color: var(--code-hover);
-}
-
-.file-tree-file.active {
-    color: black;
-    font-weight: bold;
-}
 
 /* Remove old editor wrapper in favor of grid columns */
 

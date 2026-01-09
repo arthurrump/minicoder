@@ -1,8 +1,9 @@
 import { createEffect, createMemo, createResource, createSignal, on, Show, type Component } from 'solid-js';
-import FileBrowser from './FileBrowser';
-import CodePicker from './CodePicker';
-import TextView from './TextView';
+import FileBrowser from './components/FileBrowser';
+import CodePicker from './components/CodePicker';
+import TextView from './components/TextView';
 import { hashText, debounce } from './helpers';
+import { TopBar } from './components/TopBar';
 
 type SaveStatus = 'saved' | 'pending' | 'none';
 
@@ -47,7 +48,6 @@ const App: Component = () => {
   const [selectedCodebook, setSelectedCodebook] = createSignal<Codebook | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ start: number; end: number } | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
-  const [fileStatuses, setFileStatuses] = createSignal<Map<string, SaveStatus>>(new Map());
   
   // Load all codebooks when directory changes
   createEffect(async () => {
@@ -124,23 +124,12 @@ const App: Component = () => {
       }
       
       setSelections(source.selections);
-      updateFileStatus(filePath, 'saved');
     } catch (err) {
       // No .mcs file exists
       setSelections([]);
       setHashMismatchWarning(false);
-      updateFileStatus(filePath, 'none');
     }
   }));
-
-  // Helper to update file status map
-  function updateFileStatus(fileName: string, status: SaveStatus) {
-    setFileStatuses(prev => {
-      const newMap = new Map(prev);
-      newMap.set(fileName, status);
-      return newMap;
-    });
-  }
 
   // Save selections to .mcs file
   async function saveSelections() {
@@ -165,7 +154,6 @@ const App: Component = () => {
       const writable = await mcsFile.createWritable();
       await writable.write(JSON.stringify(source, null, 2));
       await writable.close();
-      updateFileStatus(filePath, 'saved');
     } catch (err) {
       console.error("Failed to save selections:", err);
     }
@@ -185,7 +173,6 @@ const App: Component = () => {
     const filePath = selectedFilePath();
     if (!filePath) return;
     
-    updateFileStatus(filePath, 'pending');
     debouncedSave();
   }, { defer: true }));
 
@@ -271,22 +258,16 @@ const App: Component = () => {
   
   return (
     <>
-      <div id="topbar">
-        <h1 class="app-title">minicoder</h1>
-        <div class="top-actions">
-            <button onClick={pickFolder}>Open Folder</button>
-            <span>{currentDir()}</span>
-        </div>
-      </div>
+      <TopBar currentDir={currentDir()} onChangeDir={pickFolder} />
       <Show when={dirHandle()} fallback={<p>Open a folder to get started.</p>}>
         <div id="main">
           <div class="sidebar">
             <div id="fileTree">
               <FileBrowser 
                 directoryHandle={dirHandle()!} 
-                onFileSelect={handleFileSelect} 
-                fileExtensionFilter={{ extensions: [".mcs", ".mcc"], mode: "exclude" }}
-                fileStatuses={fileStatuses()}
+                onFileSelect={handleFileSelect}
+                selectedFile={selectedFile()}
+                filter={{ extensions: [".mcs", ".mcc"], mode: "exclude" }}
               />
             </div>
           </div>

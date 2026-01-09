@@ -1,0 +1,13 @@
+:root {
+    --node-selected-background: #0078d4;
+    --node-selected-color: white;
+}
+
+.file-browser {
+    text-wrap: nowrap;
+}
+
+.node {
+    cursor: pointer;
+    user-select: none;
+}

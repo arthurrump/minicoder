@@ -1,6 +1,6 @@
 import { createSignal, For, Show, createEffect, JSX } from 'solid-js';
 
-type SaveStatus = 'saved' | 'pending' | 'none';
+import styles from "./FileBrowser.module.css";
 
 interface ExtensionFilter {
   extensions: string[]; // e.g., ['.ts', '.tsx', '.js']
@@ -17,14 +17,12 @@ interface FileBrowserProps {
   directoryHandle: FileSystemDirectoryHandle;
   onFileSelect?: (info: FileSelectInfo) => void;
   selectedFile?: FileSystemFileHandle;
-  fileExtensionFilter?: ExtensionFilter; // Filter files by extension
-  fileStatuses?: Map<string, SaveStatus>; // Status indicators for files (keyed by relative path)
+  filter?: ExtensionFilter;
 }
 
 interface FileNode {
   name: string;
   handle: FileSystemFileHandle | FileSystemDirectoryHandle;
-  type: 'file' | 'directory';
   children?: FileNode[];
   parentDir: FileSystemDirectoryHandle;
   relativePath: string;
@@ -33,24 +31,17 @@ interface FileNode {
 export function FileBrowser(props: FileBrowserProps) {
   const [rootNodes, setRootNodes] = createSignal<FileNode[]>([]);
   const [expandedDirs, setExpandedDirs] = createSignal<Set<string>>(new Set());
-  const [selectedFile, setSelectedFile] = createSignal<FileSystemFileHandle | undefined>(props.selectedFile);
 
   // Load directory contents
   createEffect(async () => {
     if (props.directoryHandle) {
-      const nodes = await loadDirectory(props.directoryHandle, props.directoryHandle, "");
+      const nodes = await loadDirectory(props.directoryHandle, "");
       setRootNodes(nodes);
     }
   });
 
-  // Sync with external selectedFile prop
-  createEffect(() => {
-    setSelectedFile(props.selectedFile);
-  });
-
   async function loadDirectory(
-    dirHandle: FileSystemDirectoryHandle, 
-    parentDir: FileSystemDirectoryHandle,
+    dirHandle: FileSystemDirectoryHandle,
     pathPrefix: string
   ): Promise<FileNode[]> {
     const nodes: FileNode[] = [];
@@ -60,8 +51,8 @@ export function FileBrowser(props: FileBrowserProps) {
       
       if (entry.kind === 'file') {
         // Apply file extension filter if provided
-        if (props.fileExtensionFilter && props.fileExtensionFilter.extensions.length > 0) {
-          const { extensions, mode } = props.fileExtensionFilter;
+        if (props.filter && props.filter.extensions.length > 0) {
+          const { extensions, mode } = props.filter;
           const hasMatchingExtension = extensions.some(ext => 
             entry.name.endsWith(ext)
           );
@@ -76,7 +67,6 @@ export function FileBrowser(props: FileBrowserProps) {
         nodes.push({
           name: entry.name,
           handle: entry as FileSystemFileHandle,
-          type: 'file',
           parentDir: dirHandle,
           relativePath,
         });
@@ -84,7 +74,6 @@ export function FileBrowser(props: FileBrowserProps) {
         nodes.push({
           name: entry.name,
           handle: entry as FileSystemDirectoryHandle,
-          type: 'directory',
           parentDir: dirHandle,
           relativePath,
         });
@@ -93,10 +82,10 @@ export function FileBrowser(props: FileBrowserProps) {
 
     // Sort: directories first, then files, alphabetically
     return nodes.sort((a, b) => {
-      if (a.type === b.type) {
+      if (a.handle.kind === b.handle.kind) {
         return a.name.localeCompare(b.name);
       }
-      return a.type === 'directory' ? -1 : 1;
+      return a.handle.kind === 'directory' ? -1 : 1;
     });
   }
 
@@ -114,7 +103,6 @@ export function FileBrowser(props: FileBrowserProps) {
   }
 
   function handleFileClick(node: FileNode) {
-    setSelectedFile(node.handle as FileSystemFileHandle);
     props.onFileSelect?.({
       file: node.handle as FileSystemFileHandle,
       directory: node.parentDir,
@@ -127,21 +115,20 @@ export function FileBrowser(props: FileBrowserProps) {
     const [children, setChildren] = createSignal<FileNode[]>([]);
 
     const isExpanded = () => {
-      if (nodeProps.node.type === 'directory') {
+      if (nodeProps.node.handle.kind === 'directory') {
         return expandedDirs().has(nodeProps.node.name);
       }
       return false;
     };
 
     const isSelected = () => {
-      return nodeProps.node.type === 'file' && 
-             selectedFile() === nodeProps.node.handle;
+      return nodeProps.node.handle.kind === 'file' && props.selectedFile === nodeProps.node.handle;
     };
 
     createEffect(async () => {
-      if (nodeProps.node.type === 'directory' && isExpanded()) {
+      if (nodeProps.node.handle.kind === 'directory' && isExpanded()) {
         const dirHandle = nodeProps.node.handle as FileSystemDirectoryHandle;
-        const loadedChildren = await loadDirectory(dirHandle, dirHandle, nodeProps.node.relativePath);
+        const loadedChildren = await loadDirectory(dirHandle, nodeProps.node.relativePath);
         setChildren(loadedChildren);
       }
     });
@@ -149,48 +136,31 @@ export function FileBrowser(props: FileBrowserProps) {
     return (
       <div>
         <div
-          class="file-browser-item"
+          class={styles.node}
           style={{
-            cursor: 'pointer',
             padding: `4px 4px 4px ${depth * 16}px`,
-            'user-select': 'none',
-            background: isSelected() ? '#0078d4' : 'transparent',
-            color: isSelected() ? 'white' : 'inherit',
+            background: isSelected() ? 'var(--node-selected-background)' : 'transparent',
+            color: isSelected() ? 'var(--node-selected-color)' : 'inherit',
           }}
           onClick={() => {
-            if (nodeProps.node.type === 'directory') {
+            if (nodeProps.node.handle.kind === 'directory') {
               toggleDirectory(nodeProps.node.handle as FileSystemDirectoryHandle);
             } else {
               handleFileClick(nodeProps.node);
             }
           }}
         >
-          <Show when={nodeProps.node.type === 'directory'}>
+          <Show when={nodeProps.node.handle.kind === 'directory'}>
             <span style={{ 'margin-right': '4px' }}>
               {isExpanded() ? '▼' : '▶'}
             </span>
           </Show>
-          <Show when={nodeProps.node.type === 'file'}>
+          <Show when={nodeProps.node.handle.kind === 'file'}>
             <span style={{ 'margin-right': '4px' }}>📄</span>
           </Show>
           <span class="file-name">{nodeProps.node.name}</span>
-          <Show when={nodeProps.node.type === 'file'}>
-            {(() => {
-              const status = props.fileStatuses?.get(nodeProps.node.relativePath);
-              return (
-                <Show when={status && status !== 'none'}>
-                  <span 
-                    class={`save-status-indicator ${status}`}
-                    title={status === 'saved' ? 'Selections saved' : 'Saving...'}
-                  >
-                    {status === 'saved' ? '●' : '○'}
-                  </span>
-                </Show>
-              );
-            })()}
-          </Show>
         </div>
-        <Show when={nodeProps.node.type === 'directory' && isExpanded()}>
+        <Show when={nodeProps.node.handle.kind === 'directory' && isExpanded()}>
           <For each={children()}>
             {(child) => <FileTreeNode node={child} depth={depth + 1} />}
           </For>
@@ -200,7 +170,7 @@ export function FileBrowser(props: FileBrowserProps) {
   }
 
   return (
-    <div class="file-browser" style={{ 'font-family': 'monospace', 'font-size': '14px' }}>
+    <div class="file-browser">
       <For each={rootNodes()}>
         {(node) => <FileTreeNode node={node} />}
       </For>
