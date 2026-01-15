@@ -49,6 +49,7 @@ const App: Component = () => {
   const [pendingSelection, setPendingSelection] = createSignal<{ start: number; end: number } | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
   const [mousePosition, setMousePosition] = createSignal<{ x: number; y: number } | null>(null);
+  const [isMouseInTextView, setIsMouseInTextView] = createSignal<boolean>(false);
   
   // Load all codebooks when directory changes
   createEffect(async () => {
@@ -307,6 +308,8 @@ const App: Component = () => {
                     onSelectionRemove={handleSelectionRemove}
                     onSelectionUpdate={handleSelectionUpdate}
                     onSelectionClear={handleSelectionClear}
+                    onMouseEnter={() => setIsMouseInTextView(true)}
+                    onMouseLeave={() => setIsMouseInTextView(false)}
                   />
                 )}
               </Show>
@@ -331,7 +334,7 @@ const App: Component = () => {
           </div>
         </div>
       </Show>
-      <Show when={selectedCode() && mousePosition()}>
+      <Show when={selectedCode() && mousePosition() && isMouseInTextView()}>
         {() => {
           const pos = mousePosition()!;
           return (

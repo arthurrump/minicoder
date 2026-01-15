@@ -14,6 +14,8 @@ interface TextViewProps {
     onSelectionRemove?: (selectionGuid: string) => void;
     onSelectionUpdate?: (selectionGuid: string, start: number, end: number, note?: string) => void;
     onSelectionClear?: () => void;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
 }
 
 interface Segment {
@@ -579,6 +581,7 @@ const TextView: Component<TextViewProps> = (props) => {
     
     function handleContainerMouseLeave() {
         setHoveredSelectionGuid(null);
+        props.onMouseLeave?.();
     }
     
     function handleContainerClick(e: MouseEvent) {
@@ -717,6 +720,7 @@ const TextView: Component<TextViewProps> = (props) => {
                 onMouseUp={handleMouseUp}
                 onMouseMove={handleContainerMouseMove}
                 onMouseLeave={handleContainerMouseLeave}
+                onMouseEnter={props.onMouseEnter}
                 onClick={handleContainerClick}
             >
                 <For each={segments()}>
