@@ -8,12 +8,14 @@
   },
   "packageManager": "pnpm@10.24.0",
   "devDependencies": {
+    "@types/primer__octicons": "^19.11.1",
     "solid-devtools": "^0.34.3",
     "typescript": "^5.7.2",
     "vite": "^7.1.4",
     "vite-plugin-solid": "^2.11.8"
   },
   "dependencies": {
+    "@primer/octicons": "^19.21.2",
     "solid-js": "^1.9.5"
   }
 }

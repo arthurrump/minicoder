@@ -1,3 +1,4 @@
+import octicons from '@primer/octicons';
 import { createMemo, createSignal, For, Show, type Component, onMount, onCleanup, createEffect } from 'solid-js';
 
 interface CodeWithCodebook {
@@ -785,9 +786,8 @@ const TextView: Component<TextViewProps> = (props) => {
                                     class="popover-remove-btn"
                                     onClick={() => handleRemoveCode(p().selection.guid)}
                                     title="Remove this code"
-                                >
-                                    ×
-                                </button>
+                                    innerHTML={octicons.trash.toSVG()}
+                                />
                             </div>
                             <textarea
                                 class="popover-note"
