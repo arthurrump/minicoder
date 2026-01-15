@@ -338,8 +338,8 @@ const App: Component = () => {
             <span 
               class="cursor-chip"
               style={{
-                left: `${pos.x + 15}px`,
-                top: `${pos.y + 15}px`,
+                left: `${pos.x - 16}px`,
+                top: `${pos.y}px`,
                 "background-color": selectedCode()!.color
               }}
             >
