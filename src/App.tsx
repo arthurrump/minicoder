@@ -48,6 +48,7 @@ const App: Component = () => {
   const [selectedCodebook, setSelectedCodebook] = createSignal<Codebook | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ start: number; end: number } | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
+  const [mousePosition, setMousePosition] = createSignal<{ x: number; y: number } | null>(null);
   
   // Load all codebooks when directory changes
   createEffect(async () => {
@@ -249,6 +250,12 @@ const App: Component = () => {
   function handleSelectionClear() {
     setPendingSelection(null);
   }
+
+  function handleMouseMove(e: MouseEvent) {
+    if (selectedCode()) {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    }
+  }
   
   function handleFileSelect(info: { file: FileSystemFileHandle; directory: FileSystemDirectoryHandle; relativePath: string }) {
     setSelectedFile(info.file);
@@ -256,6 +263,17 @@ const App: Component = () => {
     setSelectedFilePath(info.relativePath);
   }
   
+  // Track mouse movement globally when a code is selected
+  createEffect(() => {
+    const code = selectedCode();
+    if (code) {
+      document.addEventListener('mousemove', handleMouseMove);
+      return () => document.removeEventListener('mousemove', handleMouseMove);
+    } else {
+      setMousePosition(null);
+    }
+  });
+
   return (
     <>
       <TopBar currentDir={currentDir()} onChangeDir={pickFolder} />
@@ -312,6 +330,22 @@ const App: Component = () => {
             <CodePicker codebooks={codebooks()} onCodeClick={handleCodeClick} />
           </div>
         </div>
+      </Show>
+      <Show when={selectedCode() && mousePosition()}>
+        {() => {
+          const pos = mousePosition()!;
+          return (
+            <span 
+              class="cursor-chip"
+              style={{
+                left: `${pos.x + 15}px`,
+                top: `${pos.y + 15}px`,
+                "background-color": selectedCode()!.color
+              }}
+            >
+            </span>
+          );
+        }}
       </Show>
     </>
   );
