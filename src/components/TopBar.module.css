@@ -8,9 +8,44 @@
     background-color: var(--bg-color);
 }
 
+.topbarLeft {
+    display: flex;
+}
+
 .title {
     margin: 0;
     font-size: 20px;
+}
+
+.nav {
+    margin-left: 16px;
+    display: flex;
+    gap: 4px;
+    justify-self: center;
+}
+
+.navButton {
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.navButton:hover {
+    background-color: var(--hover-bg-color, rgba(255, 255, 255, 0.1));
+}
+
+.navButtonActive {
+    padding: 6px 12px;
+    border: none;
+    background-color: var(--accent-color, #4a9eff);
+    color: white;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
 }
 
 .actions {
