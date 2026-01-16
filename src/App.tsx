@@ -3,10 +3,61 @@ import { TopBar, type ViewType } from './components/TopBar';
 import CodingView from './views/CodingView';
 import CodebookEditorView from './views/CodebookEditorView';
 import SelectionsListView from './views/SelectionsListView';
+import { StoreProvider, useStore } from './store';
 
 function isFileSystemAccessSupported(): boolean {
   return 'showDirectoryPicker' in window;
 }
+
+const AppContent: Component = () => {
+  const { store, actions } = useStore();
+  const [currentView, setCurrentView] = createSignal<ViewType>("coding");
+
+  const currentDir = createMemo(() => store.dirHandle?.name || "");
+  createEffect(() => {
+    const cd = currentDir()
+    if (cd) {
+      document.title = "minicoder | " + cd;
+    } else {
+      document.title = "minicoder"
+    }
+  });
+
+  async function pickFolder() {
+    try {
+      // showDirectoryPicker is only available in Chromium-based browsers
+      const handle = await (window as any).showDirectoryPicker();
+      await actions.setDirectory(handle);
+    } catch (err) {
+      // User cancelled or error occurred
+      console.error("Failed to pick directory:", err);
+    }
+  }
+
+  return (
+    <>
+      <TopBar 
+        currentDir={currentDir()} 
+        onChangeDir={pickFolder} 
+        currentView={currentView()}
+        onViewChange={setCurrentView}
+      />
+      <Show when={store.dirHandle} fallback={<p style="text-align: center">Open a folder to get started.</p>}>
+        <Switch>
+          <Match when={currentView() === "coding"}>
+            <CodingView />
+          </Match>
+          <Match when={currentView() === "codebooks"}>
+            <CodebookEditorView />
+          </Match>
+          <Match when={currentView() === "selections"}>
+            <SelectionsListView />
+          </Match>
+        </Switch>
+      </Show>
+    </>
+  );
+};
 
 const App: Component = () => {
   // Check for File System Access API support
@@ -24,97 +75,10 @@ const App: Component = () => {
     );
   }
 
-  const [dirHandle, setDirHandle] = createSignal<FileSystemDirectoryHandle>();
-  const [currentView, setCurrentView] = createSignal<ViewType>("coding");
-  const [codebooks, setCodebooks] = createSignal<Codebook[]>([]);
-
-  const currentDir = createMemo(() => dirHandle()?.name || "");
-  createEffect(() => {
-    const cd = currentDir()
-    if (cd) {
-      document.title = "minicoder | " + cd;
-    } else {
-      document.title = "minicoder"
-    }
-  });
-
-  // Load all codebooks when directory changes
-  async function loadCodebooks() {
-    const dir = dirHandle();
-    if (!dir) {
-      setCodebooks([]);
-      return;
-    }
-    
-    try {
-      const loadedCodebooks: Codebook[] = [];
-      
-      // Iterate through directory to find all .mcc files
-      for await (const [name, handle] of dir.entries()) {
-        if (handle.kind === 'file' && name.endsWith('.mcc')) {
-          try {
-            const file = await (handle as FileSystemFileHandle).getFile();
-            const text = await file.text();
-            const parsedCodebook = JSON.parse(text) as Codebook;
-            loadedCodebooks.push(parsedCodebook);
-          } catch (err) {
-            console.warn(`Failed to load codebook ${name}:`, err);
-          }
-        }
-      }
-      
-      // Sort by name for consistent ordering
-      loadedCodebooks.sort((a, b) => a.name.localeCompare(b.name));
-      setCodebooks(loadedCodebooks);
-    } catch (err) {
-      console.warn("Failed to load codebooks:", err);
-      setCodebooks([]);
-    }
-  }
-  
-  // Load codebooks when directory changes
-  createEffect(() => {
-    dirHandle();
-    loadCodebooks();
-  });
-
-  async function pickFolder() {
-    try {
-      // showDirectoryPicker is only available in Chromium-based browsers
-      const handle = await (window as any).showDirectoryPicker();
-      setDirHandle(handle);
-    } catch (err) {
-      // User cancelled or error occurred
-      console.error("Failed to pick directory:", err);
-    }
-  }
-
   return (
-    <>
-      <TopBar 
-        currentDir={currentDir()} 
-        onChangeDir={pickFolder} 
-        currentView={currentView()}
-        onViewChange={setCurrentView}
-      />
-      <Show when={dirHandle()} fallback={<p style="text-align: center">Open a folder to get started.</p>}>
-        <Switch>
-          <Match when={currentView() === "coding"}>
-            <CodingView dirHandle={dirHandle()!} codebooks={codebooks()} />
-          </Match>
-          <Match when={currentView() === "codebooks"}>
-            <CodebookEditorView 
-              dirHandle={dirHandle()!} 
-              codebooks={codebooks()} 
-              onCodebooksChange={loadCodebooks}
-            />
-          </Match>
-          <Match when={currentView() === "selections"}>
-            <SelectionsListView dirHandle={dirHandle()!} codebooks={codebooks()} />
-          </Match>
-        </Switch>
-      </Show>
-    </>
+    <StoreProvider>
+      <AppContent />
+    </StoreProvider>
   );
 };
 

@@ -16,7 +16,7 @@ interface FileSelectInfo {
 interface FileBrowserProps {
   directoryHandle: FileSystemDirectoryHandle;
   onFileSelect?: (info: FileSelectInfo) => void;
-  selectedFile?: FileSystemFileHandle;
+  selectedFile?: string; // Changed to relative path
   filter?: ExtensionFilter;
 }
 
@@ -122,7 +122,7 @@ export function FileBrowser(props: FileBrowserProps) {
     };
 
     const isSelected = () => {
-      return nodeProps.node.handle.kind === 'file' && props.selectedFile === nodeProps.node.handle;
+      return nodeProps.node.handle.kind === 'file' && props.selectedFile === nodeProps.node.relativePath;
     };
 
     createEffect(async () => {

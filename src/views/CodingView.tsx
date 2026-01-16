@@ -3,18 +3,12 @@ import Resizable from '@corvu/resizable';
 import FileBrowser from '../components/FileBrowser';
 import CodePicker from '../components/CodePicker';
 import TextView from '../components/TextView';
-import { hashText, debounce } from '../helpers';
+import { hashText } from '../helpers';
+import { useStore } from '../store';
 
-interface CodingViewProps {
-  dirHandle: FileSystemDirectoryHandle;
-  codebooks: Codebook[];
-}
-
-const CodingView: Component<CodingViewProps> = (props) => {
-  const [selectedFile, setSelectedFile] = createSignal<FileSystemFileHandle>();
-  const [selectedFileDir, setSelectedFileDir] = createSignal<FileSystemDirectoryHandle>();
+const CodingView: Component = () => {
+  const { store, actions } = useStore();
   const [selectedFilePath, setSelectedFilePath] = createSignal<string>("");
-  const [selections, setSelections] = createSignal<TextSelection[]>([]);
   const [selectedCode, setSelectedCode] = createSignal<Code | null>(null);
   const [selectedCodebook, setSelectedCodebook] = createSignal<Codebook | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ start: number; end: number } | null>(null);
@@ -22,102 +16,41 @@ const CodingView: Component<CodingViewProps> = (props) => {
   const [mousePosition, setMousePosition] = createSignal<{ x: number; y: number } | null>(null);
   const [isMouseInTextView, setIsMouseInTextView] = createSignal<boolean>(false);
 
-  // Load file content when selectedFile changes
-  const [fileContent] = createResource(selectedFile, async (file) => {
-    if (!file) return undefined;
-    try {
-      const fileData = await file.getFile();
-      return await fileData.text();
-    } catch (err) {
-      console.error("Failed to read file:", err);
-      return undefined;
-    }
+  // Load file content when selectedFilePath changes (using resource pattern)
+  const [fileContent] = createResource(selectedFilePath, async (path) => {
+    if (!path) return undefined;
+    return await actions.loadFileContent(path);
   });
 
-  // Load selections from .mcs file when file changes
-  createEffect(on([selectedFile, () => fileContent()], async ([file, content]) => {
-    if (!file || !content) {
-      setSelections([]);
+  // Get selections from store for the selected file
+  const selections = createMemo(() => {
+    const path = selectedFilePath();
+    if (!path) return [];
+    const source = store.sources[path];
+    return source?.selections || [];
+  });
+
+  // Check hash when file content or source changes
+  createEffect(on([selectedFilePath, () => fileContent()], async ([path, content]) => {
+    if (!path || !content) {
       setHashMismatchWarning(false);
       return;
     }
 
-    const fileDir = selectedFileDir();
-    const filePath = selectedFilePath();
-    if (!fileDir || !filePath) return;
-
-    const mcsFileName = file.name + '.mcs';
-    try {
-      const mcsFile = await fileDir.getFileHandle(mcsFileName);
-      const mcsData = await mcsFile.getFile();
-      const mcsText = await mcsData.text();
-      const source = JSON.parse(mcsText) as Source;
-      
-      // Check hash
-      const currentHash = await hashText(content);
-      if (source.fileHash !== currentHash) {
-        setHashMismatchWarning(true);
-        console.warn("File content has changed since selections were saved");
-      } else {
-        setHashMismatchWarning(false);
-      }
-      
-      setSelections(source.selections);
-    } catch (err) {
-      // No .mcs file exists
-      setSelections([]);
+    const source = store.sources[path];
+    if (!source) {
       setHashMismatchWarning(false);
-    }
-  }));
-
-  // Save selections to .mcs file
-  async function saveSelections() {
-    const file = selectedFile();
-    const content = fileContent();
-    const fileDir = selectedFileDir();
-    const filePath = selectedFilePath();
-    
-    if (!file || !content || !fileDir || !filePath) return;
-    
-    const currentSelections = selections();
-    const fileHash = await hashText(content);
-    
-    const source: Source = {
-      fileHash,
-      selections: currentSelections
-    };
-    
-    const mcsFileName = file.name + '.mcs';
-    try {
-      const mcsFile = await fileDir.getFileHandle(mcsFileName, { create: true });
-      const writable = await mcsFile.createWritable();
-      await writable.write(JSON.stringify(source, null, 2));
-      await writable.close();
-    } catch (err) {
-      console.error("Failed to save selections:", err);
-    }
-  }
-
-  // Debounced save function
-  const debouncedSave = debounce(saveSelections, 1000);
-
-  // Auto-save when selections change (but not on initial load)
-  let isInitialLoad = true;
-  createEffect(on(() => selections(), (currentSelections) => {
-    if (isInitialLoad) {
-      isInitialLoad = false;
       return;
     }
-    
-    const filePath = selectedFilePath();
-    if (!filePath) return;
-    
-    debouncedSave();
-  }, { defer: true }));
 
-  // Reset initial load flag when file changes
-  createEffect(on(selectedFile, () => {
-    isInitialLoad = true;
+    // Check hash
+    const currentHash = await hashText(content);
+    if (source.fileHash !== currentHash) {
+      setHashMismatchWarning(true);
+      console.warn("File content has changed since selections were saved");
+    } else {
+      setHashMismatchWarning(false);
+    }
   }));
 
   function handleCodeClick(code: Code, codebook: Codebook) {
@@ -131,7 +64,13 @@ const CodingView: Component<CodingViewProps> = (props) => {
         code_guid: code.guid,
         note: undefined
       };
-      setSelections(prev => [...prev, newSelection]);
+      
+      const path = selectedFilePath();
+      if (path) {
+        const currentSelections = selections();
+        actions.updateSelections(path, [...currentSelections, newSelection]);
+      }
+      
       setPendingSelection(null);
       setSelectedCode(null);
       setSelectedCodebook(null);
@@ -155,7 +94,12 @@ const CodingView: Component<CodingViewProps> = (props) => {
         code_guid: code.guid,
         note: undefined
       };
-      setSelections(prev => [...prev, newSelection]);
+      
+      const path = selectedFilePath();
+      if (path) {
+        const currentSelections = selections();
+        actions.updateSelections(path, [...currentSelections, newSelection]);
+      }
     } else {
       // Store the pending selection and wait for code selection
       setPendingSelection({ start, end });
@@ -163,15 +107,26 @@ const CodingView: Component<CodingViewProps> = (props) => {
   }
 
   function handleSelectionRemove(selectionGuid: string) {
-    setSelections(prev => prev.filter(s => s.guid !== selectionGuid));
+    const path = selectedFilePath();
+    if (path) {
+      const currentSelections = selections();
+      actions.updateSelections(path, currentSelections.filter(s => s.guid !== selectionGuid));
+    }
   }
 
   function handleSelectionUpdate(selectionGuid: string, start: number, end: number, note?: string) {
-    setSelections(prev => prev.map(s => 
-      s.guid === selectionGuid 
-        ? { ...s, start, end, note }
-        : s
-    ));
+    const path = selectedFilePath();
+    if (path) {
+      const currentSelections = selections();
+      actions.updateSelections(
+        path,
+        currentSelections.map(s => 
+          s.guid === selectionGuid 
+            ? { ...s, start, end, note }
+            : s
+        )
+      );
+    }
   }
 
   function handleSelectionClear() {
@@ -185,8 +140,6 @@ const CodingView: Component<CodingViewProps> = (props) => {
   }
   
   function handleFileSelect(info: { file: FileSystemFileHandle; directory: FileSystemDirectoryHandle; relativePath: string }) {
-    setSelectedFile(info.file);
-    setSelectedFileDir(info.directory);
     setSelectedFilePath(info.relativePath);
   }
   
@@ -206,9 +159,9 @@ const CodingView: Component<CodingViewProps> = (props) => {
       <Resizable orientation="horizontal">
         <Resizable.Panel initialSize={0.2} minSize={0.1} maxSize={0.5}>
           <FileBrowser 
-            directoryHandle={props.dirHandle} 
+            directoryHandle={store.dirHandle!} 
             onFileSelect={handleFileSelect}
-            selectedFile={selectedFile()}
+            selectedFile={selectedFilePath()}
             filter={{ extensions: [".mcs", ".mcc"], mode: "exclude" }}
           />
         </Resizable.Panel>
@@ -216,7 +169,7 @@ const CodingView: Component<CodingViewProps> = (props) => {
           <div class="inner-handle" />
         </Resizable.Handle>
         <Resizable.Panel initialSize={0.6} minSize={0.1} maxSize={0.8}>
-          <Show when={selectedFile()} fallback={<p style={{ padding: '10px' }}>Select a file to view its contents</p>}>
+          <Show when={selectedFilePath()} fallback={<p style={{ padding: '10px' }}>Select a file to view its contents</p>}>
             <div class="text-view-wrapper">
               <Show when={hashMismatchWarning()}>
                 <div class="hash-mismatch-warning">
@@ -229,7 +182,7 @@ const CodingView: Component<CodingViewProps> = (props) => {
                   <TextView
                     content={content()}
                     selections={selections()}
-                    codebooks={props.codebooks}
+                    codebooks={store.codebooks}
                     onSelectionCreate={handleSelectionCreate}
                     onSelectionRemove={handleSelectionRemove}
                     onSelectionUpdate={handleSelectionUpdate}
@@ -261,7 +214,7 @@ const CodingView: Component<CodingViewProps> = (props) => {
                 <button onClick={() => { setSelectedCode(null); setSelectedCodebook(null); }}>×</button>
               </Show>
             </div>
-            <CodePicker codebooks={props.codebooks} onCodeClick={handleCodeClick} />
+            <CodePicker codebooks={store.codebooks} onCodeClick={handleCodeClick} />
           </div>
         </Resizable.Panel>
       </Resizable>

@@ -1,67 +1,11 @@
 import { createEffect, createSignal, For, on, Show, type Component } from 'solid-js';
+import { useStore } from '../store';
 
 interface SelectionWithSource {
   selection: TextSelection;
   sourcePath: string;
   sourceFileName: string;
   textSnippet: string;
-}
-
-interface SelectionsListViewProps {
-  dirHandle: FileSystemDirectoryHandle;
-  codebooks: Codebook[];
-}
-
-// Recursively find all .mcs files in a directory
-async function findAllMcsFiles(
-  dir: FileSystemDirectoryHandle,
-  basePath: string = ""
-): Promise<{ file: FileSystemFileHandle; path: string; sourceFileName: string }[]> {
-  const results: { file: FileSystemFileHandle; path: string; sourceFileName: string }[] = [];
-  
-  for await (const [name, handle] of dir.entries()) {
-    const fullPath = basePath ? `${basePath}/${name}` : name;
-    
-    if (handle.kind === 'file' && name.endsWith('.mcs')) {
-      // The source file name is the .mcs file name without the .mcs extension
-      const sourceFileName = name.slice(0, -4);
-      results.push({
-        file: handle as FileSystemFileHandle,
-        path: fullPath,
-        sourceFileName
-      });
-    } else if (handle.kind === 'directory') {
-      const subResults = await findAllMcsFiles(handle as FileSystemDirectoryHandle, fullPath);
-      results.push(...subResults);
-    }
-  }
-  
-  return results;
-}
-
-// Try to read the source file content for a given .mcs file
-async function tryReadSourceContent(
-  dir: FileSystemDirectoryHandle,
-  mcsPath: string,
-  sourceFileName: string
-): Promise<string | null> {
-  try {
-    // Navigate to the directory containing the .mcs file
-    const pathParts = mcsPath.split('/');
-    pathParts.pop(); // Remove the .mcs filename
-    
-    let currentDir = dir;
-    for (const part of pathParts) {
-      currentDir = await currentDir.getDirectoryHandle(part);
-    }
-    
-    // Try to get the source file
-    const sourceHandle = await currentDir.getFileHandle(sourceFileName);
-    const file = await sourceHandle.getFile();
-    return await file.text();
-  } catch {
-    return null;
-  }
 }
 
 // Component for rendering selections for a single code
@@ -167,14 +111,15 @@ const CodeSelections: Component<CodeSelectionsProps> = (props) => {
   );
 };
 
-const SelectionsListView: Component<SelectionsListViewProps> = (props) => {
+const SelectionsListView: Component = () => {
+  const { store, actions } = useStore();
   const [selectionsMap, setSelectionsMap] = createSignal<Map<string, SelectionWithSource[]>>(new Map());
   const [loading, setLoading] = createSignal(true);
   const [expandedCodes, setExpandedCodes] = createSignal<Set<string>>(new Set());
   const [expandedCodebooks, setExpandedCodebooks] = createSignal<Set<string>>(new Set());
 
   // Auto-expand single codebook
-  createEffect(on(() => props.codebooks, (codebooks) => {
+  createEffect(on(() => store.codebooks, (codebooks) => {
     if (codebooks.length === 1) {
       setExpandedCodebooks(new Set([codebooks[0].guid]));
     } else {
@@ -182,12 +127,12 @@ const SelectionsListView: Component<SelectionsListViewProps> = (props) => {
     }
   }));
 
-  // Load all selections when directory or codebooks change
+  // Load all selections from store
   createEffect(async () => {
-    const dir = props.dirHandle;
-    const codebooks = props.codebooks;
+    const sources = store.sources;
+    const codebooks = store.codebooks;
     
-    if (!dir || codebooks.length === 0) {
+    if (!sources || codebooks.length === 0) {
       setSelectionsMap(new Map());
       setLoading(false);
       return;
@@ -196,44 +141,37 @@ const SelectionsListView: Component<SelectionsListViewProps> = (props) => {
     setLoading(true);
 
     try {
-      // Find all .mcs files
-      const mcsFiles = await findAllMcsFiles(dir);
-
       // Map to collect selections per code
       const newSelectionsMap = new Map<string, SelectionWithSource[]>();
 
-      // Process each .mcs file
-      for (const { file, path, sourceFileName } of mcsFiles) {
-        try {
-          const mcsData = await file.getFile();
-          const mcsText = await mcsData.text();
-          const source = JSON.parse(mcsText) as Source;
+      // Process each source from the store
+      for (const [sourcePath, source] of Object.entries(sources)) {
+        // Try to load the source file content if not already loaded
+        let sourceContent = store.fileContents[sourcePath];
+        if (!sourceContent) {
+          sourceContent = await actions.loadFileContent(sourcePath) || '';
+        }
 
-          // Try to read the source file content
-          const sourceContent = await tryReadSourceContent(dir, path, sourceFileName);
-
-          for (const selection of source.selections) {
-            if (!newSelectionsMap.has(selection.code_guid)) {
-              newSelectionsMap.set(selection.code_guid, []);
-            }
-
-            // Extract text snippet if we have the source content
-            let textSnippet = "";
-            if (sourceContent) {
-              const snippetStart = Math.max(0, selection.start);
-              const snippetEnd = Math.min(sourceContent.length, selection.end);
-              textSnippet = sourceContent.slice(snippetStart, snippetEnd);
-            }
-
-            newSelectionsMap.get(selection.code_guid)!.push({
-              selection,
-              sourcePath: path.replace(/\.mcs$/, ''),
-              sourceFileName,
-              textSnippet
-            });
+        for (const selection of source.selections) {
+          if (!newSelectionsMap.has(selection.code_guid)) {
+            newSelectionsMap.set(selection.code_guid, []);
           }
-        } catch (err) {
-          console.warn(`Failed to process ${path}:`, err);
+
+          // Extract text snippet
+          let textSnippet = "";
+          if (sourceContent) {
+            const snippetStart = Math.max(0, selection.start);
+            const snippetEnd = Math.min(sourceContent.length, selection.end);
+            textSnippet = sourceContent.slice(snippetStart, snippetEnd);
+          }
+
+          const sourceFileName = sourcePath.split('/').pop() || sourcePath;
+          newSelectionsMap.get(selection.code_guid)!.push({
+            selection,
+            sourcePath,
+            sourceFileName,
+            textSnippet
+          });
         }
       }
 
@@ -307,7 +245,7 @@ const SelectionsListView: Component<SelectionsListViewProps> = (props) => {
           <p class="no-selections">No selections found. Start coding in the Coding view to see selections here.</p>
         }>
           <div class="codebook-list">
-            <For each={props.codebooks}>
+            <For each={store.codebooks}>
               {(codebook) => (
                 <Show when={codebookHasSelections(codebook)}>
                   <div class="codebook-section">

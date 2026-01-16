@@ -1,12 +1,6 @@
 import type { Component } from 'solid-js';
 
-interface CodebookEditorViewProps {
-  dirHandle: FileSystemDirectoryHandle;
-  codebooks: Codebook[];
-  onCodebooksChange: () => void;
-}
-
-const CodebookEditorView: Component<CodebookEditorViewProps> = (props) => {
+const CodebookEditorView: Component = () => {
   return (
     <div class="view-placeholder">
       <h2>Codebook Editor</h2>
