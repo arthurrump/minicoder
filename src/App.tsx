@@ -1,4 +1,5 @@
-import { createEffect, createMemo, createSignal, Match, Show, Switch, type Component } from 'solid-js';
+import { createEffect, createMemo, Show, type Component, type ParentComponent } from 'solid-js';
+import { HashRouter, Route, useNavigate, useLocation } from '@solidjs/router';
 import { TopBar } from './components/TopBar';
 import CodingView from './views/CodingView';
 import CodebookEditorView from './views/CodebookEditorView';
@@ -16,9 +17,10 @@ const views : { id: ViewType; label: string }[] = [
   { id: "selections", label: "Selections" },
 ];
 
-const AppContent: Component = () => {
+const Layout: ParentComponent = (props) => {
   const { store, actions } = useStore();
-  const [currentView, setCurrentView] = createSignal<ViewType>("coding");
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const currentDir = createMemo(() => store.dirHandle?.name || "");
   createEffect(() => {
@@ -41,27 +43,30 @@ const AppContent: Component = () => {
     }
   }
 
+  // Determine current view from location
+  const currentView = createMemo(() => {
+    const path = location.pathname;
+    if (path.startsWith('/coding')) return 'coding';
+    if (path.startsWith('/codebooks')) return 'codebooks';
+    if (path.startsWith('/selections')) return 'selections';
+    return 'coding';
+  });
+
+  const handleViewChange = (view: ViewType) => {
+    navigate(`/${view}`);
+  };
+
   return (
     <>
       <TopBar 
         currentDir={currentDir()} 
         onChangeDir={pickFolder} 
         currentView={currentView()}
-        onViewChange={setCurrentView}
+        onViewChange={handleViewChange}
         views={views}
       />
       <Show when={store.dirHandle} fallback={<p style="text-align: center">Open a folder to get started.</p>}>
-        <Switch>
-          <Match when={currentView() === "coding"}>
-            <CodingView />
-          </Match>
-          <Match when={currentView() === "codebooks"}>
-            <CodebookEditorView />
-          </Match>
-          <Match when={currentView() === "selections"}>
-            <SelectionsListView />
-          </Match>
-        </Switch>
+        {props.children}
       </Show>
     </>
   );
@@ -85,7 +90,13 @@ const App: Component = () => {
 
   return (
     <StoreProvider>
-      <AppContent />
+      <HashRouter root={Layout}>
+        <Route path="/" component={CodingView} />
+        <Route path="/coding" component={CodingView} />
+        <Route path="/coding/*filePath" component={CodingView} />
+        <Route path="/codebooks" component={CodebookEditorView} />
+        <Route path="/selections" component={SelectionsListView} />
+      </HashRouter>
     </StoreProvider>
   );
 };

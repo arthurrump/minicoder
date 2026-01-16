@@ -1,4 +1,5 @@
 import { createEffect, createMemo, createResource, createSignal, on, Show, type Component } from 'solid-js';
+import { useParams, useNavigate } from '@solidjs/router';
 import Resizable from '@corvu/resizable';
 import FileBrowser from '../components/FileBrowser';
 import CodePicker from '../components/CodePicker';
@@ -8,7 +9,13 @@ import { useStore } from '../store';
 
 const CodingView: Component = () => {
   const { store, actions } = useStore();
-  const [selectedFilePath, setSelectedFilePath] = createSignal<string>("");
+  const params = useParams<{ filePath?: string }>();
+  const navigate = useNavigate();
+  
+  // Get file path from URL params, decoding it
+  const selectedFilePath = createMemo(() => {
+    return params.filePath ? decodeURIComponent(params.filePath) : '';
+  });
   const [selectedCode, setSelectedCode] = createSignal<Code | null>(null);
   const [selectedCodebook, setSelectedCodebook] = createSignal<Codebook | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ start: number; end: number } | null>(null);
@@ -140,7 +147,8 @@ const CodingView: Component = () => {
   }
   
   function handleFileSelect(info: { file: FileSystemFileHandle; directory: FileSystemDirectoryHandle; relativePath: string }) {
-    setSelectedFilePath(info.relativePath);
+    // Navigate to the file URL
+    navigate(`/coding/${encodeURIComponent(info.relativePath)}`);
   }
   
   // Track mouse movement globally when a code is selected

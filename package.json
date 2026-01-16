@@ -17,6 +17,7 @@
   "dependencies": {
     "@corvu/resizable": "^0.2.5",
     "@primer/octicons": "^19.21.2",
+    "@solidjs/router": "^0.15.4",
     "solid-js": "^1.9.5"
   }
 }
