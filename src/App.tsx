@@ -5,8 +5,6 @@ import TextView from './components/TextView';
 import { hashText, debounce } from './helpers';
 import { TopBar } from './components/TopBar';
 
-type SaveStatus = 'saved' | 'pending' | 'none';
-
 function isFileSystemAccessSupported(): boolean {
   return 'showDirectoryPicker' in window;
 }
@@ -335,20 +333,14 @@ const App: Component = () => {
         </div>
       </Show>
       <Show when={selectedCode() && mousePosition() && isMouseInTextView()}>
-        {() => {
-          const pos = mousePosition()!;
-          return (
-            <span 
-              class="cursor-chip"
-              style={{
-                left: `${pos.x - 16}px`,
-                top: `${pos.y}px`,
-                "background-color": selectedCode()!.color
-              }}
-            >
-            </span>
-          );
-        }}
+        <span 
+          class="cursor-chip"
+          style={{
+            left: `${mousePosition()!.x - 16}px`,
+            top: `${mousePosition()!.y}px`,
+            "background-color": selectedCode()!.color
+          }}
+        />
       </Show>
     </>
   );
