@@ -464,3 +464,128 @@ body {
     color: var(--text-color);
     opacity: 0.7;
 }
+
+/* Selections List View */
+.selections-list-view {
+    padding: 20px;
+    width: 100%;
+    margin: 0 auto;
+    overflow-y: auto;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.selections-list-view h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.selections-list-view .no-selections {
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.code-selections-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.code-selections-section {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.code-selections-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background-color: var(--code-bg);
+    cursor: pointer;
+    user-select: none;
+}
+
+.code-selections-header:hover {
+    background-color: var(--code-hover);
+}
+
+.code-selections-header-empty {
+    cursor: default;
+    padding-left: 32px;
+}
+
+.code-selections-header-empty:hover {
+    background-color: var(--code-bg);
+}
+
+.code-toggle {
+    font-size: 10px;
+    width: 12px;
+    flex-shrink: 0;
+}
+
+.code-color-badge {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.code-name {
+    font-weight: bold;
+}
+
+.code-codebook {
+    color: var(--text-color);
+    opacity: 0.6;
+    font-size: 0.9em;
+}
+
+.code-count {
+    margin-left: auto;
+    font-size: 0.85em;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.code-selections-content {
+    border-top: 1px solid var(--border-color);
+}
+
+.selection-item {
+    padding: 10px 12px 10px 34px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.selection-item:last-child {
+    border-bottom: none;
+}
+
+.selection-source {
+    font-size: 0.85em;
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.selection-snippet {
+    font-family: var(--font-text);
+    font-style: italic;
+    color: var(--text-color);
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.selection-note {
+    margin-top: 6px;
+    font-size: 0.85em;
+    color: var(--text-color);
+    opacity: 0.7;
+    padding: 4px 8px;
+    background-color: var(--code-bg);
+    border-radius: 3px;
+}
