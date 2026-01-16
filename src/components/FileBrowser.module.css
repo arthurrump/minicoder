@@ -5,9 +5,11 @@
 
 .file-browser {
     text-wrap: nowrap;
+    overflow-x: auto;
 }
 
 .node {
     cursor: pointer;
     user-select: none;
+    text-wrap: nowrap;
 }

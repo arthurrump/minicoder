@@ -1,4 +1,5 @@
 import { createEffect, createMemo, createResource, createSignal, on, Show, type Component } from 'solid-js';
+import Resizable from '@corvu/resizable';
 import FileBrowser from './components/FileBrowser';
 import CodePicker from './components/CodePicker';
 import TextView from './components/TextView';
@@ -276,61 +277,69 @@ const App: Component = () => {
   return (
     <>
       <TopBar currentDir={currentDir()} onChangeDir={pickFolder} />
-      <Show when={dirHandle()} fallback={<p>Open a folder to get started.</p>}>
-        <div id="main">
-          <div class="sidebar">
-            <div id="fileTree">
-              <FileBrowser 
-                directoryHandle={dirHandle()!} 
-                onFileSelect={handleFileSelect}
-                selectedFile={selectedFile()}
-                filter={{ extensions: [".mcs", ".mcc"], mode: "exclude" }}
-              />
+      <Show when={dirHandle()} fallback={<p style="text-align: center">Open a folder to get started.</p>}>
+        <Resizable orientation="horizontal">
+          <Resizable.Panel initialSize={0.2} minSize={0.1} maxSize={0.5}>
+            <FileBrowser 
+              directoryHandle={dirHandle()!} 
+              onFileSelect={handleFileSelect}
+              selectedFile={selectedFile()}
+              filter={{ extensions: [".mcs", ".mcc"], mode: "exclude" }}
+            />
+          </Resizable.Panel>
+          <Resizable.Handle aria-label="Resize file browser and editor">
+            <div class="inner-handle" />
+          </Resizable.Handle>
+          <Resizable.Panel initialSize={0.6} minSize={0.1} maxSize={0.8}>
+            <Show when={selectedFile()} fallback={<p style={{ padding: '10px' }}>Select a file to view its contents</p>}>
+              <div class="text-view-wrapper">
+                <Show when={hashMismatchWarning()}>
+                  <div class="hash-mismatch-warning">
+                    ⚠️ Warning: The file content has changed since these selections were saved. Positions may be incorrect.
+                    <button onClick={() => setHashMismatchWarning(false)}>Dismiss</button>
+                  </div>
+                </Show>
+                <Show when={fileContent()}>
+                  {(content) => (
+                    <TextView
+                      content={content()}
+                      selections={selections()}
+                      codebooks={codebooks()}
+                      onSelectionCreate={handleSelectionCreate}
+                      onSelectionRemove={handleSelectionRemove}
+                      onSelectionUpdate={handleSelectionUpdate}
+                      onSelectionClear={handleSelectionClear}
+                      onMouseEnter={() => setIsMouseInTextView(true)}
+                      onMouseLeave={() => setIsMouseInTextView(false)}
+                    />
+                  )}
+                </Show>
+              </div>
+            </Show>
+          </Resizable.Panel>
+          <Resizable.Handle aria-label="Resize editor and code picker">
+            <div class="inner-handle" />
+          </Resizable.Handle>
+          <Resizable.Panel initialSize={0.2} minSize={0.1} maxSize={0.5}>
+            <div id="codesList">
+              <div class="selected-code-notice">
+                <Show when={selectedCode()} fallback={
+                  <span class="no-code-selected">No code selected</span>
+                }>
+                  <span class="selected-code-info">
+                    <span class="selected-code-color" style={{ "background-color": selectedCode()!.color }}></span>
+                    <span>{selectedCode()!.name}</span>
+                    <Show when={selectedCodebook()}>
+                      <span class="selected-code-codebook">({selectedCodebook()!.name})</span>
+                    </Show>
+                  </span>
+                  <button onClick={() => { setSelectedCode(null); setSelectedCodebook(null); }}>×</button>
+                </Show>
+              </div>
+              <CodePicker codebooks={codebooks()} onCodeClick={handleCodeClick} />
             </div>
-          </div>
-          <Show when={selectedFile()} fallback={<p>Select a file to view its contents</p>}>
-            <div class="text-view-wrapper">
-              <Show when={hashMismatchWarning()}>
-                <div class="hash-mismatch-warning">
-                  ⚠️ Warning: The file content has changed since these selections were saved. Positions may be incorrect.
-                  <button onClick={() => setHashMismatchWarning(false)}>Dismiss</button>
-                </div>
-              </Show>
-              <Show when={fileContent()}>
-                {(content) => (
-                  <TextView
-                    content={content()}
-                    selections={selections()}
-                    codebooks={codebooks()}
-                    onSelectionCreate={handleSelectionCreate}
-                    onSelectionRemove={handleSelectionRemove}
-                    onSelectionUpdate={handleSelectionUpdate}
-                    onSelectionClear={handleSelectionClear}
-                    onMouseEnter={() => setIsMouseInTextView(true)}
-                    onMouseLeave={() => setIsMouseInTextView(false)}
-                  />
-                )}
-              </Show>
-            </div>
-          </Show>
-          <div id="codesList" class="sidebar">
-            <div class="selected-code-notice">
-              <Show when={selectedCode()} fallback={
-                <span class="no-code-selected">No code selected</span>
-              }>
-                <span class="selected-code-info">
-                  <span class="selected-code-color" style={{ "background-color": selectedCode()!.color }}></span>
-                  <span>{selectedCode()!.name}</span>
-                  <Show when={selectedCodebook()}>
-                    <span class="selected-code-codebook">({selectedCodebook()!.name})</span>
-                  </Show>
-                </span>
-                <button onClick={() => { setSelectedCode(null); setSelectedCodebook(null); }}>×</button>
-              </Show>
-            </div>
-            <CodePicker codebooks={codebooks()} onCodeClick={handleCodeClick} />
-          </div>
-        </div>
+          </Resizable.Panel>
+        </Resizable>
       </Show>
       <Show when={selectedCode() && mousePosition() && isMouseInTextView()}>
         <span 
