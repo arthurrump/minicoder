@@ -5,6 +5,7 @@ import CodingView from './views/CodingView';
 import CodebookEditorView from './views/CodebookEditorView';
 import SelectionsListView from './views/SelectionsListView';
 import { StoreProvider, useStore } from './store';
+import createPersistent from 'solid-persistent';
 
 function isFileSystemAccessSupported(): boolean {
   return 'showDirectoryPicker' in window;
@@ -88,14 +89,18 @@ const App: Component = () => {
     );
   }
 
+  const pCodebookEditorView = createPersistent(() => <CodebookEditorView />);
+  const pCodingView = createPersistent(() => <CodingView />);
+  const pSelectionsListView = createPersistent(() => <SelectionsListView />);
+
   return (
     <StoreProvider>
       <HashRouter root={Layout}>
-        <Route path="/" component={CodingView} />
-        <Route path="/coding" component={CodingView} />
-        <Route path="/coding/*filePath" component={CodingView} />
-        <Route path="/codebooks" component={CodebookEditorView} />
-        <Route path="/selections" component={SelectionsListView} />
+        <Route path="/" component={pCodingView} />
+        <Route path="/coding" component={pCodingView} />
+        <Route path="/coding/*filePath" component={pCodingView} />
+        <Route path="/codebooks" component={pCodebookEditorView} />
+        <Route path="/selections" component={pSelectionsListView} />
       </HashRouter>
     </StoreProvider>
   );
