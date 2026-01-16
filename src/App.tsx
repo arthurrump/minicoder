@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, Match, Show, Switch, type Component } from 'solid-js';
-import { TopBar, type ViewType } from './components/TopBar';
+import { TopBar } from './components/TopBar';
 import CodingView from './views/CodingView';
 import CodebookEditorView from './views/CodebookEditorView';
 import SelectionsListView from './views/SelectionsListView';
@@ -8,6 +8,13 @@ import { StoreProvider, useStore } from './store';
 function isFileSystemAccessSupported(): boolean {
   return 'showDirectoryPicker' in window;
 }
+
+type ViewType = "coding" | "codebooks" | "selections";
+const views : { id: ViewType; label: string }[] = [
+  { id: "codebooks", label: "Codebooks" },
+  { id: "coding", label: "Coding" },
+  { id: "selections", label: "Selections" },
+];
 
 const AppContent: Component = () => {
   const { store, actions } = useStore();
@@ -41,6 +48,7 @@ const AppContent: Component = () => {
         onChangeDir={pickFolder} 
         currentView={currentView()}
         onViewChange={setCurrentView}
+        views={views}
       />
       <Show when={store.dirHandle} fallback={<p style="text-align: center">Open a folder to get started.</p>}>
         <Switch>
