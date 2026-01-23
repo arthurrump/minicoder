@@ -1,0 +1,81 @@
+.hashMismatchWarning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 10px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.hashMismatchWarning button {
+    background: transparent;
+    border: 1px solid #856404;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: #856404;
+}
+
+.hashMismatchWarning button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    .hashMismatchWarning {
+        background-color: #3d3200;
+        color: #ffc107;
+        border-color: #665200;
+    }
+    
+    .hashMismatchWarning button {
+        color: #ffc107;
+        border-color: #ffc107;
+    }
+}
+
+.selectedCodeNotice {
+    padding: 10px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 20px;
+}
+
+.selectedCodeInfo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.selectedCodeColor {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.noCodeSelected {
+    color: #888;
+    font-style: italic;
+}
+
+.selectedCodeNotice button {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    color: #888;
+}
+
+.selectedCodeNotice button:hover {
+    color: var(--text-color);
+}

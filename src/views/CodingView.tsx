@@ -6,6 +6,7 @@ import CodePicker from '../components/CodePicker';
 import TextView from '../components/TextView';
 import { hashText } from '../helpers';
 import { useStore } from '../store';
+import styles from './CodingView.module.css';
 
 const CodingView: Component = () => {
   const { store, actions } = useStore();
@@ -180,7 +181,7 @@ const CodingView: Component = () => {
           <Show when={selectedFilePath()} fallback={<p style={{ padding: '10px' }}>Select a file to view its contents</p>}>
             <div class="text-view-wrapper">
               <Show when={hashMismatchWarning()}>
-                <div class="hash-mismatch-warning">
+                <div class={styles.hashMismatchWarning}>
                   ⚠️ Warning: The file content has changed since these selections were saved. Positions may be incorrect.
                   <button onClick={() => setHashMismatchWarning(false)}>Dismiss</button>
                 </div>
@@ -207,16 +208,16 @@ const CodingView: Component = () => {
           <div class="inner-handle" />
         </Resizable.Handle>
         <Resizable.Panel initialSize={0.2} minSize={0.1} maxSize={0.5}>
-          <div id="codesList">
-            <div class="selected-code-notice">
+          <div>
+            <div class={styles.selectedCodeNotice}>
               <Show when={selectedCode()} fallback={
-                <span class="no-code-selected">No code selected</span>
+                <span class={styles.noCodeSelected}>No code selected</span>
               }>
-                <span class="selected-code-info">
-                  <span class="selected-code-color" style={{ "background-color": selectedCode()!.color }}></span>
+                <span class={styles.selectedCodeInfo}>
+                  <span class={styles.selectedCodeColor} style={{ "background-color": selectedCode()!.color }}></span>
                   <span>{selectedCode()!.name}</span>
                   <Show when={selectedCodebook()}>
-                    <span class="selected-code-codebook">({selectedCodebook()!.name})</span>
+                    <span class={styles.selectedCodeCodebook}>({selectedCodebook()!.name})</span>
                   </Show>
                 </span>
                 <button onClick={() => { setSelectedCode(null); setSelectedCodebook(null); }}>×</button>
@@ -228,7 +229,7 @@ const CodingView: Component = () => {
       </Resizable>
       <Show when={selectedCode() && mousePosition() && isMouseInTextView()}>
         <span 
-          class="cursor-chip"
+          class={styles.cursorChip}
           style={{
             left: `${mousePosition()!.x - 16}px`,
             top: `${mousePosition()!.y}px`,

@@ -1,5 +1,6 @@
 import octicons from '@primer/octicons';
 import { createMemo, createSignal, For, Show, type Component, onMount, onCleanup, createEffect } from 'solid-js';
+import styles from './TextView.module.css';
 
 interface CodeWithCodebook {
     code: Code;
@@ -264,7 +265,7 @@ const TextSegment: Component<TextSegmentProps> = (props) => {
     return (
         <span
             ref={props.segmentRef}
-            class="text-segment"
+            class={styles.textSegment}
             data-segment-start={props.segment.start}
             data-segment-end={props.segment.end}
             style={getUnderlineStyle(
@@ -404,7 +405,7 @@ const SelectionHandles: Component<SelectionHandlesProps> = (props) => {
             <Show when={positions().start}>
                 {(pos) => (
                     <div
-                        class={`selection-handle selection-handle-start ${props.draggingHandle === 'start' ? 'dragging' : ''}`}
+                        class={`${styles.selectionHandle} ${props.draggingHandle === 'start' ? styles.dragging : ''} ${styles.selectionHandleStart}`}
                         style={{
                             left: `${pos().x}px`,
                             top: `${pos().y}px`,
@@ -420,7 +421,7 @@ const SelectionHandles: Component<SelectionHandlesProps> = (props) => {
             <Show when={positions().end}>
                 {(pos) => (
                     <div
-                        class={`selection-handle selection-handle-end ${props.draggingHandle === 'end' ? 'dragging' : ''}`}
+                        class={`${styles.selectionHandle} ${props.draggingHandle === 'end' ? styles.dragging : ''} ${styles.selectionHandleEnd}`}
                         style={{
                             left: `${pos().x}px`,
                             top: `${pos().y}px`,
@@ -623,7 +624,7 @@ const TextView: Component<TextViewProps> = (props) => {
         }
         
         const range = selection.getRangeAt(0);
-        const container = document.getElementById('text-view-content');
+        const container = containerRef;
         if (!container) return;
         
         // Calculate the character offsets within the text content
@@ -712,9 +713,9 @@ const TextView: Component<TextViewProps> = (props) => {
     }
     
     return (
-        <div id="textDisplay" onClick={handleBackgroundClick}>
+        <div class={styles.textDisplay} onClick={handleBackgroundClick}>
             <div 
-                id="text-view-content"
+                class={styles.textViewContent}
                 ref={(el) => containerRef = el}
                 style={{ cursor: hoveredSelectionGuid() ? 'pointer' : 'inherit' }}
                 onMouseUp={handleMouseUp}
@@ -768,33 +769,33 @@ const TextView: Component<TextViewProps> = (props) => {
                     const codeInfo = createMemo(() => codeMap().get(p().selection.code_guid));
                     return (
                         <div
-                            class="highlight-popover"
+                            class={styles.highlightPopover}
                             style={{
                                 left: `${p().x}px`,
                                 top: `${p().y}px`
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div class="popover-header">
-                                <div class="popover-code-item">
+                            <div class={styles.popoverHeader}>
+                                <div class={styles.popoverCodeItem}>
                                     <span
-                                        class="popover-code-color"
+                                        class={styles.popoverCodeColor}
                                         style={{ 'background-color': codeInfo()?.code.color || '#888' }}
                                     />
-                                    <span class="popover-code-name">{codeInfo()?.code.name || 'Unknown'}</span>
+                                    <span class={styles.popoverCodeName}>{codeInfo()?.code.name || 'Unknown'}</span>
                                     <Show when={codeInfo()?.codebook}>
-                                        <span class="popover-code-codebook">({codeInfo()!.codebook.name})</span>
+                                        <span class={styles.popoverCodeCodebook}>({codeInfo()!.codebook.name})</span>
                                     </Show>
                                 </div>
                                 <button
-                                    class="popover-remove-btn"
+                                    class={styles.popoverRemoveBtn}
                                     onClick={() => handleRemoveCode(p().selection.guid)}
                                     title="Remove this code"
                                     innerHTML={octicons.trash.toSVG()}
                                 />
                             </div>
                             <textarea
-                                class="popover-note"
+                                class={styles.popoverNote}
                                 placeholder="Add a note..."
                                 value={p().selection.note || ''}
                                 onInput={(e) => handleNoteChange(p().selection.guid, e.currentTarget.value)}

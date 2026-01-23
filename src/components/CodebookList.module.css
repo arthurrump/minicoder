@@ -1,0 +1,40 @@
+.codebookList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.codebookSection {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.codebookHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background-color: var(--code-bg);
+    cursor: pointer;
+    user-select: none;
+}
+
+.codebookHeader:hover {
+    background-color: var(--code-hover);
+}
+
+.codebookToggle {
+    font-size: 10px;
+    width: 12px;
+    flex-shrink: 0;
+}
+
+.codebookName {
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.codebookCodes {
+    padding: 8px;
+}

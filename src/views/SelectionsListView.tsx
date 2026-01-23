@@ -1,5 +1,6 @@
 import { createEffect, createSignal, For, on, Show, type Component } from 'solid-js';
 import { useStore } from '../store';
+import styles from './SelectionsListView.module.css';
 
 interface SelectionWithSource {
   selection: TextSelection;
@@ -45,33 +46,33 @@ const CodeSelections: Component<CodeSelectionsProps> = (props) => {
       <div class="code-selections-section" style={{ "margin-left": `${props.depth * 20}px` }}>
         <Show when={hasSelections()}>
           <div 
-            class="code-selections-header"
+            class={styles.codeSelectionsHeader}
             onClick={() => props.onToggle(props.code.guid)}
           >
-            <span class="code-toggle">
+            <span class={styles.codeToggle}>
               {props.expandedCodes.has(props.code.guid) ? '▼' : '▶'}
             </span>
             <span 
-              class="code-color-badge" 
+              class={styles.codeColorBadge} 
               style={{ "background-color": props.code.color }}
             />
-            <span class="code-name">{props.code.name}</span>
-            <span class="code-count">
+            <span class={styles.codeName}>{props.code.name}</span>
+            <span class={styles.codeCount}>
               {selections().length} selection{selections().length !== 1 ? 's' : ''}
             </span>
           </div>
           
           <Show when={props.expandedCodes.has(props.code.guid)}>
-            <div class="code-selections-content">
+            <div class={styles.codeSelectionsContent}>
               <For each={selections()}>
                 {(sel) => (
-                  <div class="selection-item">
-                    <div class="selection-source">{sel.sourcePath}</div>
+                  <div class={styles.selectionItem}>
+                    <div class={styles.selectionSource}>{sel.sourcePath}</div>
                     <Show when={sel.textSnippet}>
-                      <div class="selection-snippet">"{sel.textSnippet}"</div>
+                      <div class={styles.selectionSnippet}>"{sel.textSnippet}"</div>
                     </Show>
                     <Show when={sel.selection.note}>
-                      <div class="selection-note">Note: {sel.selection.note}</div>
+                      <div class={styles.selectionNote}>Note: {sel.selection.note}</div>
                     </Show>
                   </div>
                 )}
@@ -82,12 +83,12 @@ const CodeSelections: Component<CodeSelectionsProps> = (props) => {
         
         <Show when={!hasSelections() && hasSubcodeSelections()}>
           {/* Show code name without expand/collapse if it has no selections but subcodes do */}
-          <div class="code-selections-header code-selections-header-empty">
+          <div class={`${styles.codeSelectionsHeader} ${styles.codeSelectionsHeaderEmpty}`}>
             <span 
-              class="code-color-badge" 
+              class={styles.codeColorBadge} 
               style={{ "background-color": props.code.color }}
             />
-            <span class="code-name">{props.code.name}</span>
+            <span class={styles.codeName}>{props.code.name}</span>
           </div>
         </Show>
         
@@ -237,12 +238,12 @@ const SelectionsListView: Component = () => {
   };
 
   return (
-    <div class="selections-list-view">
+    <div class={styles.selectionsListView}>
       <h2>Selections by Code</h2>
       
       <Show when={!loading()} fallback={<p>Loading selections...</p>}>
         <Show when={totalSelections() > 0} fallback={
-          <p class="no-selections">No selections found. Start coding in the Coding view to see selections here.</p>
+          <p class={styles.noSelections}>No selections found. Start coding in the Coding view to see selections here.</p>
         }>
           <div class="codebook-list">
             <For each={store.codebooks}>

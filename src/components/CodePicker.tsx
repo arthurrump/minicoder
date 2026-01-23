@@ -1,4 +1,6 @@
 import { createEffect, createSignal, For, Show, on } from "solid-js";
+import styles from "./CodePicker.module.css";
+import codebookStyles from "./CodebookList.module.css";
 
 interface CodePickerProps {
     codebooks: Codebook[];
@@ -16,7 +18,7 @@ const CodeList = (props: CodeListProps) => (
         {(code) => (
             <>
                 <div
-                    class="code-item"
+                    class={styles.codeItem}
                     style={{ "background-color": code.color }}
                     onMouseDown={(e) => {
                         e.preventDefault();
@@ -30,7 +32,7 @@ const CodeList = (props: CodeListProps) => (
                     {code.name}
                 </div>
                 <Show when={code.subcodes && code.subcodes.length > 0}>
-                    <div class="subcodes">
+                    <div class={styles.subcodes}>
                         <CodeList 
                             codes={code.subcodes!} 
                             codebook={props.codebook}
@@ -73,21 +75,21 @@ export const CodePicker = (props: CodePickerProps) => {
     const isExpanded = (guid: string) => expandedCodebooks().has(guid);
 
     return (
-        <div class="codebook-list">
+        <div class={codebookStyles.codebookList}>
             <For each={props.codebooks}>
                 {(codebook) => (
-                    <div class="codebook-section">
+                    <div class={codebookStyles.codebookSection}>
                         <div 
-                            class="codebook-header"
+                            class={codebookStyles.codebookHeader}
                             onClick={() => toggleCodebook(codebook.guid)}
                         >
-                            <span class="codebook-toggle">
+                            <span class={codebookStyles.codebookToggle}>
                                 {isExpanded(codebook.guid) ? '▼' : '▶'}
                             </span>
-                            <span class="codebook-name">{codebook.name}</span>
+                            <span class={codebookStyles.codebookName}>{codebook.name}</span>
                         </div>
                         <Show when={isExpanded(codebook.guid)}>
-                            <div class="codebook-codes">
+                            <div class={codebookStyles.codebookCodes}>
                                 <CodeList 
                                     codes={codebook.codes} 
                                     codebook={codebook}

@@ -1,6 +1,7 @@
 import { createSignal, createMemo, For, Show, type Component } from 'solid-js';
 import Resizable from '@corvu/resizable';
 import { useStore } from '../store';
+import styles from './CodebookEditorView.module.css';
 
 // Default colors for new codes
 const DEFAULT_COLORS = [
@@ -24,11 +25,11 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
 
   return (
     <>
-      <div class="code-editor-item" style={{ "margin-left": `${props.depth * 20}px` }}>
-        <div class="code-editor-row">
+      <div class={styles.codeEditorItem} style={{ "margin-left": `${props.depth * 20}px` }}>
+        <div class={styles.codeEditorRow}>
           <input
             type="color"
-            class="code-color-picker"
+            class={styles.codeColorPicker}
             value={props.code.color}
             onChange={(e) => props.onUpdate({ color: e.target.value })}
             title="Code color"
@@ -36,15 +37,15 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
           
           <input
             type="text"
-            class="code-name-input"
+            class={styles.codeNameInput}
             value={props.code.name}
             onInput={(e) => props.onUpdate({ name: e.target.value })}
             placeholder="Code name..."
           />
           
-          <div class="code-actions">
+          <div class={styles.codeActions}>
             <button 
-              class="code-action-btn code-delete-btn" 
+              class={`${styles.codeActionBtn} ${styles.codeDeleteBtn}`} 
               onClick={props.onDelete}
               title="Delete code"
             >
@@ -53,9 +54,9 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
           </div>
         </div>
         
-        <div class="code-description-row">
+        <div class={styles.codeDescriptionRow}>
           <textarea
-            class="code-description-input"
+            class={styles.codeDescriptionInput}
             placeholder="Description..."
             value={props.code.description || ''}
             onInput={(e) => props.onUpdate({ description: e.target.value })}
@@ -63,17 +64,17 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
           />
         </div>
         
-        <div class="code-subcodes-section">
+        <div class={styles.codeSubcodesSection}>
           <button 
-            class="code-subcodes-toggle"
+            class={styles.codeSubcodesToggle}
             onClick={() => setIsExpanded(!isExpanded())}
           >
-            <span class="code-expand-icon">{isExpanded() ? '▼' : '▶'}</span>
+            <span class={styles.codeExpandIcon}>{isExpanded() ? '▼' : '▶'}</span>
             <span>Subcodes ({props.code.subcodes?.length || 0})</span>
           </button>
           
           <Show when={isExpanded()}>
-            <div class="code-subcodes-content">
+            <div class={styles.codeSubcodesContent}>
               <Show when={hasSubcodes()}>
                 <CodeTreeEditor
                   codes={props.code.subcodes}
@@ -82,7 +83,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
                 />
               </Show>
               <button 
-                class="btn-small add-subcode-btn"
+                class={`${styles.btnSmall} ${styles.addSubcodeBtn}`}
                 onClick={props.onAddSubcode}
               >
                 + Add Subcode
@@ -222,11 +223,11 @@ const CodebookEditorView: Component = () => {
   return (
     <Resizable orientation="horizontal">
       <Resizable.Panel initialSize={0.25} minSize={0.15} maxSize={0.4}>
-        <div class="codebook-sidebar">
-          <div class="codebook-sidebar-header">
+        <div class={styles.codebookSidebar}>
+          <div class={styles.codebookSidebarHeader}>
             <h3>Codebooks</h3>
             <button 
-              class="add-codebook-btn" 
+              class={styles.addCodebookBtn} 
               onClick={() => setIsCreating(true)}
               title="Create new codebook"
             >
@@ -235,10 +236,10 @@ const CodebookEditorView: Component = () => {
           </div>
           
           <Show when={isCreating()}>
-            <div class="new-codebook-form">
+            <div class={styles.newCodebookForm}>
               <input
                 type="text"
-                class="new-codebook-input"
+                class={styles.newCodebookInput}
                 placeholder="Codebook name..."
                 value={newCodebookName()}
                 onInput={(e) => setNewCodebookName(e.target.value)}
@@ -251,25 +252,25 @@ const CodebookEditorView: Component = () => {
                 }}
                 autofocus
               />
-              <div class="new-codebook-actions">
-                <button class="btn-small btn-primary" onClick={createCodebook}>Create</button>
-                <button class="btn-small" onClick={() => { setIsCreating(false); setNewCodebookName(''); }}>Cancel</button>
+              <div class={styles.newCodebookActions}>
+                <button class={`${styles.btnSmall} ${styles.btnPrimary}`} onClick={createCodebook}>Create</button>
+                <button class={styles.btnSmall} onClick={() => { setIsCreating(false); setNewCodebookName(''); }}>Cancel</button>
               </div>
             </div>
           </Show>
           
-          <div class="codebook-list-sidebar">
+          <div class={styles.codebookListSidebar}>
             <For each={store.codebooks} fallback={
-              <p class="no-codebooks-message">No codebooks yet. Create one to get started.</p>
+              <p class={styles.noCodebooksMessage}>No codebooks yet. Create one to get started.</p>
             }>
               {(codebook) => (
                 <div 
-                  class="codebook-list-item"
+                  class={styles.codebookListItem}
                   classList={{ 'selected': selectedCodebookGuid() === codebook.guid }}
                   onClick={() => setSelectedCodebookGuid(codebook.guid)}
                 >
-                  <span class="codebook-item-name">{codebook.name}</span>
-                  <span class="codebook-item-count">{countCodes(codebook.codes)} codes</span>
+                  <span class={styles.codebookItemName}>{codebook.name}</span>
+                  <span class={styles.codebookItemCount}>{countCodes(codebook.codes)} codes</span>
                 </div>
               )}
             </For>
@@ -280,18 +281,18 @@ const CodebookEditorView: Component = () => {
         <div class="inner-handle" />
       </Resizable.Handle>
       <Resizable.Panel initialSize={0.75} minSize={0.4}>
-        <div class="codebook-editor-main">
+        <div class={styles.codebookEditorMain}>
           <Show when={selectedCodebook()} fallback={
-            <div class="codebook-editor-empty">
+            <div class={styles.codebookEditorEmpty}>
               <p>Select a codebook to edit, or create a new one.</p>
             </div>
           }>
             {(codebook) => (
               <>
-                <div class="codebook-editor-header">
+                <div class={styles.codebookEditorHeader}>
                   <Show when={editingNameGuid() === codebook().guid} fallback={
                     <h2 
-                      class="codebook-title"
+                      class={styles.codebookTitle}
                       onClick={() => setEditingNameGuid(codebook().guid)}
                       title="Click to rename"
                     >
@@ -300,7 +301,7 @@ const CodebookEditorView: Component = () => {
                   }>
                     <input
                       type="text"
-                      class="codebook-title-input"
+                      class={styles.codebookTitleInput}
                       value={codebook().name}
                       onBlur={(e) => updateCodebookName(codebook(), e.target.value)}
                       onKeyDown={(e) => {
@@ -313,15 +314,15 @@ const CodebookEditorView: Component = () => {
                     />
                   </Show>
                   
-                  <div class="codebook-header-actions">
+                  <div class={styles.codebookHeaderActions}>
                     <button 
-                      class="btn-small btn-primary"
+                      class={`${styles.btnSmall} ${styles.btnPrimary}`}
                       onClick={() => addTopLevelCode(codebook())}
                     >
                       Add Code
                     </button>
                     <button 
-                      class="btn-small btn-danger"
+                      class={`${styles.btnSmall} ${styles.btnDanger}`}
                       onClick={() => deleteCodebook(codebook().guid)}
                     >
                       Delete Codebook
@@ -329,9 +330,9 @@ const CodebookEditorView: Component = () => {
                   </div>
                 </div>
                 
-                <div class="codebook-codes-editor">
+                <div class={styles.codebookCodesEditor}>
                   <Show when={codebook().codes.length > 0} fallback={
-                    <p class="no-codes-message">No codes yet. Add one to get started.</p>
+                    <p class={styles.noCodesMessage}>No codes yet. Add one to get started.</p>
                   }>
                     <CodeTreeEditor
                       codes={codebook().codes}

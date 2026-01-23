@@ -1,0 +1,15 @@
+.codeItem {
+    cursor: pointer;
+    padding: 5px;
+    margin: 2px 0;
+    border-radius: 3px;
+    color: black;
+}
+
+.codeItem:hover {
+    opacity: 0.8;
+}
+
+.subcodes {
+    margin-left: 20px;
+}

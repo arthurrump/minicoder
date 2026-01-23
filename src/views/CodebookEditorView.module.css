@@ -1,0 +1,315 @@
+.codebookSidebar {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.codebookSidebarHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.codebookSidebarHeader h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.addCodebookBtn {
+    background: var(--code-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    width: 24px;
+    height: 24px;
+    font-size: 16px;
+    cursor: pointer;
+    color: var(--text-color);
+}
+
+.addCodebookBtn:hover {
+    background: var(--code-hover);
+}
+
+.newCodebookForm {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--code-bg);
+}
+
+.newCodebookInput {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 13px;
+    box-sizing: border-box;
+    margin-bottom: 6px;
+}
+
+.newCodebookActions {
+    display: flex;
+    gap: 8px;
+}
+
+.btnSmall {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.btnSmall:hover {
+    background: var(--code-hover);
+}
+
+.btnPrimary {
+    background: #007acc;
+    border-color: #007acc;
+    color: white;
+}
+
+.btnPrimary:hover {
+    background: #005a9e;
+}
+
+.btnDanger {
+    background: #d9534f;
+    border-color: #d43f3a;
+    color: white;
+}
+
+.btnDanger:hover {
+    background: #c9302c;
+}
+
+.codebookListSidebar {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.codebookListItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+}
+
+.codebookListItem:hover {
+    background: var(--code-bg);
+}
+
+.codebookListItem.selected {
+    background: var(--code-bg);
+    border-left-color: #007acc;
+}
+
+.codebookItemName {
+    font-weight: 500;
+}
+
+.codebookItemCount {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.noCodebooksMessage {
+    padding: 10px;
+    text-align: center;
+    opacity: 0.7;
+    font-size: 13px;
+}
+
+.codebookEditorMain {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 10px;
+}
+
+.codebookEditorEmpty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    opacity: 0.7;
+}
+
+.codebookEditorHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 8px;
+}
+
+.codebookTitle {
+    margin: 0;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.codebookTitle:hover {
+    opacity: 0.8;
+}
+
+.codebookTitleInput {
+    font-size: 18px;
+    font-weight: bold;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    padding: 2px 6px;
+}
+
+.codebookHeaderActions {
+    display: flex;
+    gap: 8px;
+}
+
+.codebookCodesEditor {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.noCodesMessage {
+    text-align: center;
+    opacity: 0.7;
+    padding: 16px;
+}
+
+.codeEditorItem {
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    margin-bottom: 4px;
+    background: var(--bg-color);
+}
+
+.codeEditorRow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+}
+
+.codeColorPicker {
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.codeColorPicker::-webkit-color-swatch-wrapper {
+	padding: 0;
+}
+.codeColorPicker::-webkit-color-swatch {
+	border: none;
+}
+
+.codeNameInput {
+    flex: 1;
+    padding: 2px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.codeActions {
+    display: flex;
+    gap: 4px;
+}
+
+.codeActionBtn {
+    background: var(--code-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.codeActionBtn:hover {
+    background: var(--code-hover);
+}
+
+.codeDeleteBtn:hover {
+    background: #ffcccc;
+    border-color: #ff9999;
+    color: #cc0000;
+}
+
+.codeDescriptionRow {
+    padding: 0 8px 6px 8px;
+}
+
+.codeDescriptionInput {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 12px;
+    resize: vertical;
+    font-family: var(--font-system);
+}
+
+.codeSubcodesSection {
+    border-top: 1px solid var(--border-color);
+    margin-top: 4px;
+}
+
+.codeSubcodesToggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 6px 8px;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.codeSubcodesToggle:hover {
+    background: var(--code-bg);
+}
+
+.codeExpandIcon {
+    font-size: 10px;
+    width: 12px;
+}
+
+.codeSubcodesContent {
+    padding: 8px;
+    padding-top: 0;
+}
+
+.addSubcodeBtn {
+    margin-top: 8px;
+}
