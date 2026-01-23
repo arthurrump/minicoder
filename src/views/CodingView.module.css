@@ -56,10 +56,7 @@
 }
 
 .selectedCodeColor {
-    width: 14px;
-    height: 14px;
-    border-radius: 3px;
-    flex-shrink: 0;
+    /* Color chip styling is handled by ColorChip component */
 }
 
 .noCodeSelected {
@@ -78,4 +75,18 @@
 
 .selectedCodeNotice button:hover {
     color: var(--text-color);
+}
+
+.cursorChip {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1001;
+}
+
+.cursorChipInner {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    margin: 0;
+    border: 1px solid rgba(0, 0, 0, 0.2);
 }

@@ -1,6 +1,7 @@
 import octicons from '@primer/octicons';
 import { createMemo, createSignal, For, Show, type Component, onMount, onCleanup, createEffect } from 'solid-js';
 import styles from './TextView.module.css';
+import HighlightPopover from './HighlightPopover';
 
 interface CodeWithCodebook {
     code: Code;
@@ -765,45 +766,17 @@ const TextView: Component<TextViewProps> = (props) => {
             </div>
         
             <Show when={popover()}>
-                {(p) => {
-                    const codeInfo = createMemo(() => codeMap().get(p().selection.code_guid));
-                    return (
-                        <div
-                            class={styles.highlightPopover}
-                            style={{
-                                left: `${p().x}px`,
-                                top: `${p().y}px`
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div class={styles.popoverHeader}>
-                                <div class={styles.popoverCodeItem}>
-                                    <span
-                                        class={styles.popoverCodeColor}
-                                        style={{ 'background-color': codeInfo()?.code.color || '#888' }}
-                                    />
-                                    <span class={styles.popoverCodeName}>{codeInfo()?.code.name || 'Unknown'}</span>
-                                    <Show when={codeInfo()?.codebook}>
-                                        <span class={styles.popoverCodeCodebook}>({codeInfo()!.codebook.name})</span>
-                                    </Show>
-                                </div>
-                                <button
-                                    class={styles.popoverRemoveBtn}
-                                    onClick={() => handleRemoveCode(p().selection.guid)}
-                                    title="Remove this code"
-                                    innerHTML={octicons.trash.toSVG()}
-                                />
-                            </div>
-                            <textarea
-                                class={styles.popoverNote}
-                                placeholder="Add a note..."
-                                value={p().selection.note || ''}
-                                onInput={(e) => handleNoteChange(p().selection.guid, e.currentTarget.value)}
-                                rows={3}
-                            />
-                        </div>
-                    );
-                }}
+                {(p) => (
+                    <HighlightPopover
+                        x={p().x}
+                        y={p().y}
+                        selection={p().selection}
+                        codeMap={codeMap()}
+                        onRemoveCode={handleRemoveCode}
+                        onNoteChange={handleNoteChange}
+                        onClick={(e: MouseEvent) => e.stopPropagation()}
+                    />
+                )}
             </Show>
         </div>
     );

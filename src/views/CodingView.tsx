@@ -4,6 +4,7 @@ import Resizable from '@corvu/resizable';
 import FileBrowser from '../components/FileBrowser';
 import CodePicker from '../components/CodePicker';
 import TextView from '../components/TextView';
+import ColorChip from '../components/ColorChip';
 import { hashText } from '../helpers';
 import { useStore } from '../store';
 import styles from './CodingView.module.css';
@@ -214,7 +215,7 @@ const CodingView: Component = () => {
                 <span class={styles.noCodeSelected}>No code selected</span>
               }>
                 <span class={styles.selectedCodeInfo}>
-                  <span class={styles.selectedCodeColor} style={{ "background-color": selectedCode()!.color }}></span>
+                  <ColorChip color={selectedCode()!.color} class={styles.selectedCodeColor} />
                   <span>{selectedCode()!.name}</span>
                   <Show when={selectedCodebook()}>
                     <span class={styles.selectedCodeCodebook}>({selectedCodebook()!.name})</span>
@@ -227,16 +228,17 @@ const CodingView: Component = () => {
           </div>
         </Resizable.Panel>
       </Resizable>
-      <Show when={selectedCode() && mousePosition() && isMouseInTextView()}>
-        <span 
-          class={styles.cursorChip}
-          style={{
-            left: `${mousePosition()!.x - 16}px`,
-            top: `${mousePosition()!.y}px`,
-            "background-color": selectedCode()!.color
-          }}
-        />
-      </Show>
+     <Show when={selectedCode() && mousePosition() && isMouseInTextView()}>
+       <div
+         class={styles.cursorChip}
+         style={{
+           left: `${mousePosition()!.x - 16}px`,
+           top: `${mousePosition()!.y}px`
+         }}
+       >
+         <ColorChip color={selectedCode()!.color} class={styles.cursorChipInner} />
+       </div>
+     </Show>
     </>
   );
 };

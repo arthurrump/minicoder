@@ -1,0 +1,8 @@
+.colorChip {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    margin-right: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
