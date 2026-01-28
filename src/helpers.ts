@@ -23,3 +23,28 @@ export function debounce<T extends (...args: any[]) => any>(
         }, delay);
     };
 }
+
+// Check if file content appears to be plain text
+export function isPlainText(content: string): boolean {
+    // Check for null bytes (common in binary files)
+    if (content.includes('\0')) {
+        return false;
+    }
+    
+    // Check for high percentage of non-printable characters
+    let nonPrintableCount = 0;
+    const sampleSize = Math.min(content.length, 8192); // Sample first 8KB
+    
+    for (let i = 0; i < sampleSize; i++) {
+        const code = content.charCodeAt(i);
+        // Allow common whitespace: tab (9), newline (10), carriage return (13)
+        // and printable ASCII/Unicode characters (>= 32)
+        if (code < 9 || (code > 13 && code < 32)) {
+            nonPrintableCount++;
+        }
+    }
+    
+    // If more than 30% are non-printable, consider it binary
+    const nonPrintableRatio = nonPrintableCount / sampleSize;
+    return nonPrintableRatio < 0.3;
+}

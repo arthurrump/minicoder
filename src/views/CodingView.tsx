@@ -5,7 +5,7 @@ import FileBrowser from '../components/FileBrowser';
 import CodePicker from '../components/CodePicker';
 import TextView from '../components/TextView';
 import ColorChip from '../components/ColorChip';
-import { hashText } from '../helpers';
+import { hashText, isPlainText } from '../helpers';
 import { useStore } from '../store';
 import styles from './CodingView.module.css';
 
@@ -22,6 +22,7 @@ const CodingView: Component = () => {
   const [selectedCodebook, setSelectedCodebook] = createSignal<Codebook | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ start: number; end: number } | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
+  const [nonPlainTextWarning, setNonPlainTextWarning] = createSignal<boolean>(false);
   const [mousePosition, setMousePosition] = createSignal<{ x: number; y: number } | null>(null);
   const [isMouseInTextView, setIsMouseInTextView] = createSignal<boolean>(false);
 
@@ -43,8 +44,12 @@ const CodingView: Component = () => {
   createEffect(on([selectedFilePath, () => fileContent()], async ([path, content]) => {
     if (!path || !content) {
       setHashMismatchWarning(false);
+      setNonPlainTextWarning(false);
       return;
     }
+
+    // Check if file is plain text
+    setNonPlainTextWarning(!isPlainText(content));
 
     const source = store.sources[path];
     if (!source) {
@@ -181,26 +186,33 @@ const CodingView: Component = () => {
         <Resizable.Panel initialSize={0.6} minSize={0.1} maxSize={0.8}>
           <Show when={selectedFilePath()} fallback={<p style={{ padding: '10px' }}>Select a file to view its contents</p>}>
             <div class="text-view-wrapper">
-              <Show when={hashMismatchWarning()}>
+              <Show when={nonPlainTextWarning()}>
                 <div class={styles.hashMismatchWarning}>
-                  ⚠️ Warning: The file content has changed since these selections were saved. Positions may be incorrect.
-                  <button onClick={() => setHashMismatchWarning(false)}>Dismiss</button>
+                  This file does not appear to be a plain text file. Minicoder only supports coding in plain text files.
                 </div>
               </Show>
-              <Show when={fileContent()}>
-                {(content) => (
-                  <TextView
-                    content={content()}
-                    selections={selections()}
-                    codebooks={store.codebooks}
-                    onSelectionCreate={handleSelectionCreate}
-                    onSelectionRemove={handleSelectionRemove}
-                    onSelectionUpdate={handleSelectionUpdate}
-                    onSelectionClear={handleSelectionClear}
-                    onMouseEnter={() => setIsMouseInTextView(true)}
-                    onMouseLeave={() => setIsMouseInTextView(false)}
-                  />
-                )}
+              <Show when={!nonPlainTextWarning()}>
+                <Show when={hashMismatchWarning()}>
+                  <div class={styles.hashMismatchWarning}>
+                    ⚠️ Warning: The file content has changed since these selections were saved. Positions may be incorrect.
+                    <button onClick={() => setHashMismatchWarning(false)}>Dismiss</button>
+                  </div>
+                </Show>
+                <Show when={fileContent()}>
+                  {(content) => (
+                    <TextView
+                      content={content()}
+                      selections={selections()}
+                      codebooks={store.codebooks}
+                      onSelectionCreate={handleSelectionCreate}
+                      onSelectionRemove={handleSelectionRemove}
+                      onSelectionUpdate={handleSelectionUpdate}
+                      onSelectionClear={handleSelectionClear}
+                      onMouseEnter={() => setIsMouseInTextView(true)}
+                      onMouseLeave={() => setIsMouseInTextView(false)}
+                    />
+                  )}
+                </Show>
               </Show>
             </div>
           </Show>
