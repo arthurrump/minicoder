@@ -1,10 +1,12 @@
 :root {
     --bg-color: white;
+    --bg-secondary: #f5f5f5;
     --text-color: black;
     --border-color: #ccc;
     --code-bg: #f0f0f0;
     --code-hover: #e0e0e0;
     --label-bg: yellow;
+    --accent-color: #007acc;
 
     --font-system: system-ui, sans-serif;
     --font-text: Charter, 'Bitstream Charter', 'Sitka Text', Cambria, serif;
@@ -13,11 +15,13 @@
 @media (prefers-color-scheme: dark) {
     :root {
         --bg-color: #121212;
+        --bg-secondary: #1e1e1e;
         --text-color: #e0e0e0;
         --border-color: #555;
         --code-bg: #333;
         --code-hover: #444;
         --label-bg: #666;
+        --accent-color: #0098ff;
     }
 }
 
@@ -49,6 +53,12 @@ body {
     padding: 10px;
     box-sizing: border-box;
     overflow-y: auto;
+}
+
+/* Override default panel styling for editor pane */
+[data-corvu-resizable-panel] > [data-editor-pane] {
+    padding: 0;
+    overflow: hidden;
 }
 
 [data-corvu-resizable-handle] {

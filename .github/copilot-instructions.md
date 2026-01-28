@@ -145,3 +145,7 @@ pnpm serve     # Preview production build
 - `@corvu/resizable` - resizable pane separator
 - `@primer/octicons` - icon library
 - `solid-persistent` - state persistence wrapper (used in App.tsx for view persistence)
+
+# Interaction
+
+Ask questions is you need more information or need to make significant design decisions.
