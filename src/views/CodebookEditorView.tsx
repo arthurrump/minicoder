@@ -1,4 +1,5 @@
 import { createSignal, createMemo, For, Show, type Component } from 'solid-js';
+import octicons from '@primer/octicons';
 import Resizable from '@corvu/resizable';
 import { useStore } from '../store';
 import styles from './CodebookEditorView.module.css';
@@ -25,44 +26,39 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
 
   return (
     <>
-      <div class={styles.codeEditorItem} style={{ "margin-left": `${props.depth * 20}px` }}>
-        <div class={styles.codeEditorRow}>
-          <input
-            type="color"
-            class={styles.codeColorPicker}
-            value={props.code.color}
-            onChange={(e) => props.onUpdate({ color: e.target.value })}
-            title="Code color"
+      <div class={styles.codeEditorItem}>
+        <input
+          type="color"
+          class={styles.codeColorPicker}
+          value={props.code.color}
+          onChange={(e) => props.onUpdate({ color: e.target.value })}
+          title="Code color"
+        />
+        
+        <input
+          type="text"
+          class={styles.codeNameInput}
+          value={props.code.name}
+          onInput={(e) => props.onUpdate({ name: e.target.value })}
+          placeholder="Code name..."
+        />
+        
+        <div class={styles.codeActions}>
+          <button 
+            class={`${styles.codeActionBtn} ${styles.codeDeleteBtn}`} 
+            onClick={props.onDelete}
+            title="Delete code"
+            innerHTML={octicons.trash.toSVG()}
           />
-          
-          <input
-            type="text"
-            class={styles.codeNameInput}
-            value={props.code.name}
-            onInput={(e) => props.onUpdate({ name: e.target.value })}
-            placeholder="Code name..."
-          />
-          
-          <div class={styles.codeActions}>
-            <button 
-              class={`${styles.codeActionBtn} ${styles.codeDeleteBtn}`} 
-              onClick={props.onDelete}
-              title="Delete code"
-            >
-              ×
-            </button>
-          </div>
         </div>
         
-        <div class={styles.codeDescriptionRow}>
-          <textarea
-            class={styles.codeDescriptionInput}
-            placeholder="Description..."
-            value={props.code.description || ''}
-            onInput={(e) => props.onUpdate({ description: e.target.value })}
-            rows="2"
-          />
-        </div>
+        <textarea
+          class={styles.codeDescriptionInput}
+          placeholder="Description..."
+          value={props.code.description || ''}
+          onInput={(e) => props.onUpdate({ description: e.target.value })}
+          rows="2"
+        />
         
         <div class={styles.codeSubcodesSection}>
           <button 

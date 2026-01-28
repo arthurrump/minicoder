@@ -77,22 +77,6 @@ body {
     background-color: var(--border-color);
 }
 
-/* Highlight styles */
-.highlight {
-    position: relative;
-}
-
-.highlight::after {
-    content: attr(data-code);
-    position: absolute;
-    top: -15px;
-    right: 0;
-    background: var(--label-bg);
-    padding: 2px;
-    font-size: 10px;
-    color: var(--text-color);
-}
-
 /* View placeholders */
 .view-placeholder {
     padding: 40px;

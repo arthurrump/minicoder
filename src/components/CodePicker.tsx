@@ -1,6 +1,7 @@
 import { createEffect, createSignal, For, Show, on } from "solid-js";
 import styles from "./CodePicker.module.css";
 import codebookStyles from "./CodebookList.module.css";
+import ColorChip from "./ColorChip";
 
 interface CodePickerProps {
     codebooks: Codebook[];
@@ -19,7 +20,6 @@ const CodeList = (props: CodeListProps) => (
             <>
                 <div
                     class={styles.codeItem}
-                    style={{ "background-color": code.color }}
                     onMouseDown={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -29,7 +29,8 @@ const CodeList = (props: CodeListProps) => (
                         props.onCodeClick(code, props.codebook);
                     }}
                 >
-                    {code.name}
+                    <ColorChip class={styles.colorChip} color={code.color} />
+                    <span class={styles.codeName}>{code.name}</span>
                 </div>
                 <Show when={code.subcodes && code.subcodes.length > 0}>
                     <div class={styles.subcodes}>

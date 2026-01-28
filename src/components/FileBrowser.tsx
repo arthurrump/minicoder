@@ -151,14 +151,14 @@ export function FileBrowser(props: FileBrowserProps) {
           }}
         >
           <Show when={nodeProps.node.handle.kind === 'directory'}>
-            <span style={{ 'margin-right': '4px' }}>
+            <span class={styles.toggle}>
               {isExpanded() ? '▼' : '▶'}
             </span>
           </Show>
           <Show when={nodeProps.node.handle.kind === 'file'}>
-            <span style={{ 'margin-right': '4px' }}>📄</span>
+            <span class={styles.fileIndicator}>📄</span>
           </Show>
-          <span class="file-name">{nodeProps.node.name}</span>
+          <span>{nodeProps.node.name}</span>
         </div>
         <Show when={nodeProps.node.handle.kind === 'directory' && isExpanded()}>
           <For each={children()}>

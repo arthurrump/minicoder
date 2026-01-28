@@ -1,6 +1,7 @@
 import { createEffect, createSignal, For, on, Show, type Component } from 'solid-js';
 import { useStore } from '../store';
 import styles from './SelectionsListView.module.css';
+import ColorChip from '../components/ColorChip';
 
 interface SelectionWithSource {
   selection: TextSelection;
@@ -52,10 +53,7 @@ const CodeSelections: Component<CodeSelectionsProps> = (props) => {
             <span class={styles.codeToggle}>
               {props.expandedCodes.has(props.code.guid) ? '▼' : '▶'}
             </span>
-            <span 
-              class={styles.codeColorBadge} 
-              style={{ "background-color": props.code.color }}
-            />
+            <ColorChip color={props.code.color} />
             <span class={styles.codeName}>{props.code.name}</span>
             <span class={styles.codeCount}>
               {selections().length} selection{selections().length !== 1 ? 's' : ''}
@@ -84,10 +82,7 @@ const CodeSelections: Component<CodeSelectionsProps> = (props) => {
         <Show when={!hasSelections() && hasSubcodeSelections()}>
           {/* Show code name without expand/collapse if it has no selections but subcodes do */}
           <div class={`${styles.codeSelectionsHeader} ${styles.codeSelectionsHeaderEmpty}`}>
-            <span 
-              class={styles.codeColorBadge} 
-              style={{ "background-color": props.code.color }}
-            />
+            <ColorChip color={props.code.color} />
             <span class={styles.codeName}>{props.code.name}</span>
           </div>
         </Show>
@@ -254,7 +249,7 @@ const SelectionsListView: Component = () => {
                       class="codebook-header"
                       onClick={() => toggleCodebook(codebook.guid)}
                     >
-                      <span class="codebook-toggle">
+                      <span class={styles.toggle}>
                         {expandedCodebooks().has(codebook.guid) ? '▼' : '▶'}
                       </span>
                       <span class="codebook-name">{codebook.name}</span>

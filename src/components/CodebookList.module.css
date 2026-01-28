@@ -25,7 +25,7 @@
 }
 
 .codebookToggle {
-    font-size: 10px;
+    font-size: .6em;
     width: 12px;
     flex-shrink: 0;
 }

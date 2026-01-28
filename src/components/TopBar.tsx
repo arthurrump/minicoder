@@ -20,7 +20,10 @@ export function TopBar<ViewType>(props: TopBarProps<ViewType>) {
                         <For each={props.views}>
                             {(view) => (
                                 <button
-                                class={props.currentView === view.id ? styles.navButtonActive : styles.navButton}
+                                classList={{
+                                    [styles.navButton]: true,
+                                    [styles.navButtonActive]: props.currentView === view.id
+                                }}
                                 onClick={() => props.onViewChange(view.id)}
                                 >
                                     {view.label}

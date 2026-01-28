@@ -12,4 +12,17 @@
     cursor: pointer;
     user-select: none;
     text-wrap: nowrap;
+    display: grid;
+    grid-template-columns: 1em 1fr;
+    align-items: center;
+    gap: 4px;
+}
+
+.toggle {
+    font-size: .6em;
+    text-align: center;
+}
+
+.fileIndicator {
+    font-size: .75em;
 }

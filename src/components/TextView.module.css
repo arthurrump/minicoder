@@ -28,82 +28,6 @@
     pointer-events: auto;
 }
 
-.highlightPopover {
-    position: fixed;
-    background: var(--bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    padding: 8px 10px;
-    z-index: 1000;
-    transform: translate(-50%, 8px);
-    min-width: 250px;
-}
-
-.popoverHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 8px;
-}
-
-.popoverCodeItem {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
-}
-
-.popoverCodeColor {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-    flex-shrink: 0;
-}
-
-.popoverCodeName {
-    font-size: 13px;
-}
-
-.popoverCodeCodebook {
-    font-size: 11px;
-    opacity: 0.7;
-}
-
-.popoverRemoveBtn {
-    background: none;
-    border: none;
-    color: #888;
-    cursor: pointer;
-    padding: 0 4px;
-    height: 16px;
-    flex-shrink: 0;
-}
-
-.popoverRemoveBtn:hover {
-    color: #e74c3c;
-}
-
-.popoverNote {
-    width: 100%;
-    box-sizing: border-box;
-    font-family: Arial, sans-serif;
-    font-size: 13px;
-    padding: 6px 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    resize: vertical;
-    min-height: 60px;
-}
-
-.popoverNote:focus {
-    outline: none;
-    border-color: #007acc;
-}
-
 .selectionHandle {
     position: absolute;
     width: 2px;
@@ -127,31 +51,12 @@
     transform: translateX(-100%);
 }
 
-.saveStatusIndicator {
-    margin-left: 6px;
-    font-size: 10px;
-}
-
-.saveStatusIndicator.saved {
-    color: #4caf50;
-}
-
-.saveStatusIndicator.pending {
-    color: #ff9800;
-    animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-}
-
 .cursorChip {
     position: fixed;
     pointer-events: none;
     z-index: 9999;
     width: 12px;
     height: 12px;
-    border-radius: 2px;
+    border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }

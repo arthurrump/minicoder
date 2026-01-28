@@ -34,7 +34,8 @@
     align-items: center;
     gap: 8px;
     padding: 10px 12px;
-    background-color: var(--code-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
     cursor: pointer;
     user-select: none;
 }
@@ -52,8 +53,12 @@
     background-color: var(--code-bg);
 }
 
+.toggle {
+    font-size: .6em;
+}
+
 .codeToggle {
-    font-size: 10px;
+    font-size: .6em;
     width: 12px;
     flex-shrink: 0;
 }
@@ -61,7 +66,7 @@
 .codeColorBadge {
     width: 14px;
     height: 14px;
-    border-radius: 3px;
+    border-radius: 4px;
     flex-shrink: 0;
 }
 
@@ -72,12 +77,11 @@
 .codeCodebook {
     color: var(--text-color);
     opacity: 0.6;
-    font-size: 0.9em;
 }
 
 .codeCount {
     margin-left: auto;
-    font-size: 0.85em;
+    /* font-size: 0.85em; */
     color: var(--text-color);
     opacity: 0.7;
 }
@@ -96,7 +100,7 @@
 }
 
 .selectionSource {
-    font-size: 0.85em;
+    /* font-size: 0.85em; */
     font-weight: 500;
     margin-bottom: 4px;
     color: var(--text-color);
@@ -114,10 +118,10 @@
 
 .selectionNote {
     margin-top: 6px;
-    font-size: 0.85em;
+    /* font-size: 0.85em; */
     color: var(--text-color);
     opacity: 0.7;
     padding: 4px 8px;
     background-color: var(--code-bg);
-    border-radius: 3px;
+    border-radius: 4px;
 }
