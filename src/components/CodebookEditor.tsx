@@ -15,12 +15,14 @@ interface CodeEditorProps {
   onDelete: () => void;
   onAddSubcode: () => void;
   onSubcodesChange: (subcodes: Code[]) => void;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
+  isExpandedForCode: (guid: string) => boolean;
+  onToggleExpandedForCode: (guid: string) => void;
   depth: number;
 }
 
 const CodeEditor: Component<CodeEditorProps> = (props) => {
-  const [isExpanded, setIsExpanded] = createSignal(false);
-  
   const hasSubcodes = () => props.code.subcodes && props.code.subcodes.length > 0;
 
   return (
@@ -62,19 +64,21 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
         <div class={styles.codeSubcodesSection}>
           <button 
             class={styles.codeSubcodesToggle}
-            onClick={() => setIsExpanded(!isExpanded())}
+            onClick={props.onToggleExpanded}
           >
-            <span class={styles.codeExpandIcon}>{isExpanded() ? '▼' : '▶'}</span>
+            <span class={styles.codeExpandIcon}>{props.isExpanded ? '▼' : '▶'}</span>
             <span>Subcodes ({props.code.subcodes?.length || 0})</span>
           </button>
           
-          <Show when={isExpanded()}>
+          <Show when={props.isExpanded}>
             <div class={styles.codeSubcodesContent}>
               <Show when={hasSubcodes()}>
                 <CodeTreeEditor
                   codes={props.code.subcodes}
                   depth={props.depth + 1}
                   onCodesChange={props.onSubcodesChange}
+                  isExpanded={props.isExpandedForCode}
+                  onToggleExpanded={props.onToggleExpandedForCode}
                 />
               </Show>
               <button 
@@ -95,6 +99,8 @@ interface CodeTreeEditorProps {
   codes: Code[];
   onCodesChange: (codes: Code[]) => void;
   depth: number;
+  isExpanded: (guid: string) => boolean;
+  onToggleExpanded: (guid: string) => void;
 }
 
 const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
@@ -141,6 +147,10 @@ const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
           onDelete={() => deleteCode(index())}
           onAddSubcode={() => addSubcode(index())}
           onSubcodesChange={(subcodes) => updateSubcodes(index(), subcodes)}
+          isExpanded={props.isExpanded(code.guid)}
+          onToggleExpanded={() => props.onToggleExpanded(code.guid)}
+          isExpandedForCode={props.isExpanded}
+          onToggleExpandedForCode={props.onToggleExpanded}
         />
       )}
     </For>
@@ -149,11 +159,31 @@ const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
 
 interface CodebookEditorProps {
   codebookPath: string;
+  scrollRef?: (el: HTMLDivElement) => void;
+  expandedCodeGuids?: Set<string>;
+  onExpandedCodeGuidsChange?: (next: Set<string>) => void;
 }
 
 const CodebookEditor: Component<CodebookEditorProps> = (props) => {
   const { store, actions } = useStore();
   const [editingName, setEditingName] = createSignal(false);
+  const [localExpandedGuids, setLocalExpandedGuids] = createSignal<Set<string>>(new Set());
+
+  const getExpandedGuids = () => props.expandedCodeGuids ?? localExpandedGuids();
+  const setExpandedGuids = (next: Set<string>) => {
+    props.onExpandedCodeGuidsChange ? props.onExpandedCodeGuidsChange(next) : setLocalExpandedGuids(next);
+  };
+
+  const isExpanded = (guid: string) => getExpandedGuids().has(guid);
+  const toggleExpanded = (guid: string) => {
+    const next = new Set(getExpandedGuids());
+    if (next.has(guid)) {
+      next.delete(guid);
+    } else {
+      next.add(guid);
+    }
+    setExpandedGuids(next);
+  };
 
   // Find codebook by matching the path (filename should be {name}.mcc)
   const codebook = createMemo(() => {
@@ -259,7 +289,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
               </div>
             </div>
             
-            <div class={styles.codebookCodesEditor}>
+            <div class={styles.codebookCodesEditor} ref={props.scrollRef}>
               <Show when={cb().codes.length > 0} fallback={
                 <p class={styles.noCodesMessage}>No codes yet. Add one to get started.</p>
               }>
@@ -267,6 +297,8 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                   codes={cb().codes}
                   depth={0}
                   onCodesChange={updateCodebookCodes}
+                  isExpanded={isExpanded}
+                  onToggleExpanded={toggleExpanded}
                 />
               </Show>
             </div>

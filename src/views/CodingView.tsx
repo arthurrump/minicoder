@@ -95,12 +95,34 @@ const CodingView: Component = () => {
   // Store scroll positions per tab
   const scrollPositions = new Map<string, number>();
   let textViewWrapperRef: HTMLDivElement | undefined;
+  let queryViewWrapperRef: HTMLDivElement | undefined;
+  let codebookViewWrapperRef: HTMLDivElement | undefined;
+
+  const [queryExpandedByPath, setQueryExpandedByPath] = createSignal<Map<string, Set<string>>>(new Map());
+  const [codebookExpandedByPath, setCodebookExpandedByPath] = createSignal<Map<string, Set<string>>>(new Map());
   
   // Helper to save current scroll position before navigating away
   function saveCurrentScrollPosition() {
     const currentPath = selectedFilePath();
-    if (currentPath && textViewWrapperRef && !currentPath.endsWith('.mcc')) {
-      scrollPositions.set(currentPath, textViewWrapperRef.scrollTop);
+    if (!currentPath) return;
+    const ref = currentPath.endsWith('.mcc')
+      ? codebookViewWrapperRef
+      : currentPath.endsWith('.mcq')
+        ? queryViewWrapperRef
+        : textViewWrapperRef;
+    if (ref) {
+      scrollPositions.set(currentPath, ref.scrollTop);
+    }
+  }
+
+  function restoreScrollPosition(path: string) {
+    const ref = path.endsWith('.mcc')
+      ? codebookViewWrapperRef
+      : path.endsWith('.mcq')
+        ? queryViewWrapperRef
+        : textViewWrapperRef;
+    if (ref) {
+      ref.scrollTop = scrollPositions.get(path) || 0;
     }
   }
   
@@ -148,11 +170,41 @@ const CodingView: Component = () => {
     if (path && textViewWrapperRef) {
       // Use requestAnimationFrame to ensure DOM has updated
       requestAnimationFrame(() => {
-        const savedPosition = scrollPositions.get(path) || 0;
-        if (textViewWrapperRef) {
-          textViewWrapperRef.scrollTop = savedPosition;
-        }
+        restoreScrollPosition(path);
       });
+    }
+  }));
+
+  // Restore scroll position for codebook/query editors
+  createEffect(on(selectedFilePath, (path) => {
+    if (!path) return;
+    if (path.endsWith('.mcc') || path.endsWith('.mcq')) {
+      requestAnimationFrame(() => {
+        restoreScrollPosition(path);
+      });
+    }
+  }));
+
+  // Initialize per-tab expanded state containers
+  createEffect(on(selectedFilePath, (path) => {
+    if (!path) return;
+    if (path.endsWith('.mcq')) {
+      if (!queryExpandedByPath().has(path)) {
+        setQueryExpandedByPath(prev => {
+          const next = new Map(prev);
+          next.set(path, new Set());
+          return next;
+        });
+      }
+    }
+    if (path.endsWith('.mcc')) {
+      if (!codebookExpandedByPath().has(path)) {
+        setCodebookExpandedByPath(prev => {
+          const next = new Map(prev);
+          next.set(path, new Set());
+          return next;
+        });
+      }
     }
   }));
 
@@ -278,6 +330,22 @@ const CodingView: Component = () => {
 
   function handleSelectionClear() {
     setPendingSelection(null);
+  }
+
+  function handleQueryExpandedChange(path: string, keys: Set<string>) {
+    setQueryExpandedByPath(prev => {
+      const next = new Map(prev);
+      next.set(path, new Set(keys));
+      return next;
+    });
+  }
+
+  function handleCodebookExpandedChange(path: string, keys: Set<string>) {
+    setCodebookExpandedByPath(prev => {
+      const next = new Map(prev);
+      next.set(path, new Set(keys));
+      return next;
+    });
   }
 
   function handleMouseMove(e: MouseEvent) {
@@ -416,11 +484,19 @@ const CodingView: Component = () => {
             {/* Content area - conditionally show codebook editor, query editor, or text view */}
             <Show when={selectedFilePath()} fallback={<p style={{ padding: '10px' }}>Select a file to view its contents</p>}>
               <Show when={isCodebookFile()}>
-                <CodebookEditor codebookPath={selectedFilePath()} />
+                <CodebookEditor
+                  codebookPath={selectedFilePath()}
+                  scrollRef={(el) => { codebookViewWrapperRef = el; }}
+                  expandedCodeGuids={codebookExpandedByPath().get(selectedFilePath())}
+                  onExpandedCodeGuidsChange={(keys) => handleCodebookExpandedChange(selectedFilePath(), keys)}
+                />
               </Show>
               <Show when={isQueryFile()}>
                 <QueryEditor
                   queryPath={selectedFilePath()}
+                  scrollRef={(el) => { queryViewWrapperRef = el; }}
+                  expandedKeys={queryExpandedByPath().get(selectedFilePath())}
+                  onExpandedKeysChange={(keys) => handleQueryExpandedChange(selectedFilePath(), keys)}
                   onSelectionCreate={handleSelectionCreateForSource}
                   onSelectionRemove={handleSelectionRemoveForSource}
                   onSelectionUpdate={(sourcePath, selectionGuid, start, end, note) =>

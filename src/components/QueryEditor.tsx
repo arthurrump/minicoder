@@ -342,6 +342,8 @@ interface MatchGroup {
 
 interface MatchingSelectionsListProps {
   query: Query;
+  expandedKeys?: Set<string>;
+  onExpandedKeysChange?: (keys: Set<string>) => void;
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
@@ -440,33 +442,36 @@ const MatchItem: Component<MatchItemProps> = (props) => {
 
 const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) => {
   const { store, actions } = useStore();
-  const [expandedKeys, setExpandedKeys] = createSignal<Set<string>>(new Set());
+  const [localExpandedKeys, setLocalExpandedKeys] = createSignal<Set<string>>(new Set());
 
   const getGroupKey = (group: MatchGroup) => `${group.sourcePath}::${group.start}-${group.end}`;
 
-  const isExpanded = (group: MatchGroup) => expandedKeys().has(getGroupKey(group));
+  const getExpandedKeys = () => props.expandedKeys ?? localExpandedKeys();
+  const setExpandedKeys = (next: Set<string>) => {
+    props.onExpandedKeysChange ? props.onExpandedKeysChange(next) : setLocalExpandedKeys(next);
+  };
+
+  const isExpanded = (group: MatchGroup) => getExpandedKeys().has(getGroupKey(group));
 
   const ensureExpanded = (group: MatchGroup) => {
     const key = getGroupKey(group);
-    setExpandedKeys(prev => {
-      if (prev.has(key)) return prev;
-      const next = new Set(prev);
-      next.add(key);
-      return next;
-    });
+    const current = getExpandedKeys();
+    if (current.has(key)) return;
+    const next = new Set(current);
+    next.add(key);
+    setExpandedKeys(next);
   };
 
   const toggleExpanded = (group: MatchGroup) => {
     const key = getGroupKey(group);
-    setExpandedKeys(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
+    const current = getExpandedKeys();
+    const next = new Set(current);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    setExpandedKeys(next);
   };
   
   // Compute match groups - groups of overlapping selections that match the query
@@ -563,7 +568,7 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
           <button
             class={styles.expandBtnSmall}
             onClick={() => {
-              const next = new Set(expandedKeys());
+              const next = new Set(getExpandedKeys());
               for (const group of matchGroups()) {
                 next.add(getGroupKey(group));
               }
@@ -607,6 +612,9 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
 
 interface QueryEditorProps {
   queryPath: string;
+  scrollRef?: (el: HTMLDivElement) => void;
+  expandedKeys?: Set<string>;
+  onExpandedKeysChange?: (keys: Set<string>) => void;
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
@@ -661,7 +669,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
   };
 
   return (
-    <div class={styles.queryEditorMain}>
+    <div class={styles.queryEditorMain} ref={props.scrollRef}>
       <Show when={query()} fallback={
         <div class={styles.queryEditorEmpty}>
           <p>Query not found.</p>
@@ -732,6 +740,8 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
             {/* Display matching selections */}
             <MatchingSelectionsList
               query={q()}
+              expandedKeys={props.expandedKeys}
+              onExpandedKeysChange={props.onExpandedKeysChange}
               onSelectionCreate={props.onSelectionCreate}
               onSelectionRemove={props.onSelectionRemove}
               onSelectionUpdate={props.onSelectionUpdate}
