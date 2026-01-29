@@ -72,6 +72,28 @@ export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<st
   return false;
 }
 
+function parseFilterList(filter: string | undefined): string[] {
+  if (!filter) return [];
+  return filter
+    .split(',')
+    .map(p => p.trim())
+    .filter(Boolean);
+}
+
+function globToRegExp(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  const withDoubleStar = escaped.replace(/\*\*/g, '___DOUBLE_STAR___');
+  const withSingleStar = withDoubleStar.replace(/\*/g, '[^/]*');
+  const withQuestion = withSingleStar.replace(/\?/g, '.');
+  const finalPattern = withQuestion.replace(/___DOUBLE_STAR___/g, '.*');
+  return new RegExp(`^${finalPattern}$`, 'i');
+}
+
+function matchesAnyGlob(path: string, patterns: string[]): boolean {
+  if (patterns.length === 0) return true;
+  return patterns.some(pattern => globToRegExp(pattern).test(path));
+}
+
 // Component for initial query creation - choose between code or operator
 interface QueryInitialPickerProps {
   codebooks: Codebook[];
@@ -94,7 +116,6 @@ const QueryInitialPicker: Component<QueryInitialPickerProps> = (props) => {
   return (
     <div class={styles.initialPicker}>
       <Show when={mode() === 'choose'}>
-        <p class={styles.pickerPrompt}>Start building your query:</p>
         <div class={styles.pickerButtons}>
           <button class={styles.pickerBtn} onClick={() => setMode('code')}>
             <span innerHTML={octicons.code.toSVG({ width: 16 })} />
@@ -138,6 +159,7 @@ interface QueryNodeEditorProps {
   onDelete: () => void;
   codebooks: Codebook[];
   depth: number;
+  showDelete?: boolean;
 }
 
 const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
@@ -266,7 +288,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
               NOT
             </button>
           </Show>
-          <Show when={props.depth > 0}>
+          <Show when={props.showDelete || props.depth > 0}>
             <button
               class={styles.deleteBtn}
               onClick={props.onDelete}
@@ -478,11 +500,12 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
   const matchGroups = createMemo(() => {
     const groups: MatchGroup[] = [];
     const queryNode = props.query.query;
-    
-    if (!queryNode) return groups;
+    const filterPatterns = parseFilterList(props.query.fileFilter);
+    const matchAll = !queryNode;
     
     // Iterate over all sources
     for (const [sourcePath, source] of Object.entries(store.sources)) {
+      if (!matchesAnyGlob(sourcePath, filterPatterns)) continue;
       const content = store.fileContents[sourcePath] || '';
       if (!content) continue;
       
@@ -490,6 +513,11 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
       const matchingSelectionGuids = new Set<string>();
       
       for (const selection of source.selections) {
+        if (matchAll) {
+          matchingSelectionGuids.add(selection.guid);
+          continue;
+        }
+
         const overlappingSelections = source.selections.filter(s => 
           !(s.end <= selection.start || s.start >= selection.end)
         );
@@ -655,6 +683,18 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
     await actions.saveQuery(updatedQuery);
   };
 
+
+  const updateQueryFilter = async (value: string) => {
+    const q = query();
+    if (!q) return;
+    const updatedQuery = { ...q, fileFilter: value };
+
+    if (props.queryPath.startsWith('untitled:')) {
+      actions.saveUnsavedQuery(props.queryPath, updatedQuery);
+    } else {
+      await actions.saveQuery(updatedQuery);
+    }
+  };
   const clearQuery = async () => {
     await updateQuery(null);
   };
@@ -719,6 +759,17 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                 </button>
               </div>
             </div>
+
+            <div class={styles.queryFilterRow}>
+              <label class={styles.queryFilterLabel}>Filter files</label>
+              <input
+                class={styles.queryFilterInput}
+                type="text"
+                placeholder="e.g. interviews/**/*.txt, notes/*.md"
+                value={q().fileFilter || ''}
+                onInput={(e) => updateQueryFilter((e.target as HTMLInputElement).value)}
+              />
+            </div>
             
             <div class={styles.queryBuilder}>
               <Show when={q().query} fallback={
@@ -733,6 +784,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                   onDelete={() => clearQuery()}
                   codebooks={store.codebooks}
                   depth={0}
+                  showDelete
                 />
               </Show>
             </div>

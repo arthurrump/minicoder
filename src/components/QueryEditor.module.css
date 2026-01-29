@@ -56,6 +56,29 @@
     margin-bottom: 8px;
 }
 
+.queryFilterRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 10px 0;
+}
+
+.queryFilterLabel {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+.queryFilterInput {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 0.85rem;
+}
+
 .noQueryMessage {
     text-align: center;
     opacity: 0.7;
@@ -293,7 +316,6 @@
 /* Initial picker styles */
 .initialPicker {
     padding: 16px;
-    text-align: center;
 }
 
 .pickerPrompt {
@@ -303,22 +325,23 @@
 
 .pickerButtons {
     display: flex;
-    gap: 12px;
-    justify-content: center;
+    gap: 6px;
+    justify-content: flex-start;
 }
 
 .pickerBtn {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 8px;
-    padding: 16px 24px;
+    gap: 6px;
+    padding: 6px 10px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 4px;
     background: var(--bg-color);
     color: var(--text-color);
     cursor: pointer;
     transition: all 0.15s ease;
+    font-size: 0.85em;
 }
 
 .pickerBtn:hover {

@@ -34,4 +34,5 @@ interface Query {
     guid: string;
     name: string;
     query: QueryNode | null;
+    fileFilter?: string;
 }
