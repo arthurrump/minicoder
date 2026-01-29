@@ -3,7 +3,6 @@ import { HashRouter, Route, useNavigate, useLocation } from '@solidjs/router';
 import { TopBar } from './components/TopBar';
 import CodingView from './views/CodingView';
 import CodebookEditorView from './views/CodebookEditorView';
-import SelectionsListView from './views/SelectionsListView';
 import { StoreProvider, useStore } from './store';
 import createPersistent from 'solid-persistent';
 
@@ -15,7 +14,6 @@ type ViewType = "coding" | "codebooks" | "selections";
 const views : { id: ViewType; label: string }[] = [
   { id: "codebooks", label: "Codebooks" },
   { id: "coding", label: "Coding" },
-  { id: "selections", label: "Selections" },
 ];
 
 const Layout: ParentComponent = (props) => {
@@ -49,7 +47,6 @@ const Layout: ParentComponent = (props) => {
     const path = location.pathname;
     if (path.startsWith('/coding')) return 'coding';
     if (path.startsWith('/codebooks')) return 'codebooks';
-    if (path.startsWith('/selections')) return 'selections';
     return 'coding';
   });
 
@@ -91,7 +88,6 @@ const App: Component = () => {
 
   const pCodebookEditorView = createPersistent(() => <CodebookEditorView />);
   const pCodingView = createPersistent(() => <CodingView />);
-  const pSelectionsListView = createPersistent(() => <SelectionsListView />);
 
   return (
     <StoreProvider>
@@ -100,7 +96,6 @@ const App: Component = () => {
         <Route path="/coding" component={pCodingView} />
         <Route path="/coding/*filePath" component={pCodingView} />
         <Route path="/codebooks" component={pCodebookEditorView} />
-        <Route path="/selections" component={pSelectionsListView} />
       </HashRouter>
     </StoreProvider>
   );
