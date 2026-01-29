@@ -1,0 +1,499 @@
+.queryEditorMain {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 10px;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.queryEditorEmpty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    opacity: 0.7;
+}
+
+.queryEditorHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 8px;
+}
+
+.queryTitle {
+    margin: 0;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.queryTitle:hover {
+    opacity: 0.8;
+}
+
+.queryTitleInput {
+    font-size: 1.2rem;
+    font-weight: bold;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    padding: 2px 6px;
+}
+
+.queryHeaderActions {
+    display: flex;
+    gap: 8px;
+}
+
+.queryBuilder {
+    flex: 0 0 auto;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 8px;
+}
+
+.noQueryMessage {
+    text-align: center;
+    opacity: 0.7;
+    padding: 16px;
+}
+
+.btnSmall {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.btnSmall:hover {
+    background: var(--code-hover);
+}
+
+.btnPrimary {
+    background: #007acc;
+    border-color: #007acc;
+    color: white;
+}
+
+.btnPrimary:hover {
+    background: #005a9e;
+}
+
+.btnDanger {
+    background: #d9534f;
+    border-color: #d43f3a;
+    color: white;
+}
+
+.btnDanger:hover {
+    background: #c9302c;
+}
+
+/* Query Node Styles */
+.queryNode {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    padding: 8px;
+    margin-bottom: 4px;
+}
+
+.queryNodeHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.operatorSelect {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: #007acc;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.operatorSelect:hover {
+    background: #005a9e;
+}
+
+.codeDisplay {
+    flex: 1;
+}
+
+.selectCodeBtn {
+    padding: 4px 12px;
+    border: 1px dashed var(--border-color);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.selectCodeBtn:hover {
+    opacity: 1;
+    background: var(--code-hover);
+}
+
+.selectedCode {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: var(--code-hover);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.selectedCode:hover {
+    opacity: 0.8;
+}
+
+.codeChip {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.codebookName {
+    opacity: 0.6;
+    font-size: 0.9em;
+}
+
+.nodeActions {
+    display: flex;
+    gap: 4px;
+}
+
+.convertBtn {
+    padding: 2px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.convertBtn:hover {
+    background: var(--code-hover);
+}
+
+.deleteBtn {
+    background: none;
+    border: none;
+    border-radius: 4px;
+    padding: 4px;
+    cursor: pointer;
+    color: #888;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.deleteBtn:hover {
+    background: #ffebee;
+    color: #d9534f;
+}
+
+/* Code Picker Dropdown */
+.codePicker {
+    position: relative;
+    margin-top: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    max-height: 200px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.codePickerHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9em;
+    opacity: 0.7;
+}
+
+.codePickerHeader button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2em;
+    opacity: 0.7;
+}
+
+.codePickerHeader button:hover {
+    opacity: 1;
+}
+
+.codePickerList {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.codePickerItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.codePickerItem:hover {
+    background: var(--code-hover);
+}
+
+/* Children container */
+.queryChildren {
+    margin-top: 8px;
+    padding-left: 8px;
+    border-left: 2px solid var(--border-color);
+}
+
+.addChildBtn {
+    padding: 4px 8px;
+    border: 1px dashed var(--border-color);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    margin-top: 4px;
+    opacity: 0.7;
+}
+
+.addChildBtn:hover {
+    opacity: 1;
+    background: var(--code-hover);
+}
+
+/* Add child buttons container */
+.addChildButtons {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+/* Initial picker styles */
+.initialPicker {
+    padding: 16px;
+    text-align: center;
+}
+
+.pickerPrompt {
+    margin: 0 0 16px 0;
+    opacity: 0.8;
+}
+
+.pickerButtons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.pickerBtn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 24px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pickerBtn:hover {
+    background: var(--code-hover);
+    border-color: #007acc;
+}
+
+.codePickerInline {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    max-height: 300px;
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.operatorPicker {
+    text-align: left;
+}
+
+.operatorButtons {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.operatorButtons button {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: #007acc;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.operatorButtons button:hover {
+    background: #005a9e;
+}
+
+/* Matching Selections */
+.matchingSelections {
+    padding-top: 8px;
+}
+
+.matchingHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.matchingHeader h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.matchingHeaderActions {
+    display: flex;
+    gap: 6px;
+}
+
+.expandBtnSmall {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.expandBtnSmall:hover {
+    background: var(--code-hover);
+}
+
+.noMatches {
+    opacity: 0.7;
+    text-align: center;
+    padding: 16px;
+}
+
+.matchingList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.matchItem {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px;
+    background: var(--bg-color);
+}
+
+.matchHeader {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.matchCodes {
+    display: flex;
+    justify-content: right;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.matchCodeTag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.matchCodeName {
+    font-weight: 500;
+}
+
+.matchSource {
+    font-size: 0.85em;
+    opacity: 0.6;
+}
+
+.matchContent {
+    font-size: 0.95em;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.matchContentCollapsed {
+    max-height: 200px;
+    overflow: hidden;
+    position: relative;
+}
+
+.matchContentCollapsed::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(transparent, var(--bg-color));
+    pointer-events: none;
+}
+
+.expandBtn {
+    display: block;
+    margin-top: 8px;
+    padding: 4px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.expandBtn:hover {
+    background: var(--code-hover);
+}
+
+.matchSnippet {
+    font-size: 0.9em;
+    opacity: 0.8;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

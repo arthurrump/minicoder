@@ -3,9 +3,48 @@
     --node-selected-color: white;
 }
 
-.file-browser {
-    text-wrap: nowrap;
+.fileBrowser {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.fileBrowserHeader {
+    display: flex;
+    gap: 4px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.createBtn {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.createBtn:hover {
+    background: var(--code-hover);
+}
+
+.createBtn > span {
+    display: flex;
+    align-items: center;
+}
+
+.fileBrowserTree {
+    flex: 1;
+    overflow-y: auto;
     overflow-x: auto;
+    text-wrap: nowrap;
 }
 
 .node {

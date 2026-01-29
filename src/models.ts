@@ -24,3 +24,14 @@ interface Source {
     fileHash: string;
     selections: TextSelection[];
 }
+
+type QueryOperator = 'AND' | 'OR' | 'NOT';
+type QueryNode =
+    | { type: 'operator'; operator: QueryOperator; children: QueryNode[] }
+    | { type: 'code'; codeGuid: string };
+
+interface Query {
+    guid: string;
+    name: string;
+    query: QueryNode | null;
+}

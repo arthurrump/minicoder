@@ -6,6 +6,7 @@ import CodePicker from '../components/CodePicker';
 import TextView from '../components/TextView';
 import ColorChip from '../components/ColorChip';
 import CodebookEditor from '../components/CodebookEditor';
+import QueryEditor from '../components/QueryEditor';
 import { hashText, isPlainText } from '../helpers';
 import { useStore } from '../store';
 import styles from './CodingView.module.css';
@@ -75,6 +76,16 @@ const CodingView: Component = () => {
     return selectedFilePath().endsWith('.mcc');
   });
   
+  // Check if the selected file is a query file
+  const isQueryFile = createMemo(() => {
+    return selectedFilePath().endsWith('.mcq');
+  });
+  
+  // Check if the selected file is a special file (codebook or query)
+  const isSpecialFile = createMemo(() => {
+    return isCodebookFile() || isQueryFile();
+  });
+  
   // Tab management
   const [openTabs, setOpenTabs] = createSignal<string[]>([]);
   
@@ -95,7 +106,7 @@ const CodingView: Component = () => {
   
   const [selectedCode, setSelectedCode] = createSignal<Code | null>(null);
   const [selectedCodebook, setSelectedCodebook] = createSignal<Codebook | null>(null);
-  const [pendingSelection, setPendingSelection] = createSignal<{ start: number; end: number } | null>(null);
+  const [pendingSelection, setPendingSelection] = createSignal<{ sourcePath: string; start: number; end: number } | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
   const [nonPlainTextWarning, setNonPlainTextWarning] = createSignal<boolean>(false);
   const [mousePosition, setMousePosition] = createSignal<{ x: number; y: number } | null>(null);
@@ -192,11 +203,8 @@ const CodingView: Component = () => {
         note: undefined
       };
       
-      const path = selectedFilePath();
-      if (path) {
-        const currentSelections = selections();
-        actions.updateSelections(path, [...currentSelections, newSelection]);
-      }
+      const currentSelections = store.sources[pending.sourcePath]?.selections || [];
+      actions.updateSelections(pending.sourcePath, [...currentSelections, newSelection]);
       
       setPendingSelection(null);
       setSelectedCode(null);
@@ -210,7 +218,7 @@ const CodingView: Component = () => {
     }
   }
 
-  function handleSelectionCreate(start: number, end: number) {
+  function handleSelectionCreateForSource(sourcePath: string, start: number, end: number) {
     const code = selectedCode();
     if (code) {
       // If a code is already selected, apply it immediately
@@ -222,37 +230,49 @@ const CodingView: Component = () => {
         note: undefined
       };
       
-      const path = selectedFilePath();
-      if (path) {
-        const currentSelections = selections();
-        actions.updateSelections(path, [...currentSelections, newSelection]);
-      }
+      const currentSelections = store.sources[sourcePath]?.selections || [];
+      actions.updateSelections(sourcePath, [...currentSelections, newSelection]);
     } else {
       // Store the pending selection and wait for code selection
-      setPendingSelection({ start, end });
+      setPendingSelection({ sourcePath, start, end });
     }
+  }
+
+  function handleSelectionCreate(start: number, end: number) {
+    const path = selectedFilePath();
+    if (path) {
+      handleSelectionCreateForSource(path, start, end);
+    }
+  }
+
+  function handleSelectionRemoveForSource(sourcePath: string, selectionGuid: string) {
+    const currentSelections = store.sources[sourcePath]?.selections || [];
+    actions.updateSelections(sourcePath, currentSelections.filter(s => s.guid !== selectionGuid));
   }
 
   function handleSelectionRemove(selectionGuid: string) {
     const path = selectedFilePath();
     if (path) {
-      const currentSelections = selections();
-      actions.updateSelections(path, currentSelections.filter(s => s.guid !== selectionGuid));
+      handleSelectionRemoveForSource(path, selectionGuid);
     }
+  }
+
+  function handleSelectionUpdateForSource(sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) {
+    const currentSelections = store.sources[sourcePath]?.selections || [];
+    actions.updateSelections(
+      sourcePath,
+      currentSelections.map(s => 
+        s.guid === selectionGuid 
+          ? { ...s, start, end, note }
+          : s
+      )
+    );
   }
 
   function handleSelectionUpdate(selectionGuid: string, start: number, end: number, note?: string) {
     const path = selectedFilePath();
     if (path) {
-      const currentSelections = selections();
-      actions.updateSelections(
-        path,
-        currentSelections.map(s => 
-          s.guid === selectionGuid 
-            ? { ...s, start, end, note }
-            : s
-        )
-      );
+      handleSelectionUpdateForSource(path, selectionGuid, start, end, note);
     }
   }
 
@@ -347,6 +367,7 @@ const CodingView: Component = () => {
           <FileBrowser 
             directoryHandle={store.dirHandle!} 
             onFileSelect={handleFileSelect}
+            onFileCreated={(path) => navigate(`/${encodeURIComponent(path)}`)}
             selectedFile={selectedFilePath()}
             filter={{ extensions: [".mcs"], mode: "exclude" }}
           />
@@ -354,7 +375,7 @@ const CodingView: Component = () => {
         <Resizable.Handle aria-label="Resize file browser and editor">
           <div class="inner-handle" />
         </Resizable.Handle>
-        <Resizable.Panel initialSize={isCodebookFile() ? 0.8 : 0.6} minSize={0.1} maxSize={isCodebookFile() ? 0.9 : 0.8}>
+        <Resizable.Panel initialSize={isSpecialFile() ? 0.8 : 0.6} minSize={0.1} maxSize={isSpecialFile() ? 0.9 : 0.8}>
           <div class={styles.editorPane} data-editor-pane>
             {/* Tab bar */}
             <Show when={openTabs().length > 0}>
@@ -392,9 +413,23 @@ const CodingView: Component = () => {
               </div>
             </Show>
             
-            {/* Content area - conditionally show codebook editor or text view */}
+            {/* Content area - conditionally show codebook editor, query editor, or text view */}
             <Show when={selectedFilePath()} fallback={<p style={{ padding: '10px' }}>Select a file to view its contents</p>}>
-              <Show when={isCodebookFile()} fallback={
+              <Show when={isCodebookFile()}>
+                <CodebookEditor codebookPath={selectedFilePath()} />
+              </Show>
+              <Show when={isQueryFile()}>
+                <QueryEditor
+                  queryPath={selectedFilePath()}
+                  onSelectionCreate={handleSelectionCreateForSource}
+                  onSelectionRemove={handleSelectionRemoveForSource}
+                  onSelectionUpdate={(sourcePath, selectionGuid, start, end, note) =>
+                    handleSelectionUpdateForSource(sourcePath, selectionGuid, start, end, note)
+                  }
+                  onSelectionClear={handleSelectionClear}
+                />
+              </Show>
+              <Show when={!isSpecialFile()}>
                 <div class={styles.textViewWrapper} ref={textViewWrapperRef}>
                   <Show when={nonPlainTextWarning()}>
                     <div class={styles.hashMismatchWarning}>
@@ -425,8 +460,6 @@ const CodingView: Component = () => {
                     </Show>
                   </Show>
                 </div>
-              }>
-                <CodebookEditor codebookPath={selectedFilePath()} />
               </Show>
             </Show>
           </div>

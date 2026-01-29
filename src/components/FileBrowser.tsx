@@ -1,6 +1,7 @@
 import { createSignal, For, Show, createEffect, JSX } from 'solid-js';
 import octicons from '@primer/octicons';
 
+import { useStore } from '../store';
 import styles from "./FileBrowser.module.css";
 
 interface ExtensionFilter {
@@ -17,6 +18,7 @@ interface FileSelectInfo {
 interface FileBrowserProps {
   directoryHandle: FileSystemDirectoryHandle;
   onFileSelect?: (info: FileSelectInfo) => void;
+  onFileCreated?: (relativePath: string) => void;
   selectedFile?: string; // Changed to relative path
   filter?: ExtensionFilter;
 }
@@ -30,16 +32,45 @@ interface FileNode {
 }
 
 export function FileBrowser(props: FileBrowserProps) {
+  const { actions } = useStore();
   const [rootNodes, setRootNodes] = createSignal<FileNode[]>([]);
   const [expandedDirs, setExpandedDirs] = createSignal<Set<string>>(new Set());
 
   // Load directory contents
-  createEffect(async () => {
+  async function refreshDirectory() {
     if (props.directoryHandle) {
       const nodes = await loadDirectory(props.directoryHandle, "");
       setRootNodes(nodes);
     }
+  }
+
+  createEffect(async () => {
+    await refreshDirectory();
   });
+
+  async function handleCreateCodebook() {
+    const name = prompt('Enter codebook name:');
+    if (!name?.trim()) return;
+    
+    const codebook = await actions.createCodebook(name.trim());
+    if (codebook) {
+      await refreshDirectory();
+      const relativePath = `${codebook.name.toLowerCase()}.mcc`;
+      props.onFileCreated?.(relativePath);
+    }
+  }
+
+  async function handleCreateQuery() {
+    const name = prompt('Enter query name:');
+    if (!name?.trim()) return;
+    
+    const query = await actions.createQuery(name.trim());
+    if (query) {
+      await refreshDirectory();
+      const relativePath = `${query.name.toLowerCase()}.mcq`;
+      props.onFileCreated?.(relativePath);
+    }
+  }
 
   async function loadDirectory(
     dirHandle: FileSystemDirectoryHandle,
@@ -157,10 +188,14 @@ export function FileBrowser(props: FileBrowserProps) {
             </span>
           </Show>
           <Show when={nodeProps.node.handle.kind === 'file'}>
-            <Show when={nodeProps.node.name.endsWith('.mcc')} fallback={
-              <span class={styles.fileIndicator} innerHTML={octicons.file.toSVG()} />
-            }>
+            <Show when={nodeProps.node.name.endsWith('.mcc')}>
               <span class={styles.fileIndicator} innerHTML={octicons.repo.toSVG()} />
+            </Show>
+            <Show when={nodeProps.node.name.endsWith('.mcq')}>
+              <span class={styles.fileIndicator} innerHTML={octicons.search.toSVG()} />
+            </Show>
+            <Show when={!nodeProps.node.name.endsWith('.mcc') && !nodeProps.node.name.endsWith('.mcq')}>
+              <span class={styles.fileIndicator} innerHTML={octicons.file.toSVG()} />
             </Show>
           </Show>
           <span>{nodeProps.node.name}</span>
@@ -175,10 +210,22 @@ export function FileBrowser(props: FileBrowserProps) {
   }
 
   return (
-    <div class="file-browser">
-      <For each={rootNodes()}>
-        {(node) => <FileTreeNode node={node} />}
-      </For>
+    <div class={styles.fileBrowser}>
+      <div class={styles.fileBrowserHeader}>
+        <button class={styles.createBtn} onClick={handleCreateCodebook} title="New Codebook">
+          <span innerHTML={octicons.repo.toSVG({ width: 14 })} />
+          <span>+</span>
+        </button>
+        <button class={styles.createBtn} onClick={handleCreateQuery} title="New Query">
+          <span innerHTML={octicons.search.toSVG({ width: 14 })} />
+          <span>+</span>
+        </button>
+      </div>
+      <div class={styles.fileBrowserTree}>
+        <For each={rootNodes()}>
+          {(node) => <FileTreeNode node={node} />}
+        </For>
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { hashText, debounce } from './helpers';
 interface AppStore {
   dirHandle: FileSystemDirectoryHandle | null;
   codebooks: Codebook[];
+  queries: Query[];
   sources: Record<string, Source>; // relative path -> Source
   fileContents: Record<string, string>; // relative path -> file content
 }
@@ -12,6 +13,7 @@ interface AppStore {
 interface StoreActions {
   setDirectory: (dirHandle: FileSystemDirectoryHandle) => Promise<void>;
   loadCodebooks: () => Promise<void>;
+  loadQueries: () => Promise<void>;
   loadAllSources: () => Promise<void>;
   loadFileContent: (path: string) => Promise<string | undefined>;
   getFileContent: (path: string) => string | undefined;
@@ -20,6 +22,10 @@ interface StoreActions {
   saveSource: (path: string) => Promise<void>;
   saveCodebook: (codebook: Codebook) => Promise<void>;
   deleteCodebook: (codebookGuid: string) => Promise<void>;
+  createCodebook: (name: string) => Promise<Codebook | null>;
+  saveQuery: (query: Query) => Promise<void>;
+  deleteQuery: (queryGuid: string) => Promise<void>;
+  createQuery: (name: string) => Promise<Query | null>;
 }
 
 interface StoreContextValue {
@@ -33,6 +39,7 @@ export const StoreProvider: ParentComponent = (props) => {
   const [store, setStore] = createStore<AppStore>({
     dirHandle: null,
     codebooks: [],
+    queries: [],
     sources: {},
     fileContents: {},
   });
@@ -92,12 +99,14 @@ function getDirectoryPath(filePath: string): string {
       
       // Reset all data
       setStore('codebooks', []);
+      setStore('queries', []);
       setStore('sources', {});
       setStore('fileContents', {});
       
-      // Eagerly load codebooks and sources
+      // Eagerly load codebooks, queries, and sources
       await Promise.all([
         actions.loadCodebooks(),
+        actions.loadQueries(),
         actions.loadAllSources(),
       ]);
     },
@@ -132,6 +141,39 @@ function getDirectoryPath(filePath: string): string {
       } catch (err) {
         console.warn("Failed to load codebooks:", err);
         setStore('codebooks', []);
+      }
+    },
+
+    async loadQueries() {
+      const dir = store.dirHandle;
+      if (!dir) {
+        setStore('queries', []);
+        return;
+      }
+      
+      try {
+        const loadedQueries: Query[] = [];
+        
+        // Find all .mcq files
+        const queryFiles = await findAllFiles(dir, ['.mcq']);
+        
+        for (const { file } of queryFiles) {
+          try {
+            const fileData = await file.getFile();
+            const text = await fileData.text();
+            const parsedQuery = JSON.parse(text) as Query;
+            loadedQueries.push(parsedQuery);
+          } catch (err) {
+            console.warn(`Failed to load query ${file.name}:`, err);
+          }
+        }
+        
+        // Sort by name for consistent ordering
+        loadedQueries.sort((a, b) => a.name.localeCompare(b.name));
+        setStore('queries', loadedQueries);
+      } catch (err) {
+        console.warn("Failed to load queries:", err);
+        setStore('queries', []);
       }
     },
 
@@ -283,6 +325,69 @@ function getDirectoryPath(filePath: string): string {
       } catch (err) {
         console.error(`Failed to delete codebook ${codebook.name}:`, err);
       }
+    },
+
+    async createCodebook(name: string): Promise<Codebook | null> {
+      const dir = store.dirHandle;
+      if (!dir || !name.trim()) return null;
+      
+      const newCodebook: Codebook = {
+        guid: crypto.randomUUID(),
+        name: name.trim(),
+        codes: [],
+      };
+      
+      await actions.saveCodebook(newCodebook);
+      return newCodebook;
+    },
+
+    async saveQuery(query: Query) {
+      const dir = store.dirHandle;
+      if (!dir) return;
+      
+      try {
+        const fileName = `${query.name.toLowerCase()}.mcq`;
+        const fileHandle = await dir.getFileHandle(fileName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(query, null, 2));
+        await writable.close();
+        
+        // Reload queries to reflect changes
+        await actions.loadQueries();
+      } catch (err) {
+        console.error(`Failed to save query ${query.name}:`, err);
+      }
+    },
+
+    async deleteQuery(queryGuid: string) {
+      const dir = store.dirHandle;
+      const query = store.queries.find(q => q.guid === queryGuid);
+      
+      if (!dir || !query) return;
+      
+      try {
+        const fileName = `${query.name}.mcq`;
+        await dir.removeEntry(fileName);
+        
+        // Reload queries to reflect changes
+        await actions.loadQueries();
+      } catch (err) {
+        console.error(`Failed to delete query ${query.name}:`, err);
+      }
+    },
+
+    async createQuery(name: string): Promise<Query | null> {
+      const dir = store.dirHandle;
+      if (!dir || !name.trim()) return null;
+      
+      const newQuery: Query = {
+        guid: crypto.randomUUID(),
+        name: name.trim(),
+        query: null,
+      };
+      
+      await actions.saveQuery(newQuery);
+      return newQuery;
     },
   };
 
