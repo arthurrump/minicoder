@@ -158,9 +158,9 @@ export function FileBrowser(props: FileBrowserProps) {
           </Show>
           <Show when={nodeProps.node.handle.kind === 'file'}>
             <Show when={nodeProps.node.name.endsWith('.mcc')} fallback={
-              <span class={styles.fileIndicator}>📄</span>
+              <span class={styles.fileIndicator} innerHTML={octicons.file.toSVG()} />
             }>
-              <span class={styles.fileIndicator} innerHTML={octicons.repo.toSVG({ width: 14, height: 14 })} />
+              <span class={styles.fileIndicator} innerHTML={octicons.repo.toSVG()} />
             </Show>
           </Show>
           <span>{nodeProps.node.name}</span>
