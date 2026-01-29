@@ -54,19 +54,23 @@ Three persistent file types in the selected directory:
 
 ### View Architecture
 
-Three main views via hash routing:
+Single-page application with file-based routing:
 
-1. **CodingView** (`/coding`) - [src/views/CodingView.tsx](src/views/CodingView.tsx)
-   - Left: FileBrowser (text file picker)
-   - Center: TextView (text display + text selection capture)
-   - Right: CodePicker (codebook browser + code selection)
-   - Handles "pending selection" → "code application" workflow
-   - Warns on file hash mismatch (file changed since last coding)
+- **CodingView** - [src/views/CodingView.tsx](src/views/CodingView.tsx)
+  - Left panel: FileBrowser (shows all files including `.mcc` codebooks)
+  - Center panel: Content area with tabs
+    - For text files: TextView (text display + selection capture) with CodePicker on right
+    - For `.mcc` files: CodebookEditor (edit codebook structure)
+  - Right panel: CodePicker (only shown when editing text files)
+  - Handles "pending selection" → "code application" workflow
+  - Warns on file hash mismatch (file changed since last coding)
 
-2. **CodebookEditorView** (`/codebooks`) - Create/edit hierarchical code structures
-   - CRUD for codebooks and codes (including nested subcodes)
+- **CodebookEditor** - [src/components/CodebookEditor.tsx](src/components/CodebookEditor.tsx)
+  - Embedded component for editing `.mcc` files
+  - CRUD for codes (including nested subcodes)
+  - Displayed in place of TextView when a codebook file is selected
 
-3. **SelectionsListView** (`/selections`) - View and manage all selections across coded files
+**Routing**: Hash-based routes use only the file path (`/#/{encodedFilePath}`)
 
 ### Key Integration Points
 
@@ -94,8 +98,9 @@ pnpm serve     # Preview production build
 ```
 
 ### Navigation
-- **Views** are accessed via hash routes (`/#/coding`, `/#/codebooks`, `/#/selections`)
-- **File selection** in CodingView updates URL params (encoded relative path) but does not use the router
+- **File selection** uses hash routes with encoded file path (`/#/{encodedFilePath}`)
+- **Tabs** manage multiple open files with scroll position memory
+- **Codebook files** (`.mcc`) open in the CodebookEditor component
 
 ## Code Patterns & Conventions
 
@@ -130,7 +135,7 @@ pnpm serve     # Preview production build
 
 ### When Adding Features
 1. **File format changes**: Update both read/write paths in [src/store.tsx](src/store.tsx)
-2. **New views**: Add Route + navigation option in [src/App.tsx](src/App.tsx)
+2. **New components**: Add to `src/components/` with co-located `.module.css`
 3. **New store state**: Update AppStore interface + initialization
 4. **Component state**: Prefer `createMemo` for derived state over extra signals
 
@@ -144,7 +149,6 @@ pnpm serve     # Preview production build
 - `@solidjs/router` - hash-based client routing
 - `@corvu/resizable` - resizable pane separator
 - `@primer/octicons` - icon library
-- `solid-persistent` - state persistence wrapper (used in App.tsx for view persistence)
 
 # Interaction
 
