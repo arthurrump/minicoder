@@ -85,6 +85,14 @@ const CodingView: Component = () => {
   const scrollPositions = new Map<string, number>();
   let textViewWrapperRef: HTMLDivElement | undefined;
   
+  // Helper to save current scroll position before navigating away
+  function saveCurrentScrollPosition() {
+    const currentPath = selectedFilePath();
+    if (currentPath && textViewWrapperRef && !currentPath.endsWith('.mcc')) {
+      scrollPositions.set(currentPath, textViewWrapperRef.scrollTop);
+    }
+  }
+  
   const [selectedCode, setSelectedCode] = createSignal<Code | null>(null);
   const [selectedCodebook, setSelectedCodebook] = createSignal<Codebook | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ start: number; end: number } | null>(null);
@@ -92,18 +100,9 @@ const CodingView: Component = () => {
   const [nonPlainTextWarning, setNonPlainTextWarning] = createSignal<boolean>(false);
   const [mousePosition, setMousePosition] = createSignal<{ x: number; y: number } | null>(null);
   const [isMouseInTextView, setIsMouseInTextView] = createSignal<boolean>(false);
-  
-  // Track the previous file path to save scroll position when switching
-  let previousFilePath: string | undefined;
 
-  // Clear pending selection and manage scroll positions when switching tabs
-  createEffect(on(selectedFilePath, (newPath) => {
-    // Save scroll position for the previous tab
-    if (previousFilePath && textViewWrapperRef) {
-      scrollPositions.set(previousFilePath, textViewWrapperRef.scrollTop);
-    }
-    
-    previousFilePath = newPath;
+  // Clear pending selection when switching tabs
+  createEffect(on(selectedFilePath, () => {
     setPendingSelection(null);
     window.getSelection()?.removeAllRanges();
   }, { defer: true }));
@@ -270,6 +269,9 @@ const CodingView: Component = () => {
   function handleFileSelect(info: { file: FileSystemFileHandle; directory: FileSystemDirectoryHandle; relativePath: string }) {
     const path = info.relativePath;
     
+    // Save scroll position before switching
+    saveCurrentScrollPosition();
+    
     // If tab already exists, just switch to it
     if (openTabs().includes(path)) {
       navigate(`/${encodeURIComponent(path)}`);
@@ -294,6 +296,7 @@ const CodingView: Component = () => {
   
   function handleTabClick(path: string) {
     if (path !== selectedFilePath()) {
+      saveCurrentScrollPosition();
       navigate(`/${encodeURIComponent(path)}`);
     }
   }
