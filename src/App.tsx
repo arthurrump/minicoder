@@ -1,25 +1,15 @@
 import { createEffect, createMemo, Show, type Component, type ParentComponent } from 'solid-js';
-import { HashRouter, Route, useNavigate, useLocation } from '@solidjs/router';
+import { HashRouter, Route } from '@solidjs/router';
 import { TopBar } from './components/TopBar';
 import CodingView from './views/CodingView';
-import CodebookEditorView from './views/CodebookEditorView';
 import { StoreProvider, useStore } from './store';
-import createPersistent from 'solid-persistent';
 
 function isFileSystemAccessSupported(): boolean {
   return 'showDirectoryPicker' in window;
 }
 
-type ViewType = "coding" | "codebooks" | "selections";
-const views : { id: ViewType; label: string }[] = [
-  { id: "codebooks", label: "Codebooks" },
-  { id: "coding", label: "Coding" },
-];
-
 const Layout: ParentComponent = (props) => {
   const { store, actions } = useStore();
-  const navigate = useNavigate();
-  const location = useLocation();
 
   const currentDir = createMemo(() => store.dirHandle?.name || "");
   createEffect(() => {
@@ -42,26 +32,11 @@ const Layout: ParentComponent = (props) => {
     }
   }
 
-  // Determine current view from location
-  const currentView = createMemo(() => {
-    const path = location.pathname;
-    if (path.startsWith('/coding')) return 'coding';
-    if (path.startsWith('/codebooks')) return 'codebooks';
-    return 'coding';
-  });
-
-  const handleViewChange = (view: ViewType) => {
-    navigate(`/${view}`);
-  };
-
   return (
     <>
       <TopBar 
         currentDir={currentDir()} 
         onChangeDir={pickFolder} 
-        currentView={currentView()}
-        onViewChange={handleViewChange}
-        views={views}
       />
       <Show when={store.dirHandle} fallback={<p style="text-align: center">Open a folder to get started.</p>}>
         {props.children}
@@ -86,16 +61,11 @@ const App: Component = () => {
     );
   }
 
-  const pCodebookEditorView = createPersistent(() => <CodebookEditorView />);
-  const pCodingView = createPersistent(() => <CodingView />);
-
   return (
     <StoreProvider>
       <HashRouter root={Layout}>
-        <Route path="/" component={pCodingView} />
-        <Route path="/coding" component={pCodingView} />
-        <Route path="/coding/*filePath" component={pCodingView} />
-        <Route path="/codebooks" component={pCodebookEditorView} />
+        <Route path="/" component={CodingView} />
+        <Route path="/*filePath" component={CodingView} />
       </HashRouter>
     </StoreProvider>
   );

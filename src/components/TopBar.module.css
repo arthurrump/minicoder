@@ -17,27 +17,6 @@
     font-size: 1.4rem;
 }
 
-.nav {
-    margin-left: 16px;
-    display: flex;
-    gap: 4px;
-    justify-self: center;
-}
-
-.navButton {
-    padding: 6px 12px;
-    border: none;
-    background: transparent;
-    color: var(--text-color);
-    cursor: pointer;
-    border-radius: 4px;
-}
-
-.navButtonActive {
-    background-color: var(--accent-color, #4a9eff);
-    color: white;
-}
-
 .actions {
     display: inline-flex;
     align-items: center;

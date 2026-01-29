@@ -5,6 +5,7 @@ import FileBrowser from '../components/FileBrowser';
 import CodePicker from '../components/CodePicker';
 import TextView from '../components/TextView';
 import ColorChip from '../components/ColorChip';
+import CodebookEditor from '../components/CodebookEditor';
 import { hashText, isPlainText } from '../helpers';
 import { useStore } from '../store';
 import styles from './CodingView.module.css';
@@ -67,6 +68,11 @@ const CodingView: Component = () => {
   // Get file path from URL params, decoding it
   const selectedFilePath = createMemo(() => {
     return params.filePath ? decodeURIComponent(params.filePath) : '';
+  });
+  
+  // Check if the selected file is a codebook file
+  const isCodebookFile = createMemo(() => {
+    return selectedFilePath().endsWith('.mcc');
   });
   
   // Tab management
@@ -266,7 +272,7 @@ const CodingView: Component = () => {
     
     // If tab already exists, just switch to it
     if (openTabs().includes(path)) {
-      navigate(`/coding/${encodeURIComponent(path)}`);
+      navigate(`/${encodeURIComponent(path)}`);
       return;
     }
     
@@ -283,12 +289,12 @@ const CodingView: Component = () => {
       setOpenTabs([...currentTabs, path]);
     }
     
-    navigate(`/coding/${encodeURIComponent(path)}`);
+    navigate(`/${encodeURIComponent(path)}`);
   }
   
   function handleTabClick(path: string) {
     if (path !== selectedFilePath()) {
-      navigate(`/coding/${encodeURIComponent(path)}`);
+      navigate(`/${encodeURIComponent(path)}`);
     }
   }
   
@@ -302,11 +308,11 @@ const CodingView: Component = () => {
     // If closing the active tab, switch to an adjacent tab
     if (path === selectedFilePath()) {
       if (newTabs.length === 0) {
-        navigate('/coding');
+        navigate('/');
       } else {
         // Prefer the tab to the right, or the last tab if we closed the rightmost
         const newIndex = Math.min(tabIndex, newTabs.length - 1);
-        navigate(`/coding/${encodeURIComponent(newTabs[newIndex])}`);
+        navigate(`/${encodeURIComponent(newTabs[newIndex])}`);
       }
     }
     
@@ -317,7 +323,7 @@ const CodingView: Component = () => {
   function handleCloseAllTabs() {
     setOpenTabs([]);
     scrollPositions.clear();
-    navigate('/coding');
+    navigate('/');
   }
   
   // Track mouse movement globally when a code is selected
@@ -339,13 +345,13 @@ const CodingView: Component = () => {
             directoryHandle={store.dirHandle!} 
             onFileSelect={handleFileSelect}
             selectedFile={selectedFilePath()}
-            filter={{ extensions: [".mcs", ".mcc"], mode: "exclude" }}
+            filter={{ extensions: [".mcs"], mode: "exclude" }}
           />
         </Resizable.Panel>
         <Resizable.Handle aria-label="Resize file browser and editor">
           <div class="inner-handle" />
         </Resizable.Handle>
-        <Resizable.Panel initialSize={0.6} minSize={0.1} maxSize={0.8}>
+        <Resizable.Panel initialSize={isCodebookFile() ? 0.8 : 0.6} minSize={0.1} maxSize={isCodebookFile() ? 0.9 : 0.8}>
           <div class={styles.editorPane} data-editor-pane>
             {/* Tab bar */}
             <Show when={openTabs().length > 0}>
@@ -383,38 +389,42 @@ const CodingView: Component = () => {
               </div>
             </Show>
             
-            {/* Content area */}
+            {/* Content area - conditionally show codebook editor or text view */}
             <Show when={selectedFilePath()} fallback={<p style={{ padding: '10px' }}>Select a file to view its contents</p>}>
-              <div class={styles.textViewWrapper} ref={textViewWrapperRef}>
-                <Show when={nonPlainTextWarning()}>
-                  <div class={styles.hashMismatchWarning}>
-                    This file does not appear to be a plain text file. Minicoder only supports coding in plain text files.
-                  </div>
-                </Show>
-                <Show when={!nonPlainTextWarning()}>
-                  <Show when={hashMismatchWarning()}>
+              <Show when={isCodebookFile()} fallback={
+                <div class={styles.textViewWrapper} ref={textViewWrapperRef}>
+                  <Show when={nonPlainTextWarning()}>
                     <div class={styles.hashMismatchWarning}>
-                      ⚠️ Warning: The file content has changed since these selections were saved. Positions may be incorrect.
-                      <button onClick={() => setHashMismatchWarning(false)}>Dismiss</button>
+                      This file does not appear to be a plain text file. Minicoder only supports coding in plain text files.
                     </div>
                   </Show>
-                  <Show when={fileContent()}>
-                    {(content) => (
-                      <TextView
-                        content={content()}
-                        selections={selections()}
-                        codebooks={store.codebooks}
-                        onSelectionCreate={handleSelectionCreate}
-                        onSelectionRemove={handleSelectionRemove}
-                        onSelectionUpdate={handleSelectionUpdate}
-                        onSelectionClear={handleSelectionClear}
-                        onMouseEnter={() => setIsMouseInTextView(true)}
-                        onMouseLeave={() => setIsMouseInTextView(false)}
-                      />
-                    )}
+                  <Show when={!nonPlainTextWarning()}>
+                    <Show when={hashMismatchWarning()}>
+                      <div class={styles.hashMismatchWarning}>
+                        ⚠️ Warning: The file content has changed since these selections were saved. Positions may be incorrect.
+                        <button onClick={() => setHashMismatchWarning(false)}>Dismiss</button>
+                      </div>
+                    </Show>
+                    <Show when={fileContent()}>
+                      {(content) => (
+                        <TextView
+                          content={content()}
+                          selections={selections()}
+                          codebooks={store.codebooks}
+                          onSelectionCreate={handleSelectionCreate}
+                          onSelectionRemove={handleSelectionRemove}
+                          onSelectionUpdate={handleSelectionUpdate}
+                          onSelectionClear={handleSelectionClear}
+                          onMouseEnter={() => setIsMouseInTextView(true)}
+                          onMouseLeave={() => setIsMouseInTextView(false)}
+                        />
+                      )}
+                    </Show>
                   </Show>
-                </Show>
-              </div>
+                </div>
+              }>
+                <CodebookEditor codebookPath={selectedFilePath()} />
+              </Show>
             </Show>
           </div>
         </Resizable.Panel>

@@ -1,4 +1,5 @@
 import { createSignal, For, Show, createEffect, JSX } from 'solid-js';
+import octicons from '@primer/octicons';
 
 import styles from "./FileBrowser.module.css";
 
@@ -156,7 +157,11 @@ export function FileBrowser(props: FileBrowserProps) {
             </span>
           </Show>
           <Show when={nodeProps.node.handle.kind === 'file'}>
-            <span class={styles.fileIndicator}>📄</span>
+            <Show when={nodeProps.node.name.endsWith('.mcc')} fallback={
+              <span class={styles.fileIndicator}>📄</span>
+            }>
+              <span class={styles.fileIndicator} innerHTML={octicons.repo.toSVG({ width: 14, height: 14 })} />
+            </Show>
           </Show>
           <span>{nodeProps.node.name}</span>
         </div>

@@ -1,132 +1,10 @@
-.codebookSidebar {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-}
-
-.codebookSidebarHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 10px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.codebookSidebarHeader h3 {
-    margin: 0;
-    font-size: 1rem;
-}
-
-.addCodebookBtn {
-    background: var(--code-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    width: 24px;
-    height: 24px;
-    cursor: pointer;
-    color: var(--text-color);
-}
-
-.newCodebookForm {
-    padding: 8px 10px;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--code-bg);
-}
-
-.newCodebookInput {
-    width: 100%;
-    padding: 6px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--bg-color);
-    color: var(--text-color);
-    box-sizing: border-box;
-    margin-bottom: 6px;
-}
-
-.newCodebookActions {
-    display: flex;
-    gap: 8px;
-}
-
-.btnSmall {
-    padding: 4px 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--bg-color);
-    color: var(--text-color);
-    cursor: pointer;
-}
-
-.btnSmall:hover {
-    background: var(--code-hover);
-}
-
-.btnPrimary {
-    background: #007acc;
-    border-color: #007acc;
-    color: white;
-}
-
-.btnPrimary:hover {
-    background: #005a9e;
-}
-
-.btnDanger {
-    background: #d9534f;
-    border-color: #d43f3a;
-    color: white;
-}
-
-.btnDanger:hover {
-    background: #c9302c;
-}
-
-.codebookListSidebar {
-    flex: 1;
-    overflow-y: auto;
-    padding: 4px 0;
-}
-
-.codebookListItem {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 10px;
-    cursor: pointer;
-    border-left: 3px solid transparent;
-}
-
-.codebookListItem:hover {
-    background: var(--code-bg);
-}
-
-.codebookListItem.selected {
-    background: var(--code-bg);
-    border-left-color: #007acc;
-}
-
-.codebookItemName {
-    font-weight: 500;
-}
-
-.codebookItemCount {
-    font-size: .75em;
-    opacity: 0.7;
-}
-
-.noCodebooksMessage {
-    padding: 10px;
-    text-align: center;
-    opacity: 0.7;
-}
-
 .codebookEditorMain {
     display: flex;
     flex-direction: column;
     overflow: hidden;
     padding: 10px;
+    height: 100%;
+    box-sizing: border-box;
 }
 
 .codebookEditorEmpty {
@@ -180,6 +58,39 @@
     text-align: center;
     opacity: 0.7;
     padding: 16px;
+}
+
+.btnSmall {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.btnSmall:hover {
+    background: var(--code-hover);
+}
+
+.btnPrimary {
+    background: #007acc;
+    border-color: #007acc;
+    color: white;
+}
+
+.btnPrimary:hover {
+    background: #005a9e;
+}
+
+.btnDanger {
+    background: #d9534f;
+    border-color: #d43f3a;
+    color: white;
+}
+
+.btnDanger:hover {
+    background: #c9302c;
 }
 
 .codeEditorItem {
