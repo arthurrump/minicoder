@@ -1,4 +1,4 @@
-import { createSignal, createMemo, For, Show, onMount, type Component } from 'solid-js';
+import { createSignal, createMemo, For, Index, Show, onMount, type Component } from 'solid-js';
 import octicons from '@primer/octicons';
 import { useStore } from '../store';
 import styles from './QueryEditor.module.css';
@@ -652,21 +652,21 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
         <p class={styles.noMatches}>No matching selections found.</p>
       }>
         <div class={styles.matchingList}>
-          <For each={matchGroups()}>
+          <Index each={matchGroups()}>
             {(group) => (
               <MatchItem
-                group={group}
+                group={group()}
                 codebooks={store.codebooks}
-                isExpanded={isExpanded(group)}
-                onToggleExpand={() => toggleExpanded(group)}
-                onEnsureExpanded={() => ensureExpanded(group)}
+                isExpanded={isExpanded(group())}
+                onToggleExpand={() => toggleExpanded(group())}
+                onEnsureExpanded={() => ensureExpanded(group())}
                 onSelectionCreate={props.onSelectionCreate}
                 onSelectionRemove={props.onSelectionRemove}
                 onSelectionUpdate={props.onSelectionUpdate}
                 onSelectionClear={props.onSelectionClear}
               />
             )}
-          </For>
+          </Index>
         </div>
       </Show>
     </div>
