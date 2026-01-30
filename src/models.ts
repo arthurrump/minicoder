@@ -28,7 +28,7 @@ interface Source {
 type QueryOperator = 'AND' | 'OR' | 'NOT';
 type QueryNode =
     | { type: 'operator'; operator: QueryOperator; children: QueryNode[] }
-    | { type: 'code'; codeGuid: string };
+    | { type: 'code'; codeGuid: string; includeSubcodes?: boolean };
 
 interface Query {
     guid: string;

@@ -27,6 +27,17 @@ function findCodeInTree(codes: Code[], guid: string): Code | null {
   return null;
 }
 
+function collectCodeAndSubcodes(root: Code | null): string[] {
+  if (!root) return [];
+  const guids: string[] = [root.guid];
+  if (root.subcodes) {
+    for (const sub of root.subcodes) {
+      guids.push(...collectCodeAndSubcodes(sub));
+    }
+  }
+  return guids;
+}
+
 // Flatten all codes from all codebooks for the picker
 function flattenCodes(codebooks: Codebook[]): { code: Code; codebook: Codebook; path: string[] }[] {
   const results: { code: Code; codebook: Codebook; path: string[] }[] = [];
@@ -48,22 +59,29 @@ function flattenCodes(codebooks: Codebook[]): { code: Code; codebook: Codebook; 
 }
 
 // Evaluate a query against a set of code GUIDs
-export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<string>): boolean {
+export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<string>, codebooks: Codebook[]): boolean {
   if (!node) return false;
   
   if (node.type === 'code') {
-    return selectionCodeGuids.has(node.codeGuid);
+    const includeSubcodes = node.includeSubcodes !== false;
+    if (!includeSubcodes) {
+      return selectionCodeGuids.has(node.codeGuid);
+    }
+
+    const info = findCodeByGuid(codebooks, node.codeGuid);
+    const targetGuids = collectCodeAndSubcodes(info?.code || null);
+    return targetGuids.some(guid => selectionCodeGuids.has(guid));
   }
   
   if (node.type === 'operator') {
     switch (node.operator) {
       case 'AND':
-        return node.children.length > 0 && node.children.every(child => evaluateQuery(child, selectionCodeGuids));
+        return node.children.length > 0 && node.children.every(child => evaluateQuery(child, selectionCodeGuids, codebooks));
       case 'OR':
-        return node.children.some(child => evaluateQuery(child, selectionCodeGuids));
+        return node.children.some(child => evaluateQuery(child, selectionCodeGuids, codebooks));
       case 'NOT':
         // NOT operates on the first child only
-        return node.children.length > 0 ? !evaluateQuery(node.children[0], selectionCodeGuids) : false;
+        return node.children.length > 0 ? !evaluateQuery(node.children[0], selectionCodeGuids, codebooks) : false;
       default:
         return false;
     }
@@ -105,7 +123,7 @@ const QueryInitialPicker: Component<QueryInitialPickerProps> = (props) => {
   const allCodes = createMemo(() => flattenCodes(props.codebooks));
 
   const handleCodeSelect = (codeGuid: string) => {
-    props.onSelect({ type: 'code', codeGuid });
+    props.onSelect({ type: 'code', codeGuid, includeSubcodes: true });
   };
 
   const handleOperatorSelect = () => {
@@ -185,7 +203,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
   const handleAddChild = (type: 'code' | 'operator') => {
     if (props.node.type === 'operator') {
       const newChild: QueryNode = type === 'code' 
-        ? { type: 'code', codeGuid: '' } // Empty codeGuid will show picker
+        ? { type: 'code', codeGuid: '', includeSubcodes: true } // Empty codeGuid will show picker
         : { type: 'operator', operator: 'AND', children: [] };
       props.onUpdate({
         type: 'operator',
@@ -214,6 +232,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
     props.onUpdate({
       type: 'code',
       codeGuid,
+      includeSubcodes: props.node.type === 'code' ? (props.node.includeSubcodes !== false) : true,
     });
     setShowCodePicker(false);
   };
@@ -224,7 +243,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
       props.onUpdate({
         type: 'operator',
         operator,
-        children: [{ type: 'code', codeGuid: props.node.codeGuid }],
+        children: [{ type: 'code', codeGuid: props.node.codeGuid, includeSubcodes: props.node.includeSubcodes }],
       });
     } else {
       handleOperatorChange(operator);
@@ -262,6 +281,22 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
               )}
             </Show>
           </div>
+        </Show>
+        <Show when={props.node.type === 'code'}>
+          <label class={styles.subcodeToggle}>
+            <input
+              type="checkbox"
+              checked={props.node.type === 'code' ? props.node.includeSubcodes !== false : true}
+              onChange={(e) =>
+                props.onUpdate({
+                  type: 'code',
+                  codeGuid: props.node.type === 'code' ? props.node.codeGuid : '',
+                  includeSubcodes: (e.target as HTMLInputElement).checked,
+                })
+              }
+            />
+            <span>Include subcodes</span>
+          </label>
         </Show>
         
         <div class={styles.nodeActions}>
@@ -523,7 +558,7 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
         );
         const codeGuids = new Set(overlappingSelections.map(s => s.code_guid));
         
-        if (evaluateQuery(queryNode, codeGuids)) {
+        if (evaluateQuery(queryNode, codeGuids, store.codebooks)) {
           matchingSelectionGuids.add(selection.guid);
         }
       }

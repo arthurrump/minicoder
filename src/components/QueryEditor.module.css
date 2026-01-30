@@ -181,6 +181,14 @@
     opacity: 0.8;
 }
 
+.subcodeToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
 .codeChip {
     width: 12px;
     height: 12px;
