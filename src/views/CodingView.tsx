@@ -443,7 +443,7 @@ const CodingView: Component = () => {
         <Resizable.Handle aria-label="Resize file browser and editor">
           <div class="inner-handle" />
         </Resizable.Handle>
-        <Resizable.Panel initialSize={isSpecialFile() ? 0.8 : 0.6} minSize={0.1} maxSize={isSpecialFile() ? 0.9 : 0.8}>
+        <Resizable.Panel initialSize={0.6} minSize={0.1} maxSize={0.9}>
           <div class={styles.editorPane} data-editor-pane>
             {/* Tab bar */}
             <Show when={openTabs().length > 0}>
