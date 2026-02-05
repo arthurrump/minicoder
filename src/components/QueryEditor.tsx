@@ -424,13 +424,6 @@ const MatchItem: Component<MatchItemProps> = (props) => {
   let contentRef: HTMLDivElement | undefined;
   const [needsExpand, setNeedsExpand] = createSignal(false);
   
-  // Check if content exceeds 200px height
-  const checkOverflow = () => {
-    if (contentRef) {
-      setNeedsExpand(contentRef.scrollHeight > 200);
-    }
-  };
-  
   // Build code map for this group
   const codeMap = createMemo(() => {
     const map = new Map<string, { code: Code; codebook: Codebook }>();
@@ -449,7 +442,17 @@ const MatchItem: Component<MatchItemProps> = (props) => {
   });
   
   onMount(() => {
-    checkOverflow();
+    if (!contentRef) return;
+    
+    const observer = new ResizeObserver(() => {
+      if (contentRef) {
+        setNeedsExpand(contentRef.scrollHeight > 200);
+      }
+    });
+    
+    observer.observe(contentRef);
+    
+    return () => observer.disconnect();
   });
   
   return (
