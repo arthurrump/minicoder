@@ -723,12 +723,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
     const q = query();
     if (!q) return;
     const updatedQuery = { ...q, fileFilter: value };
-
-    if (props.queryPath.startsWith('untitled:')) {
-      actions.saveUnsavedQuery(props.queryPath, updatedQuery);
-    } else {
-      await actions.saveQuery(updatedQuery);
-    }
+    await actions.saveQuery(updatedQuery);
   };
   const clearQuery = async () => {
     await updateQuery(null);
