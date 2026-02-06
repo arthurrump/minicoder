@@ -9,7 +9,9 @@ interface HighlightPopoverProps {
     y: number;
     selection: TextSelection;
     codebooks: Codebook[];
+    isExample: boolean;
     onRemoveCode: (selectionGuid: string) => void;
+    onToggleExample: (selectionGuid: string) => void;
     onNoteChange: (selectionGuid: string, note: string) => void;
     onClick: (e: MouseEvent) => void;
 }
@@ -23,6 +25,10 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
 
     const handleRemoveCode = () => {
         props.onRemoveCode(props.selection.guid);
+    };
+
+    const handleToggleExample = () => {
+        props.onToggleExample(props.selection.guid);
     };
 
     const handleNoteChange = (e: Event) => {
@@ -44,12 +50,20 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
                         <span class={styles.popoverCodeCodebook}>({codeInfo().codebook!.name})</span>
                     </Show>
                 </div>
-                <button
-                    class={styles.popoverRemoveBtn}
-                    onClick={handleRemoveCode}
-                    title="Remove this code"
-                    innerHTML={octicons.trash.toSVG()}
-                />
+                <div class={styles.popoverActions}>
+                    <button
+                        class={`${styles.popoverActionBtn} ${props.isExample ? styles.popoverExampleActive : ''}`}
+                        onClick={handleToggleExample}
+                        title={props.isExample ? 'Remove as example' : 'Mark as example'}
+                        innerHTML={props.isExample ? octicons['star-fill'].toSVG() : octicons.star.toSVG()}
+                    />
+                    <button
+                        class={styles.popoverActionBtn}
+                        onClick={handleRemoveCode}
+                        title="Remove this code"
+                        innerHTML={octicons.trash.toSVG()}
+                    />
+                </div>
             </div>
             <textarea
                 class={styles.popoverNote}

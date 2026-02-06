@@ -404,6 +404,7 @@ interface MatchingSelectionsListProps {
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
+  onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionClear?: () => void;
 }
 
@@ -417,6 +418,7 @@ interface MatchItemProps {
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
+  onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionClear?: () => void;
 }
 
@@ -487,6 +489,9 @@ const MatchItem: Component<MatchItemProps> = (props) => {
           }
           onSelectionUpdate={(selectionGuid, start, end, note) =>
             props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + start, props.group.start + end, note)
+          }
+          onToggleExample={(selectionGuid) =>
+            props.onToggleExample?.(props.group.sourcePath, selectionGuid)
           }
           onSelectionClear={props.onSelectionClear}
         />
@@ -666,6 +671,7 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
                 onSelectionCreate={props.onSelectionCreate}
                 onSelectionRemove={props.onSelectionRemove}
                 onSelectionUpdate={props.onSelectionUpdate}
+                onToggleExample={props.onToggleExample}
                 onSelectionClear={props.onSelectionClear}
               />
             )}
@@ -684,6 +690,7 @@ interface QueryEditorProps {
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
+  onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionClear?: () => void;
 }
 
@@ -830,6 +837,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
               onSelectionCreate={props.onSelectionCreate}
               onSelectionRemove={props.onSelectionRemove}
               onSelectionUpdate={props.onSelectionUpdate}
+              onToggleExample={props.onToggleExample}
               onSelectionClear={props.onSelectionClear}
             />
           </>

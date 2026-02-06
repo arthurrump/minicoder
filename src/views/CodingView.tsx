@@ -296,6 +296,11 @@ const CodingView: Component = () => {
 
   function handleSelectionRemoveForSource(sourcePath: string, selectionGuid: string) {
     const currentSelections = store.sources[sourcePath]?.selections || [];
+    const sel = currentSelections.find(s => s.guid === selectionGuid);
+    if (sel) {
+      // Remove from examples if it was marked as one
+      actions.removeExample(sourcePath, selectionGuid, sel.code.codebookGuid, sel.code.codeGuid);
+    }
     actions.updateSelections(sourcePath, currentSelections.filter(s => s.guid !== selectionGuid));
   }
 
@@ -327,6 +332,21 @@ const CodingView: Component = () => {
 
   function handleSelectionClear() {
     setPendingSelection(null);
+  }
+
+  function handleToggleExampleForSource(sourcePath: string, selectionGuid: string) {
+    const source = store.sources[sourcePath];
+    if (!source) return;
+    const sel = source.selections.find(s => s.guid === selectionGuid);
+    if (!sel) return;
+    actions.toggleExample(sourcePath, selectionGuid, sel.code.codebookGuid, sel.code.codeGuid);
+  }
+
+  function handleToggleExample(selectionGuid: string) {
+    const path = selectedFilePath();
+    if (path) {
+      handleToggleExampleForSource(path, selectionGuid);
+    }
   }
 
   function handleQueryExpandedChange(path: string, keys: Set<string>) {
@@ -499,6 +519,7 @@ const CodingView: Component = () => {
                   onSelectionUpdate={(sourcePath, selectionGuid, start, end, note) =>
                     handleSelectionUpdateForSource(sourcePath, selectionGuid, start, end, note)
                   }
+                  onToggleExample={handleToggleExampleForSource}
                   onSelectionClear={handleSelectionClear}
                 />
               </Show>
@@ -525,6 +546,7 @@ const CodingView: Component = () => {
                           onSelectionCreate={handleSelectionCreate}
                           onSelectionRemove={handleSelectionRemove}
                           onSelectionUpdate={handleSelectionUpdate}
+                          onToggleExample={handleToggleExample}
                           onSelectionClear={handleSelectionClear}
                           onMouseEnter={() => setIsMouseInTextView(true)}
                           onMouseLeave={() => setIsMouseInTextView(false)}

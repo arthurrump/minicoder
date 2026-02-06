@@ -23,6 +23,8 @@ interface StoreActions {
   saveCodebook: (codebook: Codebook) => Promise<void>;
   deleteCodebook: (codebookGuid: string) => Promise<void>;
   createCodebook: (name: string) => Promise<Codebook | null>;
+  toggleExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => Promise<void>;
+  removeExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => Promise<void>;
   saveQuery: (query: Query) => Promise<void>;
   deleteQuery: (queryGuid: string) => Promise<void>;
   createQuery: (name: string) => Promise<Query | null>;
@@ -340,6 +342,72 @@ function getDirectoryPath(filePath: string): string {
       
       await actions.saveCodebook(newCodebook);
       return newCodebook;
+    },
+
+    async toggleExample(sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) {
+      const codebook = store.codebooks.find(cb => cb.guid === codebookGuid);
+      const source = store.sources[sourcePath];
+      if (!codebook || !source) return;
+
+      const sourceGuid = source.guid;
+      const ref: TextSelectionReference = { sourceGuid, textSelectionGuid: selectionGuid };
+
+      function toggleInCodes(codes: Code[]): Code[] {
+        return codes.map(code => {
+          if (code.guid === codeGuid) {
+            const examples = code.examples || [];
+            const existingIndex = examples.findIndex(
+              ex => ex.sourceGuid === sourceGuid && ex.textSelectionGuid === selectionGuid
+            );
+            if (existingIndex >= 0) {
+              return { ...code, examples: examples.filter((_, i) => i !== existingIndex) };
+            } else {
+              return { ...code, examples: [...examples, ref] };
+            }
+          }
+          if (code.subcodes) {
+            return { ...code, subcodes: toggleInCodes(code.subcodes) };
+          }
+          return code;
+        });
+      }
+
+      const updatedCodebook: Codebook = {
+        ...codebook,
+        codes: toggleInCodes(codebook.codes),
+      };
+      await actions.saveCodebook(updatedCodebook);
+    },
+
+    async removeExample(sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) {
+      const codebook = store.codebooks.find(cb => cb.guid === codebookGuid);
+      const source = store.sources[sourcePath];
+      if (!codebook || !source) return;
+
+      const sourceGuid = source.guid;
+
+      function removeFromCodes(codes: Code[]): Code[] {
+        return codes.map(code => {
+          if (code.guid === codeGuid) {
+            const examples = code.examples || [];
+            const filtered = examples.filter(
+              ex => !(ex.sourceGuid === sourceGuid && ex.textSelectionGuid === selectionGuid)
+            );
+            if (filtered.length === examples.length) return code;
+            return { ...code, examples: filtered };
+          }
+          if (code.subcodes) {
+            return { ...code, subcodes: removeFromCodes(code.subcodes) };
+          }
+          return code;
+        });
+      }
+
+      const updatedCodebook: Codebook = {
+        ...codebook,
+        codes: removeFromCodes(codebook.codes),
+      };
+      await actions.saveCodebook(updatedCodebook);
     },
 
     async saveQuery(query: Query) {

@@ -11,6 +11,7 @@ interface TextViewProps {
     onSelectionCreate?: (start: number, end: number) => void;
     onSelectionRemove?: (selectionGuid: string) => void;
     onSelectionUpdate?: (selectionGuid: string, start: number, end: number, note?: string) => void;
+    onToggleExample?: (selectionGuid: string) => void;
     onSelectionClear?: () => void;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
@@ -748,17 +749,26 @@ const TextView: Component<TextViewProps> = (props) => {
             </div>
         
             <Show when={popover()}>
-                {(p) => (
-                    <HighlightPopover
-                        x={p().x}
-                        y={p().y}
-                        selection={p().selection}
-                        codebooks={props.codebooks}
-                        onRemoveCode={handleRemoveCode}
-                        onNoteChange={handleNoteChange}
-                        onClick={(e: MouseEvent) => e.stopPropagation()}
-                    />
-                )}
+                {(p) => {
+                    const isExample = createMemo(() => {
+                        const sel = p().selection;
+                        const code = findCode(sel.code.codebookGuid, sel.code.codeGuid, props.codebooks);
+                        return code?.examples?.some(ex => ex.textSelectionGuid === sel.guid) ?? false;
+                    });
+                    return (
+                        <HighlightPopover
+                            x={p().x}
+                            y={p().y}
+                            selection={p().selection}
+                            codebooks={props.codebooks}
+                            isExample={isExample()}
+                            onRemoveCode={handleRemoveCode}
+                            onToggleExample={(selectionGuid) => props.onToggleExample?.(selectionGuid)}
+                            onNoteChange={handleNoteChange}
+                            onClick={(e: MouseEvent) => e.stopPropagation()}
+                        />
+                    );
+                }}
             </Show>
         </div>
     );

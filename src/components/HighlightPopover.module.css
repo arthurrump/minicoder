@@ -35,7 +35,13 @@
     color: #666;
 }
 
-.popoverRemoveBtn {
+.popoverActions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.popoverActionBtn {
     background: none;
     border: none;
     cursor: pointer;
@@ -44,9 +50,17 @@
     color: #888;
 }
 
-.popoverRemoveBtn:hover {
+.popoverActionBtn:hover {
     background: #f5f5f5;
     color: #333;
+}
+
+.popoverExampleActive {
+    color: #e3b341;
+}
+
+.popoverExampleActive:hover {
+    color: #c9971c;
 }
 
 .popoverNote {
