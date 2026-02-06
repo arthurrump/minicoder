@@ -3,6 +3,7 @@ interface Code {
     name: string;
     color: string;
     description: string;
+    examples: TextSelectionReference[];
     subcodes: Code[];
 }
 
@@ -12,17 +13,28 @@ interface Codebook {
     codes: Code[];
 }
 
+interface CodeReference {
+    codebookGuid: string;
+    codeGuid: string;
+}
+
 interface TextSelection {
     guid: string;
     start: number;
     end: number;
-    code_guid: string;
+    code: CodeReference;
     note?: string;
 }
 
 interface Source {
+    guid: string;
     fileHash: string;
     selections: TextSelection[];
+}
+
+interface TextSelectionReference {
+    sourceGuid: string;
+    textSelectionGuid: string;
 }
 
 type QueryOperator = 'AND' | 'OR' | 'NOT';

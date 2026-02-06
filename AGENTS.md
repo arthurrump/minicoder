@@ -13,11 +13,11 @@
 - **Routing**: @solidjs/router with hash-based navigation
 - **Build Tool**: Vite with solid-plugin
 - **File System**: FileSystemAccessAPI (not Node.js filesystem)
-- **Storage**: Browser-based, persisted via `.mcc` and `.mcs` files
+- **Storage**: Browser-based, persisted via `.mcc`, `.mcs` and `.mcq` files
 
 ### Core Data Model
 
-Three persistent file types in the selected directory:
+[src/models.ts](src/models.ts) defines the data model. There are four persistent file types in the selected directory:
 
 1. **`.mcc` files (Codebooks)** - JSON files containing code hierarchies:
    ```typescript
@@ -31,12 +31,23 @@ Three persistent file types in the selected directory:
 2. **`.mcs` files (Sources)** - JSON files tracking text annotations alongside source files:
    ```typescript
    interface Source {
+     guid: string;
      fileHash: string;  // SHA-256 of source content for change detection
      selections: TextSelection[];
    }
    ```
 
-3. **Plain text files** - Any `.txt`, `.md`, etc. to be coded (sources)
+3. **`.mcq` files (Queries)** - JSON files defining a query on coded selections:
+   ```typescript
+   interface Query {
+     guid: string;
+     name: string;
+     query: QueryNode | null;
+     fileFilter?: string;
+   }
+   ```
+
+4. **Plain text files** - Any `.txt`, `.md`, etc. to be coded (sources)
 
 ### State Management Pattern
 
@@ -138,6 +149,7 @@ pnpm serve     # Preview production build
 2. **New components**: Add to `src/components/` with co-located `.module.css`
 3. **New store state**: Update AppStore interface + initialization
 4. **Component state**: Prefer `createMemo` for derived state over extra signals
+5. **Solid.js**: Write idiomatic Solid.js code
 
 ### Testing Considerations
 - Must use a Chromium browser with local folder picker support
@@ -152,4 +164,4 @@ pnpm serve     # Preview production build
 
 # Interaction
 
-Ask questions is you need more information or need to make significant design decisions.
+Ask questions if you need more information or need to make significant design decisions.

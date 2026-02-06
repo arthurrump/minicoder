@@ -126,8 +126,7 @@ const CodingView: Component = () => {
     }
   }
   
-  const [selectedCode, setSelectedCode] = createSignal<Code | null>(null);
-  const [selectedCodebook, setSelectedCodebook] = createSignal<Codebook | null>(null);
+  const [selectedCode, setSelectedCode] = createSignal<{ code: Code, codebook: Codebook } | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ sourcePath: string; start: number; end: number } | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
   const [nonPlainTextWarning, setNonPlainTextWarning] = createSignal<boolean>(false);
@@ -251,7 +250,7 @@ const CodingView: Component = () => {
         guid: crypto.randomUUID(),
         start: pending.start,
         end: pending.end,
-        code_guid: code.guid,
+        code: { codebookGuid: codebook.guid, codeGuid: code.guid },
         note: undefined
       };
       
@@ -260,13 +259,11 @@ const CodingView: Component = () => {
       
       setPendingSelection(null);
       setSelectedCode(null);
-      setSelectedCodebook(null);
       // Clear the browser's text selection now that the code is applied
       window.getSelection()?.removeAllRanges();
     } else {
       // Just select this code for future use
-      setSelectedCode(code);
-      setSelectedCodebook(codebook);
+      setSelectedCode({ code, codebook });
     }
   }
 
@@ -278,7 +275,7 @@ const CodingView: Component = () => {
         guid: crypto.randomUUID(),
         start,
         end,
-        code_guid: code.guid,
+        code: { codebookGuid: code.codebook.guid, codeGuid: code.code.guid },
         note: undefined
       };
       
@@ -550,13 +547,11 @@ const CodingView: Component = () => {
                 <span class={styles.noCodeSelected}>No code selected</span>
               }>
                 <span class={styles.selectedCodeInfo}>
-                  <ColorChip color={selectedCode()!.color} class={styles.selectedCodeColor} />
-                  <span>{selectedCode()!.name}</span>
-                  <Show when={selectedCodebook()}>
-                    <span class={styles.selectedCodeCodebook}>({selectedCodebook()!.name})</span>
-                  </Show>
+                  <ColorChip color={selectedCode()!.code.color} class={styles.selectedCodeColor} />
+                  <span>{selectedCode()!.code.name}</span>
+                  <span class={styles.selectedCodeCodebook}>({selectedCode()!.codebook.name})</span>
                 </span>
-                <button onClick={() => { setSelectedCode(null); setSelectedCodebook(null); }}>×</button>
+                <button onClick={() => setSelectedCode(null)}>×</button>
               </Show>
             </div>
             <CodePicker codebooks={store.codebooks} onCodeClick={handleCodeClick} />
@@ -571,7 +566,7 @@ const CodingView: Component = () => {
            top: `${mousePosition()!.y}px`
          }}
        >
-         <ColorChip color={selectedCode()!.color} class={styles.cursorChipInner} />
+         <ColorChip color={selectedCode()!.code.color} class={styles.cursorChipInner} />
        </div>
      </Show>
     </>

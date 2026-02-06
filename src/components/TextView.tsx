@@ -224,7 +224,7 @@ function getUnderlineStyle(
     const positions: string[] = [];
     
     for (const { layer, sel } of layerData) {
-        const codeInfo = codeMap.get(sel.code_guid);
+        const codeInfo = codeMap.get(sel.code.codeGuid);
         let color = codeInfo?.code.color || '#888';
         
         // Apply hover effect
@@ -519,7 +519,7 @@ const TextView: Component<TextViewProps> = (props) => {
     const selectionLayers = createMemo(() => layerInfo().layers);
     const totalLayers = createMemo(() => layerInfo().maxLayer);
     
-    // Build a map of code_guid -> CodeWithCodebook for quick lookup
+    // Build a map of codeGuid -> CodeWithCodebook for quick lookup
     const codeMap = createMemo(() => {
         const map = new Map<string, CodeWithCodebook>();
         const collectCodes = (codeList: Code[], codebook: Codebook) => {
@@ -747,7 +747,7 @@ const TextView: Component<TextViewProps> = (props) => {
                 {/* Render handles for active selection */}
                 <Show when={activeSelection()}>
                     {(sel) => {
-                        const codeInfo = () => codeMap().get(sel().code_guid);
+                        const codeInfo = () => codeMap().get(sel().code.codeGuid);
                         return (
                             <SelectionHandles
                                 selection={sel()}

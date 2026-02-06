@@ -2,31 +2,10 @@ import octicons from '@primer/octicons';
 import { type Component, Show, createMemo } from 'solid-js';
 import styles from './HighlightPopover.module.css';
 import ColorChip from './ColorChip';
+
 interface CodeWithCodebook {
     code: Code;
     codebook: Codebook;
-}
-
-interface Code {
-    guid: string;
-    name: string;
-    color: string;
-    description: string;
-    subcodes: Code[];
-}
-
-interface Codebook {
-    guid: string;
-    name: string;
-    codes: Code[];
-}
-
-interface TextSelection {
-    guid: string;
-    start: number;
-    end: number;
-    code_guid: string;
-    note?: string;
 }
 
 interface HighlightPopoverProps {
@@ -40,7 +19,7 @@ interface HighlightPopoverProps {
 }
 
 const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
-    const codeInfo = createMemo(() => props.codeMap.get(props.selection.code_guid));
+    const codeInfo = createMemo(() => props.codeMap.get(props.selection.code.codeGuid));
 
     const handleRemoveCode = () => {
         props.onRemoveCode(props.selection.guid);

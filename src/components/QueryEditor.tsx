@@ -428,9 +428,9 @@ const MatchItem: Component<MatchItemProps> = (props) => {
   const codeMap = createMemo(() => {
     const map = new Map<string, { code: Code; codebook: Codebook }>();
     for (const sel of props.group.selections) {
-      if (!map.has(sel.code_guid)) {
-        const info = findCodeByGuid(props.codebooks, sel.code_guid);
-        if (info) map.set(sel.code_guid, info);
+      if (!map.has(sel.code.codeGuid)) {
+        const info = findCodeByGuid(props.codebooks, sel.code.codeGuid);
+        if (info) map.set(sel.code.codeGuid, info);
       }
     }
     return map;
@@ -559,7 +559,7 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
         const overlappingSelections = source.selections.filter(s => 
           !(s.end <= selection.start || s.start >= selection.end)
         );
-        const codeGuids = new Set(overlappingSelections.map(s => s.code_guid));
+        const codeGuids = new Set(overlappingSelections.map(s => s.code.codeGuid));
         
         if (evaluateQuery(queryNode, codeGuids, store.codebooks)) {
           matchingSelectionGuids.add(selection.guid);

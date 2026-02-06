@@ -252,6 +252,7 @@ function getDirectoryPath(filePath: string): string {
       if (!store.sources[path]) {
         // Initialize source if it doesn't exist
         setStore('sources', path, {
+          guid: crypto.randomUUID(),
           fileHash: '',
           selections: [],
         });
