@@ -20,6 +20,7 @@ interface StoreActions {
   getSource: (path: string) => Source | undefined;
   updateSelections: (path: string, selections: TextSelection[]) => void;
   saveSource: (path: string) => Promise<void>;
+  updateCodebook: (codebook: Codebook) => void;
   saveCodebook: (codebook: Codebook) => Promise<void>;
   deleteCodebook: (codebookGuid: string) => Promise<void>;
   createCodebook: (name: string) => Promise<Codebook | null>;
@@ -266,6 +267,19 @@ function getDirectoryPath(filePath: string): string {
       debouncedSaveSource(path);
     },
 
+    updateCodebook(codebook: Codebook) {
+      // Update store immediately for reactive UI
+      const index = store.codebooks.findIndex(cb => cb.guid === codebook.guid);
+      if (index !== -1) {
+        const newCodebooks = [...store.codebooks];
+        newCodebooks[index] = codebook;
+        setStore('codebooks', newCodebooks);
+      }
+      
+      // Trigger debounced save
+      debouncedSaveCodebook(codebook.guid);
+    },
+
     async saveSource(path: string) {
       const dir = store.dirHandle;
       const source = store.sources[path];
@@ -306,8 +320,7 @@ function getDirectoryPath(filePath: string): string {
         await writable.write(JSON.stringify(codebook, null, 2));
         await writable.close();
         
-        // Reload codebooks to reflect changes
-        await actions.loadCodebooks();
+        // No need to reload - store is already updated by updateCodebook
       } catch (err) {
         console.error(`Failed to save codebook ${codebook.name}:`, err);
       }
@@ -460,10 +473,17 @@ function getDirectoryPath(filePath: string): string {
     },
   };
 
-  // Debounced save function
+  // Debounced save functions
   const debouncedSaveSource = debounce((path: string) => {
     actions.saveSource(path);
   }, 1000);
+  
+  const debouncedSaveCodebook = debounce((codebookGuid: string) => {
+    const codebook = store.codebooks.find(cb => cb.guid === codebookGuid);
+    if (codebook) {
+      actions.saveCodebook(codebook);
+    }
+  }, 500);
 
   return (
     <StoreContext.Provider value={{ store, actions }}>

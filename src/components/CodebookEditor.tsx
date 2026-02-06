@@ -1,4 +1,4 @@
-import { createSignal, createMemo, For, Show, type Component } from 'solid-js';
+import { createSignal, createMemo, Index, Show, type Component } from 'solid-js';
 import octicons from '@primer/octicons';
 import { useStore } from '../store';
 import styles from './CodebookEditor.module.css';
@@ -138,22 +138,22 @@ const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
   };
 
   return (
-    <For each={props.codes}>
+    <Index each={props.codes}>
       {(code, index) => (
         <CodeEditor
-          code={code}
+          code={code()}
           depth={props.depth}
-          onUpdate={(updates) => updateCode(index(), updates)}
-          onDelete={() => deleteCode(index())}
-          onAddSubcode={() => addSubcode(index())}
-          onSubcodesChange={(subcodes) => updateSubcodes(index(), subcodes)}
-          isExpanded={props.isExpanded(code.guid)}
-          onToggleExpanded={() => props.onToggleExpanded(code.guid)}
+          onUpdate={(updates) => updateCode(index, updates)}
+          onDelete={() => deleteCode(index)}
+          onAddSubcode={() => addSubcode(index)}
+          onSubcodesChange={(subcodes) => updateSubcodes(index, subcodes)}
+          isExpanded={props.isExpanded(code().guid)}
+          onToggleExpanded={() => props.onToggleExpanded(code().guid)}
           isExpandedForCode={props.isExpanded}
           onToggleExpandedForCode={props.onToggleExpanded}
         />
       )}
-    </For>
+    </Index>
   );
 };
 
@@ -209,11 +209,12 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
     setEditingName(false);
   };
 
-  const updateCodebookCodes = async (codes: Code[]) => {
+  const updateCodebookCodes = (codes: Code[]) => {
     const cb = codebook();
     if (!cb) return;
+    
     const updatedCodebook = { ...cb, codes };
-    await actions.saveCodebook(updatedCodebook);
+    actions.updateCodebook(updatedCodebook);
   };
 
   const addTopLevelCode = async () => {
