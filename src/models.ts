@@ -3,7 +3,7 @@ interface Code {
     name: string;
     color: string;
     description: string;
-    examples: TextSelectionReference[];
+    examples?: TextSelectionReference[];
     subcodes: Code[];
 }
 
