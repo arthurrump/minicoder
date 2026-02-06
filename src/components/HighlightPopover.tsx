@@ -2,24 +2,24 @@ import octicons from '@primer/octicons';
 import { type Component, Show, createMemo } from 'solid-js';
 import styles from './HighlightPopover.module.css';
 import ColorChip from './ColorChip';
-
-interface CodeWithCodebook {
-    code: Code;
-    codebook: Codebook;
-}
+import { findCode } from '../helpers';
 
 interface HighlightPopoverProps {
     x: number;
     y: number;
     selection: TextSelection;
-    codeMap: Map<string, CodeWithCodebook>;
+    codebooks: Codebook[];
     onRemoveCode: (selectionGuid: string) => void;
     onNoteChange: (selectionGuid: string, note: string) => void;
     onClick: (e: MouseEvent) => void;
 }
 
 const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
-    const codeInfo = createMemo(() => props.codeMap.get(props.selection.code.codeGuid));
+    const codeInfo = createMemo(() => {
+        const code = findCode(props.selection.code.codebookGuid, props.selection.code.codeGuid, props.codebooks);
+        const codebook = props.codebooks.find(cb => cb.guid === props.selection.code.codebookGuid);
+        return { code, codebook };
+    });
 
     const handleRemoveCode = () => {
         props.onRemoveCode(props.selection.guid);
@@ -38,10 +38,10 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
         >
             <div class={styles.popoverHeader}>
                 <div class={styles.popoverCodeItem}>
-                    <ColorChip color={codeInfo()?.code.color || '#888'} class={styles.popoverCodeColor} />
-                    <span class={styles.popoverCodeName}>{codeInfo()?.code.name || 'Unknown'}</span>
-                    <Show when={codeInfo()?.codebook}>
-                        <span class={styles.popoverCodeCodebook}>({codeInfo()!.codebook.name})</span>
+                    <ColorChip color={codeInfo().code?.color || '#888'} class={styles.popoverCodeColor} />
+                    <span class={styles.popoverCodeName}>{codeInfo().code?.name || 'Unknown'}</span>
+                    <Show when={codeInfo().codebook}>
+                        <span class={styles.popoverCodeCodebook}>({codeInfo().codebook!.name})</span>
                     </Show>
                 </div>
                 <button

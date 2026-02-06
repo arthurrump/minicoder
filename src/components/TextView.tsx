@@ -2,11 +2,7 @@ import octicons from '@primer/octicons';
 import { createMemo, createSignal, For, Show, type Component, onMount, onCleanup, createEffect } from 'solid-js';
 import styles from './TextView.module.css';
 import HighlightPopover from './HighlightPopover';
-
-interface CodeWithCodebook {
-    code: Code;
-    codebook: Codebook;
-}
+import { findCode } from '../helpers';
 
 interface TextViewProps {
     content: string;
@@ -200,7 +196,7 @@ function getSelectionAtLayer(
 function getUnderlineStyle(
     segmentSelections: TextSelection[],
     selectionLayers: Map<string, number>,
-    codeMap: Map<string, CodeWithCodebook>,
+    codebooks: Codebook[],
     totalLayers: number,
     hoveredSelectionGuid: string | null
 ): Record<string, string> {
@@ -224,8 +220,8 @@ function getUnderlineStyle(
     const positions: string[] = [];
     
     for (const { layer, sel } of layerData) {
-        const codeInfo = codeMap.get(sel.code.codeGuid);
-        let color = codeInfo?.code.color || '#888';
+        const code = findCode(sel.code.codebookGuid, sel.code.codeGuid, codebooks);
+        let color = code?.color || '#888';
         
         // Apply hover effect
         if (sel.guid === hoveredSelectionGuid) {
@@ -252,7 +248,7 @@ function getUnderlineStyle(
 interface TextSegmentProps {
     segment: Segment;
     selectionLayers: Map<string, number>;
-    codeMap: Map<string, CodeWithCodebook>;
+    codebooks: Codebook[];
     totalLayers: number;
     hoveredSelectionGuid: string | null;
     segmentRef: (el: HTMLSpanElement) => void;
@@ -272,7 +268,7 @@ const TextSegment: Component<TextSegmentProps> = (props) => {
             style={getUnderlineStyle(
                 props.segment.selections,
                 props.selectionLayers,
-                props.codeMap,
+                props.codebooks,
                 props.totalLayers,
                 props.hoveredSelectionGuid
             )}
@@ -287,7 +283,7 @@ interface SelectionHandlesProps {
     segments: Segment[];
     segmentElements: Map<number, HTMLSpanElement>;
     containerRef: HTMLElement | null;
-    color: string;
+    codebooks: Codebook[];
     onDragStart: (handle: 'start' | 'end') => void;
     onDragMove: (charIndex: number) => void;
     onDragEnd: () => void;
@@ -352,6 +348,12 @@ function getHandlePositions(
 const SelectionHandles: Component<SelectionHandlesProps> = (props) => {
     const [positions, setPositions] = createSignal<{ start: HandlePosition | null; end: HandlePosition | null }>({ start: null, end: null });
     
+    // Get the color for this selection's code
+    const codeColor = createMemo(() => {
+        const code = findCode(props.selection.code.codebookGuid, props.selection.code.codeGuid, props.codebooks);
+        return code?.color ?? '#007acc';
+    });
+    
     // Update handle positions when selection or layout changes
     const updatePositions = () => {
         const pos = getHandlePositions(
@@ -411,7 +413,7 @@ const SelectionHandles: Component<SelectionHandlesProps> = (props) => {
                             left: `${pos().x}px`,
                             top: `${pos().y}px`,
                             height: `${pos().height}px`,
-                            'background-color': props.color
+                            'background-color': codeColor()
                         }}
                         onPointerDown={(e) => handlePointerDown('start', e)}
                         onPointerMove={handlePointerMove}
@@ -427,7 +429,7 @@ const SelectionHandles: Component<SelectionHandlesProps> = (props) => {
                             left: `${pos().x}px`,
                             top: `${pos().y}px`,
                             height: `${pos().height}px`,
-                            'background-color': props.color
+                            'background-color': codeColor()
                         }}
                         onPointerDown={(e) => handlePointerDown('end', e)}
                         onPointerMove={handlePointerMove}
@@ -518,23 +520,6 @@ const TextView: Component<TextViewProps> = (props) => {
     const layerInfo = createMemo(() => computeSelectionLayers(props.selections));
     const selectionLayers = createMemo(() => layerInfo().layers);
     const totalLayers = createMemo(() => layerInfo().maxLayer);
-    
-    // Build a map of codeGuid -> CodeWithCodebook for quick lookup
-    const codeMap = createMemo(() => {
-        const map = new Map<string, CodeWithCodebook>();
-        const collectCodes = (codeList: Code[], codebook: Codebook) => {
-            for (const code of codeList) {
-                map.set(code.guid, { code, codebook: codebook });
-                if (code.subcodes) {
-                    collectCodes(code.subcodes, codebook);
-                }
-            }
-        };
-        for (const codebook of props.codebooks) {
-            collectCodes(codebook.codes, codebook);
-        }
-        return map;
-    });
     
     /**
      * Find which segment and selection (if any) is under the mouse at the given underline position.
@@ -730,7 +715,7 @@ const TextView: Component<TextViewProps> = (props) => {
                         <TextSegment
                             segment={segment}
                             selectionLayers={selectionLayers()}
-                            codeMap={codeMap()}
+                            codebooks={props.codebooks}
                             totalLayers={totalLayers()}
                             hoveredSelectionGuid={hoveredSelectionGuid()}
                             segmentRef={(el) => {
@@ -746,22 +731,19 @@ const TextView: Component<TextViewProps> = (props) => {
                 
                 {/* Render handles for active selection */}
                 <Show when={activeSelection()}>
-                    {(sel) => {
-                        const codeInfo = () => codeMap().get(sel().code.codeGuid);
-                        return (
-                            <SelectionHandles
-                                selection={sel()}
-                                segments={segments()}
-                                segmentElements={segmentElements}
-                                containerRef={containerRef}
-                                color={codeInfo()?.code.color ?? '#007acc'}
-                                onDragStart={handleDragStart}
-                                onDragMove={handleDragMove}
-                                onDragEnd={handleDragEnd}
-                                draggingHandle={draggingHandle()}
-                            />
-                        );
-                    }}
+                    {(sel) => (
+                        <SelectionHandles
+                            selection={sel()}
+                            segments={segments()}
+                            segmentElements={segmentElements}
+                            containerRef={containerRef}
+                            codebooks={props.codebooks}
+                            onDragStart={handleDragStart}
+                            onDragMove={handleDragMove}
+                            onDragEnd={handleDragEnd}
+                            draggingHandle={draggingHandle()}
+                        />
+                    )}
                 </Show>
             </div>
         
@@ -771,7 +753,7 @@ const TextView: Component<TextViewProps> = (props) => {
                         x={p().x}
                         y={p().y}
                         selection={p().selection}
-                        codeMap={codeMap()}
+                        codebooks={props.codebooks}
                         onRemoveCode={handleRemoveCode}
                         onNoteChange={handleNoteChange}
                         onClick={(e: MouseEvent) => e.stopPropagation()}
