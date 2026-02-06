@@ -389,6 +389,15 @@ function getDirectoryPath(filePath: string): string {
         ...codebook,
         codes: toggleInCodes(codebook.codes),
       };
+
+      // Update store for reactive UI
+      const idx = store.codebooks.findIndex(cb => cb.guid === codebookGuid);
+      if (idx !== -1) {
+        const newCodebooks = [...store.codebooks];
+        newCodebooks[idx] = updatedCodebook;
+        setStore('codebooks', newCodebooks);
+      }
+
       await actions.saveCodebook(updatedCodebook);
     },
 
@@ -420,6 +429,15 @@ function getDirectoryPath(filePath: string): string {
         ...codebook,
         codes: removeFromCodes(codebook.codes),
       };
+
+      // Update store for reactive UI
+      const idx = store.codebooks.findIndex(cb => cb.guid === codebookGuid);
+      if (idx !== -1) {
+        const newCodebooks = [...store.codebooks];
+        newCodebooks[idx] = updatedCodebook;
+        setStore('codebooks', newCodebooks);
+      }
+
       await actions.saveCodebook(updatedCodebook);
     },
 

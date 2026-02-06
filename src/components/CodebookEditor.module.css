@@ -136,6 +136,8 @@
 }
 
 .codeActions {
+    grid-row: 1;
+    grid-column: 3;
     display: flex;
     gap: 4px;
 }
@@ -156,9 +158,9 @@
     color: #333;
 }
 
-.codeDeleteBtn {
-    grid-row: 1;
-    grid-column: 3;
+.codeDeleteBtn:hover {
+    background: #ffebee;
+    color: #d9534f;
 }
 
 .codeDescriptionInput {

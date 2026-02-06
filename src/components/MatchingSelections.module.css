@@ -1,0 +1,136 @@
+/* Matching Selections */
+.matchingSelections {
+    padding-top: 8px;
+}
+
+.matchingHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.matchingHeader h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.matchingHeaderActions {
+    display: flex;
+    gap: 6px;
+}
+
+.expandBtnSmall {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.expandBtnSmall:hover {
+    background: var(--code-hover);
+}
+
+.noMatches {
+    opacity: 0.7;
+    text-align: center;
+    padding: 16px;
+}
+
+.matchingList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.matchItem {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px;
+    background: var(--bg-color);
+}
+
+.matchHeader {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.matchCodes {
+    display: flex;
+    justify-content: right;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.matchCodeTag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.matchCodeName {
+    font-weight: 500;
+}
+
+.matchSource {
+    font-size: 0.85em;
+    opacity: 0.6;
+}
+
+.matchContent {
+    font-size: 0.95em;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.matchContentCollapsed {
+    max-height: 200px;
+    overflow: hidden;
+    position: relative;
+}
+
+.matchContentCollapsed::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(transparent, var(--bg-color));
+    pointer-events: none;
+}
+
+.expandBtn {
+    display: block;
+    margin-top: 8px;
+    padding: 4px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.expandBtn:hover {
+    background: var(--code-hover);
+}
+
+.codeChip {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}

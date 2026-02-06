@@ -3,60 +3,7 @@ import octicons from '@primer/octicons';
 import { useStore } from '../store';
 import styles from './QueryEditor.module.css';
 import ColorChip from './ColorChip';
-import TextView from './TextView';
-
-// Helper to find a code by guid across all codebooks
-function findCodeByGuid(codebooks: Codebook[], guid: string): { code: Code; codebook: Codebook } | null {
-  for (const codebook of codebooks) {
-    const found = findCodeInTree(codebook.codes, guid);
-    if (found) {
-      return { code: found, codebook };
-    }
-  }
-  return null;
-}
-
-function findCodeInTree(codes: Code[], guid: string): Code | null {
-  for (const code of codes) {
-    if (code.guid === guid) return code;
-    if (code.subcodes) {
-      const found = findCodeInTree(code.subcodes, guid);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
-function collectCodeAndSubcodes(root: Code | null): string[] {
-  if (!root) return [];
-  const guids: string[] = [root.guid];
-  if (root.subcodes) {
-    for (const sub of root.subcodes) {
-      guids.push(...collectCodeAndSubcodes(sub));
-    }
-  }
-  return guids;
-}
-
-// Flatten all codes from all codebooks for the picker
-function flattenCodes(codebooks: Codebook[]): { code: Code; codebook: Codebook; path: string[] }[] {
-  const results: { code: Code; codebook: Codebook; path: string[] }[] = [];
-  
-  function traverse(codes: Code[], codebook: Codebook, path: string[]) {
-    for (const code of codes) {
-      results.push({ code, codebook, path: [...path, code.name] });
-      if (code.subcodes) {
-        traverse(code.subcodes, codebook, [...path, code.name]);
-      }
-    }
-  }
-  
-  for (const codebook of codebooks) {
-    traverse(codebook.codes, codebook, [codebook.name]);
-  }
-  
-  return results;
-}
+import { findCodeByGuid, collectCodeAndSubcodes, flattenCodes, MatchingSelectionsList, buildMatchGroups, type MatchGroup } from './MatchingSelections';
 
 // Evaluate a query against a set of code GUIDs
 export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<string>, codebooks: Codebook[]): boolean {
@@ -387,17 +334,8 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
   );
 };
 
-// Component to display matching selections
-// A match group represents a contiguous region of text that matches the query
-interface MatchGroup {
-  sourcePath: string;
-  start: number;
-  end: number;
-  content: string;
-  selections: TextSelection[]; // All selections that overlap with this region (with adjusted offsets)
-}
-
-interface MatchingSelectionsListProps {
+// Query-specific matching selections - computes match groups via query evaluation
+interface QueryMatchingSelectionsProps {
   query: Query;
   expandedKeys?: Set<string>;
   onExpandedKeysChange?: (keys: Set<string>) => void;
@@ -408,151 +346,21 @@ interface MatchingSelectionsListProps {
   onSelectionClear?: () => void;
 }
 
-// Single match item component with expand functionality
-interface MatchItemProps {
-  group: MatchGroup;
-  codebooks: Codebook[];
-  isExpanded: boolean;
-  onToggleExpand: () => void;
-  onEnsureExpanded: () => void;
-  onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
-  onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
-  onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
-  onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
-  onSelectionClear?: () => void;
-}
-
-const MatchItem: Component<MatchItemProps> = (props) => {
-  let contentRef: HTMLDivElement | undefined;
-  const [needsExpand, setNeedsExpand] = createSignal(false);
-  
-  // Build code map for this group
-  const codeMap = createMemo(() => {
-    const map = new Map<string, { code: Code; codebook: Codebook }>();
-    for (const sel of props.group.selections) {
-      if (!map.has(sel.code.codeGuid)) {
-        const info = findCodeByGuid(props.codebooks, sel.code.codeGuid);
-        if (info) map.set(sel.code.codeGuid, info);
-      }
-    }
-    return map;
-  });
-  
-  // Get unique codes for the header display
-  const uniqueCodes = createMemo(() => {
-    return Array.from(codeMap().values());
-  });
-  
-  onMount(() => {
-    if (!contentRef) return;
-    
-    const observer = new ResizeObserver(() => {
-      if (contentRef) {
-        setNeedsExpand(contentRef.scrollHeight > 200);
-      }
-    });
-    
-    observer.observe(contentRef);
-    
-    return () => observer.disconnect();
-  });
-  
-  return (
-    <div class={styles.matchItem}>
-      <div class={styles.matchHeader}>
-        <span class={styles.matchSource}>{props.group.sourcePath}</span>
-        <div class={styles.matchCodes}>
-          <For each={uniqueCodes()}>
-            {(info) => (
-              <span class={styles.matchCodeTag}>
-                <ColorChip color={info.code.color} class={styles.codeChip} />
-                <span>{info.code.name}</span>
-              </span>
-            )}
-          </For>
-        </div>
-      </div>
-      <div 
-        class={`${styles.matchContent} ${!props.isExpanded && needsExpand() ? styles.matchContentCollapsed : ''}`}
-        ref={contentRef}
-      >
-        <TextView
-          content={props.group.content}
-          selections={props.group.selections}
-          codebooks={props.codebooks}
-          onSelectionCreate={(start, end) => {
-            props.onEnsureExpanded();
-            props.onSelectionCreate?.(props.group.sourcePath, props.group.start + start, props.group.start + end);
-          }}
-          onSelectionRemove={(selectionGuid) =>
-            props.onSelectionRemove?.(props.group.sourcePath, selectionGuid)
-          }
-          onSelectionUpdate={(selectionGuid, start, end, note) =>
-            props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + start, props.group.start + end, note)
-          }
-          onToggleExample={(selectionGuid) =>
-            props.onToggleExample?.(props.group.sourcePath, selectionGuid)
-          }
-          onSelectionClear={props.onSelectionClear}
-        />
-      </div>
-      <Show when={needsExpand()}>
-        <button class={styles.expandBtn} onClick={props.onToggleExpand}>
-          {props.isExpanded ? 'Show less' : 'Show more'}
-        </button>
-      </Show>
-    </div>
-  );
-};
-
-const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) => {
+const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props) => {
   const { store, actions } = useStore();
-  const [localExpandedKeys, setLocalExpandedKeys] = createSignal<Set<string>>(new Set());
 
-  const getGroupKey = (group: MatchGroup) => `${group.sourcePath}::${group.start}-${group.end}`;
-
-  const getExpandedKeys = () => props.expandedKeys ?? localExpandedKeys();
-  const setExpandedKeys = (next: Set<string>) => {
-    props.onExpandedKeysChange ? props.onExpandedKeysChange(next) : setLocalExpandedKeys(next);
-  };
-
-  const isExpanded = (group: MatchGroup) => getExpandedKeys().has(getGroupKey(group));
-
-  const ensureExpanded = (group: MatchGroup) => {
-    const key = getGroupKey(group);
-    const current = getExpandedKeys();
-    if (current.has(key)) return;
-    const next = new Set(current);
-    next.add(key);
-    setExpandedKeys(next);
-  };
-
-  const toggleExpanded = (group: MatchGroup) => {
-    const key = getGroupKey(group);
-    const current = getExpandedKeys();
-    const next = new Set(current);
-    if (next.has(key)) {
-      next.delete(key);
-    } else {
-      next.add(key);
-    }
-    setExpandedKeys(next);
-  };
-  
-  // Compute match groups - groups of overlapping selections that match the query
-  const matchGroups = createMemo(() => {
+  // Compute match groups via query evaluation
+  const matchGroups = createMemo((): MatchGroup[] => {
     const groups: MatchGroup[] = [];
     const queryNode = props.query.query;
     const filterPatterns = parseFilterList(props.query.fileFilter);
     const matchAll = !queryNode;
     
-    // Iterate over all sources
     for (const [sourcePath, source] of Object.entries(store.sources)) {
       if (!matchesAnyGlob(sourcePath, filterPatterns)) continue;
       const content = store.fileContents[sourcePath] || '';
       if (!content) continue;
       
-      // Find all selections that match when considering overlapping codes
       const matchingSelectionGuids = new Set<string>();
       
       for (const selection of source.selections) {
@@ -573,26 +381,21 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
       
       if (matchingSelectionGuids.size === 0) continue;
       
-      // Group overlapping matching selections together
       const matchingSelections = source.selections.filter(s => matchingSelectionGuids.has(s.guid));
       const sortedSelections = [...matchingSelections].sort((a, b) => a.start - b.start);
       
       const mergedGroups: { start: number; end: number; selections: TextSelection[] }[] = [];
       
       for (const sel of sortedSelections) {
-        // Check if this selection overlaps with the last group
         const lastGroup = mergedGroups[mergedGroups.length - 1];
         if (lastGroup && sel.start <= lastGroup.end) {
-          // Merge into existing group
           lastGroup.end = Math.max(lastGroup.end, sel.end);
           lastGroup.selections.push(sel);
         } else {
-          // Start new group
           mergedGroups.push({ start: sel.start, end: sel.end, selections: [sel] });
         }
       }
       
-      // Convert to MatchGroup with content and adjusted offsets
       for (const group of mergedGroups) {
         const groupSelections = source.selections.filter(s =>
           !(s.end <= group.start || s.start >= group.end)
@@ -604,7 +407,6 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
           content: content.slice(group.start, group.end),
           selections: groupSelections.map(s => ({
             ...s,
-            // Adjust offsets to be relative to the group content
             start: s.start - group.start,
             end: s.end - group.start,
           })),
@@ -612,7 +414,6 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
       }
     }
     
-    // Sort by filepath, then by start index
     groups.sort((a, b) => {
       const pathCompare = a.sourcePath.localeCompare(b.sourcePath);
       if (pathCompare !== 0) return pathCompare;
@@ -632,53 +433,17 @@ const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) =
   });
 
   return (
-    <div class={styles.matchingSelections}>
-      <div class={styles.matchingHeader}>
-        <h3>Matching Selections ({matchGroups().length})</h3>
-        <div class={styles.matchingHeaderActions}>
-          <button
-            class={styles.expandBtnSmall}
-            onClick={() => {
-              const next = new Set(getExpandedKeys());
-              for (const group of matchGroups()) {
-                next.add(getGroupKey(group));
-              }
-              setExpandedKeys(next);
-            }}
-          >
-            Expand all
-          </button>
-          <button
-            class={styles.expandBtnSmall}
-            onClick={() => setExpandedKeys(new Set())}
-          >
-            Collapse all
-          </button>
-        </div>
-      </div>
-      <Show when={matchGroups().length > 0} fallback={
-        <p class={styles.noMatches}>No matching selections found.</p>
-      }>
-        <div class={styles.matchingList}>
-          <Index each={matchGroups()}>
-            {(group) => (
-              <MatchItem
-                group={group()}
-                codebooks={store.codebooks}
-                isExpanded={isExpanded(group())}
-                onToggleExpand={() => toggleExpanded(group())}
-                onEnsureExpanded={() => ensureExpanded(group())}
-                onSelectionCreate={props.onSelectionCreate}
-                onSelectionRemove={props.onSelectionRemove}
-                onSelectionUpdate={props.onSelectionUpdate}
-                onToggleExample={props.onToggleExample}
-                onSelectionClear={props.onSelectionClear}
-              />
-            )}
-          </Index>
-        </div>
-      </Show>
-    </div>
+    <MatchingSelectionsList
+      matchGroups={matchGroups()}
+      title={`Matching Selections (${matchGroups().length})`}
+      expandedKeys={props.expandedKeys}
+      onExpandedKeysChange={props.onExpandedKeysChange}
+      onSelectionCreate={props.onSelectionCreate}
+      onSelectionRemove={props.onSelectionRemove}
+      onSelectionUpdate={props.onSelectionUpdate}
+      onToggleExample={props.onToggleExample}
+      onSelectionClear={props.onSelectionClear}
+    />
   );
 };
 
@@ -830,7 +595,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
             </div>
             
             {/* Display matching selections */}
-            <MatchingSelectionsList
+            <QueryMatchingSelections
               query={q()}
               expandedKeys={props.expandedKeys}
               onExpandedKeysChange={props.onExpandedKeysChange}

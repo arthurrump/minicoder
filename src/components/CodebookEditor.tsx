@@ -2,6 +2,7 @@ import { createSignal, createMemo, Index, Show, type Component } from 'solid-js'
 import octicons from '@primer/octicons';
 import { useStore } from '../store';
 import styles from './CodebookEditor.module.css';
+import CodeSelectionsModal from './CodeSelectionsModal';
 
 // Default colors for new codes
 const DEFAULT_COLORS = [
@@ -11,6 +12,7 @@ const DEFAULT_COLORS = [
 
 interface CodeEditorProps {
   code: Code;
+  codebookGuid: string;
   onUpdate: (updates: Partial<Code>) => void;
   onDelete: () => void;
   onAddSubcode: () => void;
@@ -19,6 +21,7 @@ interface CodeEditorProps {
   onToggleExpanded: () => void;
   isExpandedForCode: (guid: string) => boolean;
   onToggleExpandedForCode: (guid: string) => void;
+  onViewSelections: (codeGuid: string) => void;
   depth: number;
 }
 
@@ -45,6 +48,12 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
         />
         
         <div class={styles.codeActions}>
+          <button 
+            class={styles.codeActionBtn}
+            onClick={() => props.onViewSelections(props.code.guid)}
+            title="View selections"
+            innerHTML={octicons['list-unordered'].toSVG()}
+          />
           <button 
             class={`${styles.codeActionBtn} ${styles.codeDeleteBtn}`} 
             onClick={props.onDelete}
@@ -75,10 +84,12 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
               <Show when={hasSubcodes()}>
                 <CodeTreeEditor
                   codes={props.code.subcodes}
+                  codebookGuid={props.codebookGuid}
                   depth={props.depth + 1}
                   onCodesChange={props.onSubcodesChange}
                   isExpanded={props.isExpandedForCode}
                   onToggleExpanded={props.onToggleExpandedForCode}
+                  onViewSelections={props.onViewSelections}
                 />
               </Show>
               <button 
@@ -97,10 +108,12 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
 
 interface CodeTreeEditorProps {
   codes: Code[];
+  codebookGuid: string;
   onCodesChange: (codes: Code[]) => void;
   depth: number;
   isExpanded: (guid: string) => boolean;
   onToggleExpanded: (guid: string) => void;
+  onViewSelections: (codeGuid: string) => void;
 }
 
 const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
@@ -142,6 +155,7 @@ const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
       {(code, index) => (
         <CodeEditor
           code={code()}
+          codebookGuid={props.codebookGuid}
           depth={props.depth}
           onUpdate={(updates) => updateCode(index, updates)}
           onDelete={() => deleteCode(index)}
@@ -151,6 +165,7 @@ const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
           onToggleExpanded={() => props.onToggleExpanded(code().guid)}
           isExpandedForCode={props.isExpanded}
           onToggleExpandedForCode={props.onToggleExpanded}
+          onViewSelections={props.onViewSelections}
         />
       )}
     </Index>
@@ -168,6 +183,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
   const { store, actions } = useStore();
   const [editingName, setEditingName] = createSignal(false);
   const [localExpandedGuids, setLocalExpandedGuids] = createSignal<Set<string>>(new Set());
+  const [viewingSelectionsForCode, setViewingSelectionsForCode] = createSignal<string | null>(null);
 
   const getExpandedGuids = () => props.expandedCodeGuids ?? localExpandedGuids();
   const setExpandedGuids = (next: Set<string>) => {
@@ -296,13 +312,25 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
               }>
                 <CodeTreeEditor
                   codes={cb().codes}
+                  codebookGuid={cb().guid}
                   depth={0}
                   onCodesChange={updateCodebookCodes}
                   isExpanded={isExpanded}
                   onToggleExpanded={toggleExpanded}
+                  onViewSelections={(codeGuid) => setViewingSelectionsForCode(codeGuid)}
                 />
               </Show>
             </div>
+
+            <Show when={viewingSelectionsForCode()}>
+              {(codeGuid) => (
+                <CodeSelectionsModal
+                  codeGuid={codeGuid()}
+                  codebookGuid={cb().guid}
+                  onClose={() => setViewingSelectionsForCode(null)}
+                />
+              )}
+            </Show>
           </>
         )}
       </Show>
