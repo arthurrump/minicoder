@@ -517,6 +517,16 @@ const TextView: Component<TextViewProps> = (props) => {
     
     const segments = createMemo(() => buildSegments(props.content, props.selections));
     
+    // Close popover if the active selection disappears from the selections list
+    // (e.g. when toggling example status moves a selection between groups)
+    createEffect(() => {
+        const p = popover();
+        if (p && !props.selections.some(s => s.guid === p.selection.guid)) {
+            setPopover(null);
+            setActiveSelectionGuid(null);
+        }
+    });
+
     // Compute global layer assignments for consistent underline offsets
     const layerInfo = createMemo(() => computeSelectionLayers(props.selections));
     const selectionLayers = createMemo(() => layerInfo().layers);
