@@ -8,6 +8,7 @@ interface CodePickerProps {
     codebooks: Codebook[];
     onCodeClick: (code: Code, codebook: Codebook) => void;
     onInfoClick?: (code: Code, codebook: Codebook) => void;
+    onEditClick?: (codebook: Codebook) => void;
 }
 
 interface CodeListProps {
@@ -107,6 +108,17 @@ export const CodePicker = (props: CodePickerProps) => {
                                 {isExpanded(codebook.guid) ? '▼' : '▶'}
                             </span>
                             <span class={codebookStyles.codebookName}>{codebook.name}</span>
+                            <Show when={props.onEditClick}>
+                                <button
+                                    class={codebookStyles.codebookEditBtn}
+                                    title="Edit codebook"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        props.onEditClick!(codebook);
+                                    }}
+                                    innerHTML={octicons.pencil.toSVG({ width: 14 })}
+                                />
+                            </Show>
                         </div>
                         <Show when={isExpanded(codebook.guid)}>
                             <div class={codebookStyles.codebookCodes}>

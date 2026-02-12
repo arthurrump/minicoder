@@ -374,7 +374,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
         );
         const codeGuids = new Set(overlappingSelections.map(s => s.code.codeGuid));
         
-        if (evaluateQuery(queryNode, codeGuids, store.codebooks)) {
+        if (evaluateQuery(queryNode, codeGuids, Object.values(store.codebooks))) {
           matchingSelectionGuids.add(selection.guid);
         }
       }
@@ -579,7 +579,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
             <div class={styles.queryBuilder}>
               <Show when={q().query} fallback={
                 <QueryInitialPicker 
-                  codebooks={store.codebooks}
+                  codebooks={Object.values(store.codebooks)}
                   onSelect={(node) => updateQuery(node)}
                 />
               }>
@@ -587,7 +587,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                   node={q().query!}
                   onUpdate={(updated) => updateQuery(updated)}
                   onDelete={() => clearQuery()}
-                  codebooks={store.codebooks}
+                  codebooks={Object.values(store.codebooks)}
                   depth={0}
                   showDelete
                 />

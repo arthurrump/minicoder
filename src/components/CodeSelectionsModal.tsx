@@ -27,7 +27,7 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
   const [editing, setEditing] = createSignal(false);
 
   // Find the code and codebook
-  const codeInfo = createMemo(() => findCodeByGuid(store.codebooks, props.codeGuid));
+  const codeInfo = createMemo(() => findCodeByGuid(Object.values(store.codebooks), props.codeGuid));
 
   // Collect this code + all subcodes
   const targetGuids = createMemo(() => {

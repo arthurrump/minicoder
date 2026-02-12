@@ -87,6 +87,11 @@ const CodingView: Component = () => {
     return isCodebookFile() || isQueryFile();
   });
   
+  // Sorted codebooks list for components that expect Codebook[]
+  const codebooksList = createMemo(() =>
+    Object.values(store.codebooks).sort((a, b) => a.name.localeCompare(b.name))
+  );
+  
   // Tab management
   const [openTabs, setOpenTabs] = createSignal<string[]>([]);
   
@@ -544,7 +549,7 @@ const CodingView: Component = () => {
                         <TextView
                           content={content()}
                           selections={selections()}
-                          codebooks={store.codebooks}
+                          codebooks={codebooksList()}
                           onSelectionCreate={handleSelectionCreate}
                           onSelectionRemove={handleSelectionRemove}
                           onSelectionUpdate={handleSelectionUpdate}
@@ -579,9 +584,26 @@ const CodingView: Component = () => {
               </Show>
             </div>
             <CodePicker
-              codebooks={store.codebooks}
+              codebooks={codebooksList()}
               onCodeClick={handleCodeClick}
               onInfoClick={(code, codebook) => setInfoModal({ codeGuid: code.guid, codebookGuid: codebook.guid })}
+              onEditClick={(codebook) => {
+                const path = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebook.guid)?.[0];
+                if (!path) return;
+                saveCurrentScrollPosition();
+                if (!openTabs().includes(path)) {
+                  const currentTabs = openTabs();
+                  const currentIndex = currentTabs.indexOf(selectedFilePath());
+                  if (currentIndex >= 0) {
+                    const newTabs = [...currentTabs];
+                    newTabs.splice(currentIndex + 1, 0, path);
+                    setOpenTabs(newTabs);
+                  } else {
+                    setOpenTabs([...currentTabs, path]);
+                  }
+                }
+                navigate(`/${encodeURIComponent(path)}`);
+              }}
             />
           </div>
         </Resizable.Panel>

@@ -35,6 +35,22 @@
     flex-shrink: 0;
 }
 
+.codebookEditBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin-left: auto;
+    opacity: 0.5;
+    color: inherit;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.codebookEditBtn:hover {
+    opacity: 1;
+}
+
 .codebookCodes {
     padding: 8px;
 }

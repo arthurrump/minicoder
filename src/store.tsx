@@ -4,7 +4,7 @@ import { hashText, debounce } from './helpers';
 
 interface AppStore {
   dirHandle: FileSystemDirectoryHandle | null;
-  codebooks: Codebook[];
+  codebooks: Record<string, Codebook>;
   queries: Query[];
   sources: Record<string, Source>; // relative path -> Source
   fileContents: Record<string, string>; // relative path -> file content
@@ -41,7 +41,7 @@ const StoreContext = createContext<StoreContextValue>();
 export const StoreProvider: ParentComponent = (props) => {
   const [store, setStore] = createStore<AppStore>({
     dirHandle: null,
-    codebooks: [],
+    codebooks: {},
     queries: [],
     sources: {},
     fileContents: {},
@@ -101,7 +101,7 @@ function getDirectoryPath(filePath: string): string {
       setStore('dirHandle', dirHandle);
       
       // Reset all data
-      setStore('codebooks', []);
+      setStore('codebooks', {});
       setStore('queries', []);
       setStore('sources', {});
       setStore('fileContents', {});
@@ -117,33 +117,31 @@ function getDirectoryPath(filePath: string): string {
     async loadCodebooks() {
       const dir = store.dirHandle;
       if (!dir) {
-        setStore('codebooks', []);
+        setStore('codebooks', {});
         return;
       }
       
       try {
-        const loadedCodebooks: Codebook[] = [];
+        const newCodebooks: Record<string, Codebook> = {};
         
         // Find all .mcc files
         const codebookFiles = await findAllFiles(dir, ['.mcc']);
         
-        for (const { file } of codebookFiles) {
+        for (const { file, path } of codebookFiles) {
           try {
             const fileData = await file.getFile();
             const text = await fileData.text();
             const parsedCodebook = JSON.parse(text) as Codebook;
-            loadedCodebooks.push(parsedCodebook);
+            newCodebooks[path] = parsedCodebook;
           } catch (err) {
             console.warn(`Failed to load codebook ${file.name}:`, err);
           }
         }
         
-        // Sort by name for consistent ordering
-        loadedCodebooks.sort((a, b) => a.name.localeCompare(b.name));
-        setStore('codebooks', loadedCodebooks);
+        setStore('codebooks', newCodebooks);
       } catch (err) {
         console.warn("Failed to load codebooks:", err);
-        setStore('codebooks', []);
+        setStore('codebooks', {});
       }
     },
 
@@ -269,11 +267,9 @@ function getDirectoryPath(filePath: string): string {
 
     updateCodebook(codebook: Codebook) {
       // Update store immediately for reactive UI
-      const index = store.codebooks.findIndex(cb => cb.guid === codebook.guid);
-      if (index !== -1) {
-        const newCodebooks = [...store.codebooks];
-        newCodebooks[index] = codebook;
-        setStore('codebooks', newCodebooks);
+      const path = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebook.guid)?.[0];
+      if (path) {
+        setStore('codebooks', path, codebook);
       }
       
       // Trigger debounced save
@@ -313,14 +309,23 @@ function getDirectoryPath(filePath: string): string {
       const dir = store.dirHandle;
       if (!dir) return;
       
+      // Find existing path in store, or compute from name for new codebooks
+      let codebookPath = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebook.guid)?.[0];
+      if (!codebookPath) {
+        codebookPath = `${codebook.name.toLowerCase()}.mcc`;
+      }
+      
+      // Update store
+      setStore('codebooks', codebookPath, codebook);
+      
       try {
-        const fileName = `${codebook.name.toLowerCase()}.mcc`;
-        const fileHandle = await dir.getFileHandle(fileName, { create: true });
+        const dirPath = getDirectoryPath(codebookPath);
+        const fileName = codebookPath.split('/').pop()!;
+        const fileDir = dirPath ? await navigateToDirectory(dir, dirPath) : dir;
+        const fileHandle = await fileDir.getFileHandle(fileName, { create: true });
         const writable = await fileHandle.createWritable();
         await writable.write(JSON.stringify(codebook, null, 2));
         await writable.close();
-        
-        // No need to reload - store is already updated by updateCodebook
       } catch (err) {
         console.error(`Failed to save codebook ${codebook.name}:`, err);
       }
@@ -328,18 +333,21 @@ function getDirectoryPath(filePath: string): string {
 
     async deleteCodebook(codebookGuid: string) {
       const dir = store.dirHandle;
-      const codebook = store.codebooks.find(cb => cb.guid === codebookGuid);
+      const entry = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebookGuid);
       
-      if (!dir || !codebook) return;
+      if (!dir || !entry) return;
+      const [codebookPath] = entry;
       
       try {
-        const fileName = `${codebook.name}.mcc`;
-        await dir.removeEntry(fileName);
+        const dirPath = getDirectoryPath(codebookPath);
+        const fileName = codebookPath.split('/').pop()!;
+        const fileDir = dirPath ? await navigateToDirectory(dir, dirPath) : dir;
+        await fileDir.removeEntry(fileName);
         
         // Reload codebooks to reflect changes
         await actions.loadCodebooks();
       } catch (err) {
-        console.error(`Failed to delete codebook ${codebook.name}:`, err);
+        console.error(`Failed to delete codebook:`, err);
       }
     },
 
@@ -358,9 +366,10 @@ function getDirectoryPath(filePath: string): string {
     },
 
     async toggleExample(sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) {
-      const codebook = store.codebooks.find(cb => cb.guid === codebookGuid);
+      const entry = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebookGuid);
       const source = store.sources[sourcePath];
-      if (!codebook || !source) return;
+      if (!entry || !source) return;
+      const [codebookPath, codebook] = entry;
 
       const sourceGuid = source.guid;
       const ref: TextSelectionReference = { sourceGuid, textSelectionGuid: selectionGuid };
@@ -391,20 +400,16 @@ function getDirectoryPath(filePath: string): string {
       };
 
       // Update store for reactive UI
-      const idx = store.codebooks.findIndex(cb => cb.guid === codebookGuid);
-      if (idx !== -1) {
-        const newCodebooks = [...store.codebooks];
-        newCodebooks[idx] = updatedCodebook;
-        setStore('codebooks', newCodebooks);
-      }
+      setStore('codebooks', codebookPath, updatedCodebook);
 
       await actions.saveCodebook(updatedCodebook);
     },
 
     async removeExample(sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) {
-      const codebook = store.codebooks.find(cb => cb.guid === codebookGuid);
+      const entry = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebookGuid);
       const source = store.sources[sourcePath];
-      if (!codebook || !source) return;
+      if (!entry || !source) return;
+      const [codebookPath, codebook] = entry;
 
       const sourceGuid = source.guid;
 
@@ -431,12 +436,7 @@ function getDirectoryPath(filePath: string): string {
       };
 
       // Update store for reactive UI
-      const idx = store.codebooks.findIndex(cb => cb.guid === codebookGuid);
-      if (idx !== -1) {
-        const newCodebooks = [...store.codebooks];
-        newCodebooks[idx] = updatedCodebook;
-        setStore('codebooks', newCodebooks);
-      }
+      setStore('codebooks', codebookPath, updatedCodebook);
 
       await actions.saveCodebook(updatedCodebook);
     },
@@ -497,9 +497,9 @@ function getDirectoryPath(filePath: string): string {
   }, 1000);
   
   const debouncedSaveCodebook = debounce((codebookGuid: string) => {
-    const codebook = store.codebooks.find(cb => cb.guid === codebookGuid);
-    if (codebook) {
-      actions.saveCodebook(codebook);
+    const entry = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebookGuid);
+    if (entry) {
+      actions.saveCodebook(entry[1]);
     }
   }, 500);
 

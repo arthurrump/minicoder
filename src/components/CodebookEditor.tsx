@@ -201,15 +201,9 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
     setExpandedGuids(next);
   };
 
-  // Find codebook by matching the path (filename should be {name}.mcc)
+  // Find codebook by path
   const codebook = createMemo(() => {
-    // Extract codebook name from path (remove .mcc extension)
-    const pathParts = props.codebookPath.split('/');
-    const filename = pathParts[pathParts.length - 1];
-    const codebookName = filename.replace(/\.mcc$/, '');
-    
-    // Case-insensitive comparison since filenames are lowercased
-    return store.codebooks.find(cb => cb.name.toLowerCase() === codebookName.toLowerCase()) || null;
+    return store.codebooks[props.codebookPath] || null;
   });
 
   const updateCodebookName = async (newName: string) => {

@@ -242,7 +242,7 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
             {(group) => (
               <MatchItem
                 group={group()}
-                codebooks={store.codebooks}
+                codebooks={Object.values(store.codebooks)}
                 isExpanded={isExpanded(group())}
                 onToggleExpand={() => toggleExpanded(group())}
                 onEnsureExpanded={() => ensureExpanded(group())}
