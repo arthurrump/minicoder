@@ -7,6 +7,7 @@ import TextView from '../components/TextView';
 import ColorChip from '../components/ColorChip';
 import CodebookEditor from '../components/CodebookEditor';
 import QueryEditor from '../components/QueryEditor';
+import CodeSelectionsModal from '../components/CodeSelectionsModal';
 import { hashText, isPlainText } from '../helpers';
 import { useStore } from '../store';
 import styles from './CodingView.module.css';
@@ -127,6 +128,7 @@ const CodingView: Component = () => {
   }
   
   const [selectedCode, setSelectedCode] = createSignal<{ code: Code, codebook: Codebook } | null>(null);
+  const [infoModal, setInfoModal] = createSignal<{ codeGuid: string; codebookGuid: string } | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ sourcePath: string; start: number; end: number } | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
   const [nonPlainTextWarning, setNonPlainTextWarning] = createSignal<boolean>(false);
@@ -576,10 +578,23 @@ const CodingView: Component = () => {
                 <button onClick={() => setSelectedCode(null)}>×</button>
               </Show>
             </div>
-            <CodePicker codebooks={store.codebooks} onCodeClick={handleCodeClick} />
+            <CodePicker
+              codebooks={store.codebooks}
+              onCodeClick={handleCodeClick}
+              onInfoClick={(code, codebook) => setInfoModal({ codeGuid: code.guid, codebookGuid: codebook.guid })}
+            />
           </div>
         </Resizable.Panel>
       </Resizable>
+     <Show when={infoModal()}>
+       {(modal) => (
+         <CodeSelectionsModal
+           codeGuid={modal().codeGuid}
+           codebookGuid={modal().codebookGuid}
+           onClose={() => setInfoModal(null)}
+         />
+       )}
+     </Show>
      <Show when={selectedCode() && mousePosition() && isMouseInTextView()}>
        <div
          class={styles.cursorChip}

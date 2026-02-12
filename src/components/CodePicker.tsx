@@ -2,16 +2,19 @@ import { createEffect, createSignal, For, Show, on } from "solid-js";
 import styles from "./CodePicker.module.css";
 import codebookStyles from "./CodebookList.module.css";
 import ColorChip from "./ColorChip";
+import octicons from "@primer/octicons";
 
 interface CodePickerProps {
     codebooks: Codebook[];
     onCodeClick: (code: Code, codebook: Codebook) => void;
+    onInfoClick?: (code: Code, codebook: Codebook) => void;
 }
 
 interface CodeListProps {
     codes: Code[];
     codebook: Codebook;
     onCodeClick: (code: Code, codebook: Codebook) => void;
+    onInfoClick?: (code: Code, codebook: Codebook) => void;
 }
 
 const CodeList = (props: CodeListProps) => (
@@ -31,13 +34,29 @@ const CodeList = (props: CodeListProps) => (
                 >
                     <ColorChip class={styles.colorChip} color={code.color} />
                     <span class={styles.codeName}>{code.name}</span>
+                    <Show when={props.onInfoClick}>
+                        <button
+                            class={styles.infoBtn}
+                            title="View selections"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                props.onInfoClick!(code, props.codebook);
+                            }}
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }}
+                            innerHTML={octicons.info.toSVG()}
+                        />
+                    </Show>
                 </div>
                 <Show when={code.subcodes && code.subcodes.length > 0}>
                     <div class={styles.subcodes}>
                         <CodeList 
                             codes={code.subcodes!} 
                             codebook={props.codebook}
-                            onCodeClick={props.onCodeClick} 
+                            onCodeClick={props.onCodeClick}
+                            onInfoClick={props.onInfoClick}
                         />
                     </div>
                 </Show>
@@ -95,6 +114,7 @@ export const CodePicker = (props: CodePickerProps) => {
                                     codes={codebook.codes} 
                                     codebook={codebook}
                                     onCodeClick={props.onCodeClick}
+                                    onInfoClick={props.onInfoClick}
                                 />
                             </div>
                         </Show>

@@ -5,18 +5,31 @@
     border: 1px solid var(--border-color);
     border-radius: 4px;
     display: grid;
-    grid-template-columns: auto auto;
+    grid-template-columns: auto 1fr auto;
+    gap: 4px;
     align-items: start;
     justify-content: start;
+}
+
+.infoBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    font-size: 1em;
+    line-height: 1;
+    opacity: 0.5;
+    color: inherit;
+    justify-self: end;
+}
+
+.infoBtn:hover {
+    opacity: 1;
 }
 
 .colorChip {
     margin: 0;
     height: 1em;
-}
-
-.codeName {
-    margin-left: 4px;
 }
 
 .codeItem:hover {
