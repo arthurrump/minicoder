@@ -7,7 +7,7 @@
     display: grid;
     grid-template-columns: auto 1fr auto;
     gap: 4px;
-    align-items: start;
+    align-items: center;
     justify-content: start;
 }
 
@@ -15,12 +15,11 @@
     background: none;
     border: none;
     cursor: pointer;
-    padding: 0 2px;
-    font-size: 1em;
-    line-height: 1;
+    padding: 0;
     opacity: 0.5;
     color: inherit;
     justify-self: end;
+    height: 16px;
 }
 
 .infoBtn:hover {
