@@ -78,6 +78,7 @@ export interface MatchItemProps {
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
   onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionClear?: () => void;
+  selectedCode?: { code: Code; codebook: Codebook } | null;
 }
 
 export const MatchItem: Component<MatchItemProps> = (props) => {
@@ -152,6 +153,7 @@ export const MatchItem: Component<MatchItemProps> = (props) => {
             props.onToggleExample?.(props.group.sourcePath, selectionGuid)
           }
           onSelectionClear={props.onSelectionClear}
+          selectedCode={props.selectedCode}
         />
       </div>
       <Show when={needsExpand()}>
@@ -173,6 +175,7 @@ export interface MatchingSelectionsListProps {
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
   onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionClear?: () => void;
+  selectedCode?: { code: Code; codebook: Codebook } | null;
 }
 
 export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) => {
@@ -251,6 +254,7 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
                 onSelectionUpdate={props.onSelectionUpdate}
                 onToggleExample={props.onToggleExample}
                 onSelectionClear={props.onSelectionClear}
+                selectedCode={props.selectedCode}
               />
             )}
           </Index>

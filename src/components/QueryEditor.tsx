@@ -344,6 +344,7 @@ interface QueryMatchingSelectionsProps {
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
   onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionClear?: () => void;
+  selectedCode?: { code: Code; codebook: Codebook } | null;
 }
 
 const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props) => {
@@ -443,6 +444,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       onSelectionUpdate={props.onSelectionUpdate}
       onToggleExample={props.onToggleExample}
       onSelectionClear={props.onSelectionClear}
+      selectedCode={props.selectedCode}
     />
   );
 };
@@ -457,6 +459,7 @@ interface QueryEditorProps {
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
   onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionClear?: () => void;
+  selectedCode?: { code: Code; codebook: Codebook } | null;
 }
 
 const QueryEditor: Component<QueryEditorProps> = (props) => {
@@ -604,6 +607,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
               onSelectionUpdate={props.onSelectionUpdate}
               onToggleExample={props.onToggleExample}
               onSelectionClear={props.onSelectionClear}
+              selectedCode={props.selectedCode}
             />
           </>
         )}

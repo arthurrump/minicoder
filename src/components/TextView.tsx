@@ -2,6 +2,7 @@ import octicons from '@primer/octicons';
 import { createMemo, createSignal, For, Show, type Component, onMount, onCleanup, createEffect } from 'solid-js';
 import styles from './TextView.module.css';
 import HighlightPopover from './HighlightPopover';
+import ColorChip from './ColorChip';
 import { findCode } from '../helpers';
 
 interface TextViewProps {
@@ -13,8 +14,7 @@ interface TextViewProps {
     onSelectionUpdate?: (selectionGuid: string, start: number, end: number, note?: string) => void;
     onToggleExample?: (selectionGuid: string) => void;
     onSelectionClear?: () => void;
-    onMouseEnter?: () => void;
-    onMouseLeave?: () => void;
+    selectedCode?: { code: Code; codebook: Codebook } | null;
 }
 
 interface Segment {
@@ -508,6 +508,7 @@ const TextView: Component<TextViewProps> = (props) => {
     const [hoveredSelectionGuid, setHoveredSelectionGuid] = createSignal<string | null>(null);
     const [activeSelectionGuid, setActiveSelectionGuid] = createSignal<string | null>(null);
     const [draggingHandle, setDraggingHandle] = createSignal<'start' | 'end' | null>(null);
+    const [mousePosition, setMousePosition] = createSignal<{ x: number; y: number } | null>(null);
     
     let containerRef: HTMLElement | null = null;
     let lastValidDragPosition: number | null = null;
@@ -575,11 +576,15 @@ const TextView: Component<TextViewProps> = (props) => {
     function handleContainerMouseMove(e: MouseEvent) {
         const selection = findHoveredSelection(e.clientX, e.clientY);
         setHoveredSelectionGuid(selection?.guid ?? null);
+        // Track mouse position for cursor chip when a code is selected
+        if (props.selectedCode) {
+            setMousePosition({ x: e.clientX, y: e.clientY });
+        }
     }
     
     function handleContainerMouseLeave() {
         setHoveredSelectionGuid(null);
-        props.onMouseLeave?.();
+        setMousePosition(null);
     }
     
     function handleContainerClick(e: MouseEvent) {
@@ -718,7 +723,6 @@ const TextView: Component<TextViewProps> = (props) => {
                 onMouseUp={handleMouseUp}
                 onMouseMove={handleContainerMouseMove}
                 onMouseLeave={handleContainerMouseLeave}
-                onMouseEnter={props.onMouseEnter}
                 onClick={handleContainerClick}
             >
                 <For each={segments()}>
@@ -779,6 +783,19 @@ const TextView: Component<TextViewProps> = (props) => {
                         />
                     );
                 }}
+            </Show>
+            
+            {/* Cursor chip when a code is selected and mouse is in this TextView */}
+            <Show when={props.selectedCode && mousePosition()}>
+                <div
+                    class={styles.cursorChip}
+                    style={{
+                        left: `${mousePosition()!.x - 16}px`,
+                        top: `${mousePosition()!.y}px`
+                    }}
+                >
+                    <ColorChip color={props.selectedCode!.code.color} class={styles.cursorChipInner} />
+                </div>
             </Show>
         </div>
     );

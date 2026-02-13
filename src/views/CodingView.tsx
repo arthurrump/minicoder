@@ -137,8 +137,6 @@ const CodingView: Component = () => {
   const [pendingSelection, setPendingSelection] = createSignal<{ sourcePath: string; start: number; end: number } | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
   const [nonPlainTextWarning, setNonPlainTextWarning] = createSignal<boolean>(false);
-  const [mousePosition, setMousePosition] = createSignal<{ x: number; y: number } | null>(null);
-  const [isMouseInTextView, setIsMouseInTextView] = createSignal<boolean>(false);
 
   // Clear pending selection when switching tabs
   createEffect(on(selectedFilePath, () => {
@@ -372,12 +370,6 @@ const CodingView: Component = () => {
     });
   }
 
-  function handleMouseMove(e: MouseEvent) {
-    if (selectedCode()) {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    }
-  }
-  
   function handleFileSelect(info: { file: FileSystemFileHandle; directory: FileSystemDirectoryHandle; relativePath: string }) {
     const path = info.relativePath;
     
@@ -440,17 +432,6 @@ const CodingView: Component = () => {
     scrollPositions.clear();
     navigate('/');
   }
-  
-  // Track mouse movement globally when a code is selected
-  createEffect(() => {
-    const code = selectedCode();
-    if (code) {
-      document.addEventListener('mousemove', handleMouseMove);
-      return () => document.removeEventListener('mousemove', handleMouseMove);
-    } else {
-      setMousePosition(null);
-    }
-  });
 
   return (
     <>
@@ -528,6 +509,7 @@ const CodingView: Component = () => {
                   }
                   onToggleExample={handleToggleExampleForSource}
                   onSelectionClear={handleSelectionClear}
+                  selectedCode={selectedCode()}
                 />
               </Show>
               <Show when={!isSpecialFile()}>
@@ -555,8 +537,7 @@ const CodingView: Component = () => {
                           onSelectionUpdate={handleSelectionUpdate}
                           onToggleExample={handleToggleExample}
                           onSelectionClear={handleSelectionClear}
-                          onMouseEnter={() => setIsMouseInTextView(true)}
-                          onMouseLeave={() => setIsMouseInTextView(false)}
+                          selectedCode={selectedCode()}
                         />
                       )}
                     </Show>
@@ -617,17 +598,6 @@ const CodingView: Component = () => {
            onClose={() => setInfoModal(null)}
          />
        )}
-     </Show>
-     <Show when={selectedCode() && mousePosition() && isMouseInTextView()}>
-       <div
-         class={styles.cursorChip}
-         style={{
-           left: `${mousePosition()!.x - 16}px`,
-           top: `${mousePosition()!.y}px`
-         }}
-       >
-         <ColorChip color={selectedCode()!.code.color} class={styles.cursorChipInner} />
-       </div>
      </Show>
     </>
   );
