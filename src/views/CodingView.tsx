@@ -613,6 +613,7 @@ const CodingView: Component = () => {
          <CodeSelectionsModal
            codeGuid={modal().codeGuid}
            codebookGuid={modal().codebookGuid}
+           currentFilePath={!isSpecialFile() ? selectedFilePath() : undefined}
            onClose={() => setInfoModal(null)}
          />
        )}

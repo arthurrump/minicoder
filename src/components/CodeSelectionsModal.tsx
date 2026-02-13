@@ -9,6 +9,7 @@ import { findCodeByGuid, MatchingSelectionsList, buildMatchGroups } from './Matc
 interface CodeSelectionsModalProps {
   codeGuid: string;
   codebookGuid: string;
+  currentFilePath?: string;
   onClose: () => void;
 }
 
@@ -81,10 +82,24 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
     );
   });
 
+  // Groups from the current file (excluding examples)
+  const currentFileGroups = createMemo(() => {
+    const exGuids = exampleSelectionGuids();
+    const currentPath = props.currentFilePath;
+    if (!currentPath) return [];
+    return allGroups().filter(g =>
+      g.sourcePath === currentPath &&
+      !g.selections.some(s => exGuids.has(s.guid))
+    );
+  });
+
+  // All other groups (excluding examples and current file)
   const otherGroups = createMemo(() => {
     const exGuids = exampleSelectionGuids();
+    const currentPath = props.currentFilePath;
     return allGroups().filter(g =>
-      !g.selections.some(s => exGuids.has(s.guid))
+      !g.selections.some(s => exGuids.has(s.guid)) &&
+      !(currentPath && g.sourcePath === currentPath)
     );
   });
 
@@ -188,6 +203,14 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
             <MatchingSelectionsList
               matchGroups={exampleGroups()}
               title={`Examples (${exampleGroups().length})`}
+              onToggleExample={handleToggleExample}
+            />
+          </Show>
+
+          <Show when={currentFileGroups().length > 0}>
+            <MatchingSelectionsList
+              matchGroups={currentFileGroups()}
+              title={`In Current File (${currentFileGroups().length})`}
               onToggleExample={handleToggleExample}
             />
           </Show>
