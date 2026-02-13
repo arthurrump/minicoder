@@ -58,6 +58,7 @@ export function TopBar(props: TopBarProps) {
                             <input
                                 id="userId"
                                 type="text"
+                                autocomplete="off"
                                 placeholder="Enter your user ID"
                                 value={editingUserId()}
                                 onInput={(e) => setEditingUserId(e.target.value)}

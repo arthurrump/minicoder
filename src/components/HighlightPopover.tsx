@@ -52,7 +52,7 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
                 </div>
                 <div class={styles.popoverActions}>
                     <button
-                        class={`${styles.popoverActionBtn} ${props.isExample ? styles.popoverExampleActive : ''}`}
+                        class={styles.popoverActionBtn}
                         onClick={handleToggleExample}
                         title={props.isExample ? 'Remove as example' : 'Mark as example'}
                         innerHTML={props.isExample ? octicons['star-fill'].toSVG() : octicons.star.toSVG()}
