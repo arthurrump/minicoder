@@ -65,6 +65,12 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
                     />
                 </div>
             </div>
+            <Show when={props.selection.creatingUser}>
+                <div class={styles.popoverUser}>
+                    <span class={styles.popoverUserLabel}>Created by:</span>
+                    <span class={styles.popoverUserName}>{props.selection.creatingUser}</span>
+                </div>
+            </Show>
             <textarea
                 class={styles.popoverNote}
                 placeholder="Add a note..."

@@ -22,3 +22,100 @@
     align-items: center;
     gap: 12px;
 }
+
+.userId {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.settingsOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.settingsModal {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 24px;
+    min-width: 320px;
+    max-width: 400px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.settingsModal h3 {
+    margin: 0 0 16px 0;
+    font-size: 1.2rem;
+}
+
+.settingRow {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.settingRow label {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.settingRow input {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+    background: var(--bg-color);
+    color: inherit;
+}
+
+.settingRow input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.settingHint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0 0 16px 0;
+}
+
+.settingsActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.settingsActions button {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.settingsActions button:hover {
+    background: var(--bg-secondary);
+}
+
+.primaryBtn {
+    background: var(--accent-color) !important;
+    color: white;
+    border-color: var(--accent-color) !important;
+}
+
+.primaryBtn:hover {
+    opacity: 0.9;
+}

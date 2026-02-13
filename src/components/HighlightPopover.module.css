@@ -80,3 +80,23 @@
     border-color: #007acc;
     box-shadow: 0 0 0 1px #007acc;
 }
+
+.popoverUser {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+
+.popoverUserLabel {
+    color: #666;
+}
+
+.popoverUserName {
+    font-weight: 500;
+    color: #333;
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+}

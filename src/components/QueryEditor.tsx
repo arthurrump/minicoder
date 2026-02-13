@@ -355,6 +355,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
     const groups: MatchGroup[] = [];
     const queryNode = props.query.query;
     const filterPatterns = parseFilterList(props.query.fileFilter);
+    const userFilterList = parseFilterList(props.query.userFilter);
     const matchAll = !queryNode;
     
     for (const [sourcePath, source] of Object.entries(store.sources)) {
@@ -365,6 +366,13 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       const matchingSelectionGuids = new Set<string>();
       
       for (const selection of source.selections) {
+        // Apply user filter first
+        if (userFilterList.length > 0) {
+          if (!selection.creatingUser || !userFilterList.includes(selection.creatingUser)) {
+            continue;
+          }
+        }
+
         if (matchAll) {
           matchingSelectionGuids.add(selection.guid);
           continue;
@@ -503,6 +511,27 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
     const updatedQuery = { ...q, fileFilter: value };
     await actions.saveQuery(updatedQuery);
   };
+
+  const updateUserFilter = async (value: string) => {
+    const q = query();
+    if (!q) return;
+    const updatedQuery = { ...q, userFilter: value };
+    await actions.saveQuery(updatedQuery);
+  };
+
+  // Collect all unique user IDs from selections
+  const allUsers = createMemo(() => {
+    const users = new Set<string>();
+    for (const source of Object.values(store.sources)) {
+      for (const selection of source.selections) {
+        if (selection.creatingUser) {
+          users.add(selection.creatingUser);
+        }
+      }
+    }
+    return Array.from(users).sort();
+  });
+
   const clearQuery = async () => {
     await updateQuery(null);
   };
@@ -578,6 +607,46 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                 onInput={(e) => updateQueryFilter((e.target as HTMLInputElement).value)}
               />
             </div>
+            
+            <Show when={allUsers().length > 0}>
+              <div class={styles.queryFilterRow}>
+                <label class={styles.queryFilterLabel}>Filter users</label>
+                <div class={styles.userFilterContainer}>
+                  <div class={styles.userChips}>
+                    <For each={allUsers()}>
+                      {(user) => {
+                        const isSelected = () => parseFilterList(q().userFilter || '').includes(user);
+                        return (
+                          <label
+                            class={styles.userChip}
+                            classList={{ [styles.userChipChecked]: isSelected() }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected()}
+                              onChange={() => {
+                                const current = q().userFilter || '';
+                                const users = parseFilterList(current);
+                                if (users.includes(user)) {
+                                  // Remove user
+                                  const newUsers = users.filter(u => u !== user);
+                                  updateUserFilter(newUsers.join(', '));
+                                } else {
+                                  // Add user
+                                  const newUsers = [...users, user];
+                                  updateUserFilter(newUsers.join(', '));
+                                }
+                              }}
+                            />
+                            <span>{user}</span>
+                          </label>
+                        );
+                      }}
+                    </For>
+                  </div>
+                </div>
+              </div>
+            </Show>
             
             <div class={styles.queryBuilder}>
               <Show when={q().query} fallback={

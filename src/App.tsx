@@ -3,6 +3,7 @@ import { HashRouter, Route } from '@solidjs/router';
 import { TopBar } from './components/TopBar';
 import CodingView from './views/CodingView';
 import { StoreProvider, useStore } from './store';
+import { SettingsProvider } from './settings';
 
 function isFileSystemAccessSupported(): boolean {
   return 'showDirectoryPicker' in window;
@@ -62,12 +63,14 @@ const App: Component = () => {
   }
 
   return (
-    <StoreProvider>
-      <HashRouter root={Layout}>
-        <Route path="/" component={CodingView} />
-        <Route path="/*filePath" component={CodingView} />
-      </HashRouter>
-    </StoreProvider>
+    <SettingsProvider>
+      <StoreProvider>
+        <HashRouter root={Layout}>
+          <Route path="/" component={CodingView} />
+          <Route path="/*filePath" component={CodingView} />
+        </HashRouter>
+      </StoreProvider>
+    </SettingsProvider>
   );
 };
 

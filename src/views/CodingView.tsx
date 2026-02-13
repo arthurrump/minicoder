@@ -10,6 +10,7 @@ import QueryEditor from '../components/QueryEditor';
 import CodeSelectionsModal from '../components/CodeSelectionsModal';
 import { hashText, isPlainText } from '../helpers';
 import { useStore } from '../store';
+import { useSettings } from '../settings';
 import styles from './CodingView.module.css';
 
 // Helper to compute disambiguated tab names
@@ -64,6 +65,7 @@ function getTabDisplayNames(openTabs: string[]): Map<string, string> {
 
 const CodingView: Component = () => {
   const { store, actions } = useStore();
+  const { settings } = useSettings();
   const params = useParams<{ filePath?: string }>();
   const navigate = useNavigate();
   
@@ -256,6 +258,7 @@ const CodingView: Component = () => {
         start: pending.start,
         end: pending.end,
         code: { codebookGuid: codebook.guid, codeGuid: code.guid },
+        creatingUser: settings().userId || undefined,
         note: undefined
       };
       
@@ -281,6 +284,7 @@ const CodingView: Component = () => {
         start,
         end,
         code: { codebookGuid: code.codebook.guid, codeGuid: code.code.guid },
+        creatingUser: settings().userId || undefined,
         note: undefined
       };
       

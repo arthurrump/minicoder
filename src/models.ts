@@ -23,6 +23,7 @@ interface TextSelection {
     start: number;
     end: number;
     code: CodeReference;
+    creatingUser?: string;
     note?: string;
 }
 
@@ -47,4 +48,9 @@ interface Query {
     name: string;
     query: QueryNode | null;
     fileFilter?: string;
+    userFilter?: string; // Comma-separated list of user IDs
+}
+
+interface UserSettings {
+    userId: string;
 }
