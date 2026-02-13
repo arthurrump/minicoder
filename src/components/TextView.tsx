@@ -243,6 +243,7 @@ function getUnderlineStyle(
         'background-position': positions.join(', '),
         'background-repeat': 'no-repeat',
         'padding-bottom': `${totalLayers * (UNDERLINE_HEIGHT + UNDERLINE_GAP)}px`,
+        'line-height': `calc(1.2em + ${layerData.length * (UNDERLINE_HEIGHT + UNDERLINE_GAP)}px)`
     };
 }
 
