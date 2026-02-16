@@ -17,7 +17,7 @@
 
 ### Core Data Model
 
-[src/models.ts](src/models.ts) defines the data model. There are four persistent file types in the selected directory:
+[src/models](src/models) defines the data model. There are four persistent file types in the selected directory:
 
 1. **`.mcc` files (Codebooks)** - JSON files containing code hierarchies:
    ```typescript
