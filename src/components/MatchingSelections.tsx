@@ -5,15 +5,28 @@ import styles from './MatchingSelections.module.css';
 import ColorChip from './ColorChip';
 import TextView from './TextView';
 
-export function collectCodeAndSubcodes(root: Code | null): string[] {
-  if (!root) return [];
-  const guids: string[] = [root.guid];
-  if (root.subcodes) {
-    for (const sub of root.subcodes) {
-      guids.push(...collectCodeAndSubcodes(sub));
-    }
+/**
+ * Given selections sorted by start, find all that overlap the interval [start, end).
+ * Uses binary search to find the starting point, then scans forward.
+ */
+export function findOverlapping(
+  sorted: TextSelection[],
+  start: number,
+  end: number,
+): TextSelection[] {
+  // Binary search: find first selection whose end > start
+  let lo = 0, hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid].end <= start) lo = mid + 1;
+    else hi = mid;
   }
-  return guids;
+  const result: TextSelection[] = [];
+  for (let i = lo; i < sorted.length; i++) {
+    if (sorted[i].start >= end) break;
+    result.push(sorted[i]);
+  }
+  return result;
 }
 
 // Flatten all codes from all codebooks for the picker
@@ -318,15 +331,17 @@ export function buildMatchGroups(
     const content = fileContents[sourcePath] || '';
     if (!content) continue;
 
+    // Sort ALL source selections once for efficient overlap queries
+    const allSorted = [...source.selections].sort((a, b) => a.start - b.start || a.end - b.end);
+
     // Find all selections matching any of the target code GUIDs
-    const matchingSelections = source.selections.filter(s => codeGuids.has(s.code.codeGuid));
+    const matchingSelections = allSorted.filter(s => codeGuids.has(s.code.codeGuid));
     if (matchingSelections.length === 0) continue;
 
-    // Sort and group overlapping selections
-    const sorted = [...matchingSelections].sort((a, b) => a.start - b.start);
+    // Group overlapping matched selections (already sorted)
     const mergedGroups: { start: number; end: number; selections: TextSelection[] }[] = [];
 
-    for (const sel of sorted) {
+    for (const sel of matchingSelections) {
       const lastGroup = mergedGroups[mergedGroups.length - 1];
       if (lastGroup && sel.start <= lastGroup.end) {
         lastGroup.end = Math.max(lastGroup.end, sel.end);
@@ -339,9 +354,7 @@ export function buildMatchGroups(
     // Convert to MatchGroup with content and adjusted offsets
     for (const group of mergedGroups) {
       // Include all selections that overlap with this region (not just matching ones)
-      const groupSelections = source.selections.filter(s =>
-        !(s.end <= group.start || s.start >= group.end)
-      );
+      const groupSelections = findOverlapping(allSorted, group.start, group.end);
       groups.push({
         sourcePath,
         start: group.start,

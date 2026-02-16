@@ -64,7 +64,7 @@ function getTabDisplayNames(openTabs: string[]): Map<string, string> {
 }
 
 const CodingView: Component = () => {
-  const { store, actions } = useStore();
+  const { store, actions, indices } = useStore();
   const { settings } = useSettings();
   const params = useParams<{ filePath?: string }>();
   const navigate = useNavigate();
@@ -98,20 +98,14 @@ const CodingView: Component = () => {
   const selectedCodebookGuid = createMemo(() => {
     const path = selectedFilePath();
     if (!path || !path.endsWith('.mcc')) return undefined;
-    for (const [guid, loc] of Object.entries(store.fileLocations)) {
-      if (loc.path === path) return guid;
-    }
-    return undefined;
+    return indices.pathToGuid()[path];
   });
 
   // Resolve query guid from file path (for .mcq files)
   const selectedQueryGuid = createMemo(() => {
     const path = selectedFilePath();
     if (!path || !path.endsWith('.mcq')) return undefined;
-    for (const [guid, loc] of Object.entries(store.fileLocations)) {
-      if (loc.path === path) return guid;
-    }
-    return undefined;
+    return indices.pathToGuid()[path];
   });
   
   // Tab management

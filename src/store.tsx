@@ -40,6 +40,8 @@ export interface StoreActions {
 
 export interface StoreIndices {
   codeByGuid: Accessor<Record<string, { code: Code; codebook: Codebook }>>;
+  subcodesByGuid: Accessor<Record<string, Set<string>>>;
+  pathToGuid: Accessor<Record<string, string>>;
 }
 
 interface StoreContextValue {
@@ -490,6 +492,32 @@ export const StoreProvider: ParentComponent = (props) => {
       }
       for (const codebook of Object.values(store.codebooks)) {
         walk(codebook.codes, codebook);
+      }
+      return index;
+    }),
+    subcodesByGuid: createMemo(() => {
+      const index: Record<string, Set<string>> = {};
+      function collect(code: Code): Set<string> {
+        const guids = new Set<string>([code.guid]);
+        if (code.subcodes) {
+          for (const sub of code.subcodes) {
+            for (const g of collect(sub)) guids.add(g);
+          }
+        }
+        index[code.guid] = guids;
+        return guids;
+      }
+      for (const codebook of Object.values(store.codebooks)) {
+        for (const code of codebook.codes) collect(code);
+      }
+      return index;
+    }),
+    pathToGuid: createMemo(() => {
+      const index: Record<string, string> = {};
+      for (const [guid, loc] of Object.entries(store.fileLocations)) {
+        if (!guid.startsWith('source:') && !guid.startsWith('content:')) {
+          index[loc.path] = guid;
+        }
       }
       return index;
     }),

@@ -3,10 +3,10 @@ import octicons from '@primer/octicons';
 import { useStore } from '../store';
 import styles from './QueryEditor.module.css';
 import ColorChip from './ColorChip';
-import { collectCodeAndSubcodes, flattenCodes, MatchingSelectionsList, buildMatchGroups, type MatchGroup } from './MatchingSelections';
+import { flattenCodes, findOverlapping, MatchingSelectionsList, buildMatchGroups, type MatchGroup } from './MatchingSelections';
 
 // Evaluate a query against a set of code GUIDs
-export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<string>, codeIndex: Record<string, { code: Code; codebook: Codebook }>): boolean {
+export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<string>, subcodeIndex: Record<string, Set<string>>): boolean {
   if (!node) return false;
   
   if (node.type === 'code') {
@@ -15,20 +15,23 @@ export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<st
       return selectionCodeGuids.has(node.codeGuid);
     }
 
-    const info = codeIndex[node.codeGuid];
-    const targetGuids = collectCodeAndSubcodes(info?.code || null);
-    return targetGuids.some(guid => selectionCodeGuids.has(guid));
+    const targetGuids = subcodeIndex[node.codeGuid];
+    if (!targetGuids) return false;
+    for (const guid of targetGuids) {
+      if (selectionCodeGuids.has(guid)) return true;
+    }
+    return false;
   }
   
   if (node.type === 'operator') {
     switch (node.operator) {
       case 'AND':
-        return node.children.length > 0 && node.children.every(child => evaluateQuery(child, selectionCodeGuids, codeIndex));
+        return node.children.length > 0 && node.children.every(child => evaluateQuery(child, selectionCodeGuids, subcodeIndex));
       case 'OR':
-        return node.children.some(child => evaluateQuery(child, selectionCodeGuids, codeIndex));
+        return node.children.some(child => evaluateQuery(child, selectionCodeGuids, subcodeIndex));
       case 'NOT':
         // NOT operates on the first child only
-        return node.children.length > 0 ? !evaluateQuery(node.children[0], selectionCodeGuids, codeIndex) : false;
+        return node.children.length > 0 ? !evaluateQuery(node.children[0], selectionCodeGuids, subcodeIndex) : false;
       default:
         return false;
     }
@@ -54,9 +57,13 @@ function globToRegExp(pattern: string): RegExp {
   return new RegExp(`^${finalPattern}$`, 'i');
 }
 
-function matchesAnyGlob(path: string, patterns: string[]): boolean {
-  if (patterns.length === 0) return true;
-  return patterns.some(pattern => globToRegExp(pattern).test(path));
+function compileGlobs(patterns: string[]): RegExp[] {
+  return patterns.map(p => globToRegExp(p));
+}
+
+function matchesAnyGlob(path: string, compiled: RegExp[]): boolean {
+  if (compiled.length === 0) return true;
+  return compiled.some(re => re.test(path));
 }
 
 interface QueryNodeEditorProps {
@@ -285,7 +292,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
   const matchGroups = createMemo((): MatchGroup[] => {
     const groups: MatchGroup[] = [];
     const queryNode = props.query.query;
-    const filterPatterns = parseFilterList(props.query.fileFilter);
+    const filterPatterns = compileGlobs(parseFilterList(props.query.fileFilter));
     const userFilterList = parseFilterList(props.query.userFilter);
     const matchAll = !queryNode;
     
@@ -294,9 +301,13 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       const content = store.fileContents[sourcePath] || '';
       if (!content) continue;
       
+      // Sort all selections once for efficient overlap queries
+      const allSorted = [...source.selections].sort((a, b) => a.start - b.start || a.end - b.end);
+      const subcodeIdx = indices.subcodesByGuid();
+
       const matchingSelectionGuids = new Set<string>();
       
-      for (const selection of source.selections) {
+      for (const selection of allSorted) {
         // Apply user filter first
         if (userFilterList.length > 0) {
           if (!selection.creatingUser || !userFilterList.includes(selection.creatingUser)) {
@@ -309,24 +320,22 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
           continue;
         }
 
-        const overlappingSelections = source.selections.filter(s => 
-          !(s.end <= selection.start || s.start >= selection.end)
-        );
+        const overlappingSelections = findOverlapping(allSorted, selection.start, selection.end);
         const codeGuids = new Set(overlappingSelections.map(s => s.code.codeGuid));
         
-        if (evaluateQuery(queryNode, codeGuids, indices.codeByGuid())) {
+        if (evaluateQuery(queryNode, codeGuids, subcodeIdx)) {
           matchingSelectionGuids.add(selection.guid);
         }
       }
       
       if (matchingSelectionGuids.size === 0) continue;
       
-      const matchingSelections = source.selections.filter(s => matchingSelectionGuids.has(s.guid));
-      const sortedSelections = [...matchingSelections].sort((a, b) => a.start - b.start);
+      // Filter matched and merge into groups (allSorted is already sorted)
+      const matchingSelections = allSorted.filter(s => matchingSelectionGuids.has(s.guid));
       
       const mergedGroups: { start: number; end: number; selections: TextSelection[] }[] = [];
       
-      for (const sel of sortedSelections) {
+      for (const sel of matchingSelections) {
         const lastGroup = mergedGroups[mergedGroups.length - 1];
         if (lastGroup && sel.start <= lastGroup.end) {
           lastGroup.end = Math.max(lastGroup.end, sel.end);
@@ -337,9 +346,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       }
       
       for (const group of mergedGroups) {
-        const groupSelections = source.selections.filter(s =>
-          !(s.end <= group.start || s.start >= group.end)
-        );
+        const groupSelections = findOverlapping(allSorted, group.start, group.end);
         groups.push({
           sourcePath,
           start: group.start,
