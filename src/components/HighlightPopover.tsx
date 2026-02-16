@@ -2,13 +2,12 @@ import octicons from '@primer/octicons';
 import { type Component, Show, createMemo } from 'solid-js';
 import styles from './HighlightPopover.module.css';
 import ColorChip from './ColorChip';
-import { findCode } from '../helpers';
+import { useStore } from '../store';
 
 interface HighlightPopoverProps {
     x: number;
     y: number;
     selection: TextSelection;
-    codebooks: Codebook[];
     isExample: boolean;
     onRemoveCode: (selectionGuid: string) => void;
     onToggleExample: (selectionGuid: string) => void;
@@ -17,10 +16,10 @@ interface HighlightPopoverProps {
 }
 
 const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
+    const { indices } = useStore();
     const codeInfo = createMemo(() => {
-        const code = findCode(props.selection.code.codebookGuid, props.selection.code.codeGuid, props.codebooks);
-        const codebook = props.codebooks.find(cb => cb.guid === props.selection.code.codebookGuid);
-        return { code, codebook };
+        const info = indices.codeByGuid()[props.selection.code.codeGuid];
+        return info ? { code: info.code, codebook: info.codebook } : { code: null, codebook: undefined };
     });
 
     const handleRemoveCode = () => {

@@ -3,10 +3,10 @@ import octicons from '@primer/octicons';
 import { useStore } from '../store';
 import styles from './QueryEditor.module.css';
 import ColorChip from './ColorChip';
-import { findCodeByGuid, collectCodeAndSubcodes, flattenCodes, MatchingSelectionsList, buildMatchGroups, type MatchGroup } from './MatchingSelections';
+import { collectCodeAndSubcodes, flattenCodes, MatchingSelectionsList, buildMatchGroups, type MatchGroup } from './MatchingSelections';
 
 // Evaluate a query against a set of code GUIDs
-export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<string>, codebooks: Codebook[]): boolean {
+export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<string>, codeIndex: Record<string, { code: Code; codebook: Codebook }>): boolean {
   if (!node) return false;
   
   if (node.type === 'code') {
@@ -15,7 +15,7 @@ export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<st
       return selectionCodeGuids.has(node.codeGuid);
     }
 
-    const info = findCodeByGuid(codebooks, node.codeGuid);
+    const info = codeIndex[node.codeGuid];
     const targetGuids = collectCodeAndSubcodes(info?.code || null);
     return targetGuids.some(guid => selectionCodeGuids.has(guid));
   }
@@ -23,12 +23,12 @@ export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<st
   if (node.type === 'operator') {
     switch (node.operator) {
       case 'AND':
-        return node.children.length > 0 && node.children.every(child => evaluateQuery(child, selectionCodeGuids, codebooks));
+        return node.children.length > 0 && node.children.every(child => evaluateQuery(child, selectionCodeGuids, codeIndex));
       case 'OR':
-        return node.children.some(child => evaluateQuery(child, selectionCodeGuids, codebooks));
+        return node.children.some(child => evaluateQuery(child, selectionCodeGuids, codeIndex));
       case 'NOT':
         // NOT operates on the first child only
-        return node.children.length > 0 ? !evaluateQuery(node.children[0], selectionCodeGuids, codebooks) : false;
+        return node.children.length > 0 ? !evaluateQuery(node.children[0], selectionCodeGuids, codeIndex) : false;
       default:
         return false;
     }
@@ -61,13 +61,13 @@ function matchesAnyGlob(path: string, patterns: string[]): boolean {
 
 // Component for initial query creation - choose between code or operator
 interface QueryInitialPickerProps {
-  codebooks: Codebook[];
   onSelect: (node: QueryNode) => void;
 }
 
 const QueryInitialPicker: Component<QueryInitialPickerProps> = (props) => {
+  const { store } = useStore();
   const [mode, setMode] = createSignal<'choose' | 'code'>('choose');
-  const allCodes = createMemo(() => flattenCodes(props.codebooks));
+  const allCodes = createMemo(() => flattenCodes(Object.values(store.codebooks)));
 
   const handleCodeSelect = (codeGuid: string) => {
     props.onSelect({ type: 'code', codeGuid, includeSubcodes: true });
@@ -122,18 +122,18 @@ interface QueryNodeEditorProps {
   node: QueryNode;
   onUpdate: (node: QueryNode) => void;
   onDelete: () => void;
-  codebooks: Codebook[];
   depth: number;
   showDelete?: boolean;
 }
 
 const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
+  const { store, indices } = useStore();
   const [showCodePicker, setShowCodePicker] = createSignal(false);
-  const allCodes = createMemo(() => flattenCodes(props.codebooks));
+  const allCodes = createMemo(() => flattenCodes(Object.values(store.codebooks)));
   
   const codeInfo = createMemo(() => {
     if (props.node.type === 'code') {
-      return findCodeByGuid(props.codebooks, props.node.codeGuid);
+      return indices.codeByGuid()[props.node.codeGuid] ?? null;
     }
     return null;
   });
@@ -313,7 +313,6 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
                 node={child}
                 onUpdate={(updated) => handleChildUpdate(index(), updated)}
                 onDelete={() => handleChildDelete(index())}
-                codebooks={props.codebooks}
                 depth={props.depth + 1}
               />
             )}
@@ -348,7 +347,7 @@ interface QueryMatchingSelectionsProps {
 }
 
 const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props) => {
-  const { store, actions } = useStore();
+  const { store, actions, indices } = useStore();
 
   // Compute match groups via query evaluation
   const matchGroups = createMemo((): MatchGroup[] => {
@@ -383,7 +382,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
         );
         const codeGuids = new Set(overlappingSelections.map(s => s.code.codeGuid));
         
-        if (evaluateQuery(queryNode, codeGuids, Object.values(store.codebooks))) {
+        if (evaluateQuery(queryNode, codeGuids, indices.codeByGuid())) {
           matchingSelectionGuids.add(selection.guid);
         }
       }
@@ -626,7 +625,6 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
             <div class={styles.queryBuilder}>
               <Show when={q().query} fallback={
                 <QueryInitialPicker 
-                  codebooks={Object.values(store.codebooks)}
                   onSelect={(node) => updateQueryNode(node)}
                 />
               }>
@@ -634,7 +632,6 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                   node={q().query!}
                   onUpdate={(updated) => updateQueryNode(updated)}
                   onDelete={() => clearQuery()}
-                  codebooks={Object.values(store.codebooks)}
                   depth={0}
                   showDelete
                 />

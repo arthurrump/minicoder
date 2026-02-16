@@ -48,28 +48,3 @@ export function isPlainText(content: string): boolean {
     const nonPrintableRatio = nonPrintableCount / sampleSize;
     return nonPrintableRatio < 0.3;
 }
-
-// Find a code by codebook GUID and code GUID within a list of codebooks
-export function findCode(codebookGuid: string, codeGuid: string, codebooks: Codebook[]): Code | null {
-    for (const codebook of codebooks) {
-        if (codebook.guid === codebookGuid) {
-            const foundCode = findCodeInTree(codeGuid, codebook.codes);
-            if (foundCode) return foundCode;
-        }
-    }
-    return null;
-}
-
-// Recursively search for a code in a code tree (including subcodes)
-function findCodeInTree(codeGuid: string, codes: Code[]): Code | null {
-    for (const code of codes) {
-        if (code.guid === codeGuid) {
-            return code;
-        }
-        if (code.subcodes) {
-            const found = findCodeInTree(codeGuid, code.subcodes);
-            if (found) return found;
-        }
-    }
-    return null;
-}

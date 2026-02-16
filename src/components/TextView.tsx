@@ -3,12 +3,11 @@ import { createMemo, createSignal, For, Show, type Component, onMount, onCleanup
 import styles from './TextView.module.css';
 import HighlightPopover from './HighlightPopover';
 import ColorChip from './ColorChip';
-import { findCode } from '../helpers';
+import { useStore } from '../store';
 
 interface TextViewProps {
     content: string;
     selections: TextSelection[];
-    codebooks: Codebook[];
     onSelectionCreate?: (start: number, end: number) => void;
     onSelectionRemove?: (selectionGuid: string) => void;
     onSelectionUpdate?: (selectionGuid: string, start: number, end: number, note?: string) => void;
@@ -197,7 +196,7 @@ function getSelectionAtLayer(
 function getUnderlineStyle(
     segmentSelections: TextSelection[],
     selectionLayers: Map<string, number>,
-    codebooks: Codebook[],
+    codeIndex: Record<string, { code: Code; codebook: Codebook }>,
     totalLayers: number,
     hoveredSelectionGuid: string | null
 ): Record<string, string> {
@@ -221,8 +220,8 @@ function getUnderlineStyle(
     const positions: string[] = [];
     
     for (const { layer, sel } of layerData) {
-        const code = findCode(sel.code.codebookGuid, sel.code.codeGuid, codebooks);
-        let color = code?.color || '#888';
+        const info = codeIndex[sel.code.codeGuid];
+        let color = info?.code.color || '#888';
         
         // Apply hover effect
         if (sel.guid === hoveredSelectionGuid) {
@@ -250,7 +249,7 @@ function getUnderlineStyle(
 interface TextSegmentProps {
     segment: Segment;
     selectionLayers: Map<string, number>;
-    codebooks: Codebook[];
+    codeIndex: Record<string, { code: Code; codebook: Codebook }>;
     totalLayers: number;
     hoveredSelectionGuid: string | null;
     segmentRef: (el: HTMLSpanElement) => void;
@@ -270,7 +269,7 @@ const TextSegment: Component<TextSegmentProps> = (props) => {
             style={getUnderlineStyle(
                 props.segment.selections,
                 props.selectionLayers,
-                props.codebooks,
+                props.codeIndex,
                 props.totalLayers,
                 props.hoveredSelectionGuid
             )}
@@ -285,7 +284,7 @@ interface SelectionHandlesProps {
     segments: Segment[];
     segmentElements: Map<number, HTMLSpanElement>;
     containerRef: HTMLElement | null;
-    codebooks: Codebook[];
+    codeIndex: Record<string, { code: Code; codebook: Codebook }>;
     onDragStart: (handle: 'start' | 'end') => void;
     onDragMove: (charIndex: number) => void;
     onDragEnd: () => void;
@@ -352,8 +351,8 @@ const SelectionHandles: Component<SelectionHandlesProps> = (props) => {
     
     // Get the color for this selection's code
     const codeColor = createMemo(() => {
-        const code = findCode(props.selection.code.codebookGuid, props.selection.code.codeGuid, props.codebooks);
-        return code?.color ?? '#007acc';
+        const info = props.codeIndex[props.selection.code.codeGuid];
+        return info?.code.color ?? '#007acc';
     });
     
     // Update handle positions when selection or layout changes
@@ -505,6 +504,8 @@ function getCaretPositionAt(clientX: number, clientY: number, container: HTMLEle
 }
 
 const TextView: Component<TextViewProps> = (props) => {
+    const { indices } = useStore();
+    const codeIndex = () => indices.codeByGuid();
     const [popover, setPopover] = createSignal<{ x: number; y: number; selection: TextSelection } | null>(null);
     const [hoveredSelectionGuid, setHoveredSelectionGuid] = createSignal<string | null>(null);
     const [activeSelectionGuid, setActiveSelectionGuid] = createSignal<string | null>(null);
@@ -731,7 +732,7 @@ const TextView: Component<TextViewProps> = (props) => {
                         <TextSegment
                             segment={segment}
                             selectionLayers={selectionLayers()}
-                            codebooks={props.codebooks}
+                            codeIndex={codeIndex()}
                             totalLayers={totalLayers()}
                             hoveredSelectionGuid={hoveredSelectionGuid()}
                             segmentRef={(el) => {
@@ -753,7 +754,7 @@ const TextView: Component<TextViewProps> = (props) => {
                             segments={segments()}
                             segmentElements={segmentElements}
                             containerRef={containerRef}
-                            codebooks={props.codebooks}
+                            codeIndex={codeIndex()}
                             onDragStart={handleDragStart}
                             onDragMove={handleDragMove}
                             onDragEnd={handleDragEnd}
@@ -767,15 +768,14 @@ const TextView: Component<TextViewProps> = (props) => {
                 {(p) => {
                     const isExample = createMemo(() => {
                         const sel = p().selection;
-                        const code = findCode(sel.code.codebookGuid, sel.code.codeGuid, props.codebooks);
-                        return code?.examples?.some(ex => ex.textSelectionGuid === sel.guid) ?? false;
+                        const info = codeIndex()[sel.code.codeGuid];
+                        return info?.code.examples?.some(ex => ex.textSelectionGuid === sel.guid) ?? false;
                     });
                     return (
                         <HighlightPopover
                             x={p().x}
                             y={p().y}
                             selection={p().selection}
-                            codebooks={props.codebooks}
                             isExample={isExample()}
                             onRemoveCode={handleRemoveCode}
                             onToggleExample={(selectionGuid) => props.onToggleExample?.(selectionGuid)}

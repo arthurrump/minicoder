@@ -563,7 +563,6 @@ const CodingView: Component = () => {
                         <TextView
                           content={content()}
                           selections={selections()}
-                          codebooks={codebooksList()}
                           onSelectionCreate={handleSelectionCreate}
                           onSelectionRemove={handleSelectionRemove}
                           onSelectionUpdate={handleSelectionUpdate}

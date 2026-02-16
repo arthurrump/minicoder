@@ -1,4 +1,4 @@
-import { createContext, useContext, type ParentComponent } from 'solid-js';
+import { createContext, createMemo, useContext, type Accessor, type ParentComponent } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
 import { hashText, debounce } from './helpers';
 
@@ -38,9 +38,14 @@ export interface StoreActions {
   deleteQuery: (queryGuid: string) => Promise<void>;
 }
 
+export interface StoreIndices {
+  codeByGuid: Accessor<Record<string, { code: Code; codebook: Codebook }>>;
+}
+
 interface StoreContextValue {
   store: AppStore;
   actions: StoreActions;
+  indices: StoreIndices;
 }
 
 const StoreContext = createContext<StoreContextValue>();
@@ -472,8 +477,26 @@ export const StoreProvider: ParentComponent = (props) => {
     },
   };
 
+  // ---- Indices ----
+  
+  const indices: StoreIndices = { 
+    codeByGuid: createMemo(() => {
+      const index: Record<string, { code: Code; codebook: Codebook }> = {};
+      function walk(codes: Code[], codebook: Codebook) {
+        for (const code of codes) {
+          index[code.guid] = { code, codebook };
+          if (code.subcodes) walk(code.subcodes, codebook);
+        }
+      }
+      for (const codebook of Object.values(store.codebooks)) {
+        walk(codebook.codes, codebook);
+      }
+      return index;
+    }),
+  };
+
   return (
-    <StoreContext.Provider value={{ store, actions }}>
+    <StoreContext.Provider value={{ store, actions, indices }}>
       {props.children}
     </StoreContext.Provider>
   );

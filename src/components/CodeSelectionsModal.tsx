@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import styles from './CodeSelectionsModal.module.css';
 import editorStyles from './CodebookEditor.module.css';
 import ColorChip from './ColorChip';
-import { findCodeByGuid, MatchingSelectionsList, buildMatchGroups } from './MatchingSelections';
+import { MatchingSelectionsList, buildMatchGroups } from './MatchingSelections';
 
 interface CodeSelectionsModalProps {
   codeGuid: string;
@@ -24,11 +24,11 @@ function updateCodeInTree(codes: Code[], guid: string, updates: Partial<Code>): 
 }
 
 const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
-  const { store, actions } = useStore();
+  const { store, actions, indices } = useStore();
   const [editing, setEditing] = createSignal(false);
 
   // Find the code and codebook
-  const codeInfo = createMemo(() => findCodeByGuid(Object.values(store.codebooks), props.codeGuid));
+  const codeInfo = createMemo(() => indices.codeByGuid()[props.codeGuid] ?? null);
 
   // Collect this code + all subcodes
   const targetGuids = createMemo(() => {

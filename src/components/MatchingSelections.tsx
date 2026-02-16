@@ -5,28 +5,6 @@ import styles from './MatchingSelections.module.css';
 import ColorChip from './ColorChip';
 import TextView from './TextView';
 
-// Helper to find a code by guid across all codebooks
-export function findCodeByGuid(codebooks: Codebook[], guid: string): { code: Code; codebook: Codebook } | null {
-  for (const codebook of codebooks) {
-    const found = findCodeInTree(codebook.codes, guid);
-    if (found) {
-      return { code: found, codebook };
-    }
-  }
-  return null;
-}
-
-export function findCodeInTree(codes: Code[], guid: string): Code | null {
-  for (const code of codes) {
-    if (code.guid === guid) return code;
-    if (code.subcodes) {
-      const found = findCodeInTree(code.subcodes, guid);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
 export function collectCodeAndSubcodes(root: Code | null): string[] {
   if (!root) return [];
   const guids: string[] = [root.guid];
@@ -69,7 +47,6 @@ export interface MatchGroup {
 
 export interface MatchItemProps {
   group: MatchGroup;
-  codebooks: Codebook[];
   isExpanded: boolean;
   onToggleExpand: () => void;
   onEnsureExpanded: () => void;
@@ -84,13 +61,15 @@ export interface MatchItemProps {
 export const MatchItem: Component<MatchItemProps> = (props) => {
   let contentRef: HTMLDivElement | undefined;
   const [needsExpand, setNeedsExpand] = createSignal(false);
+  const { indices } = useStore();
   
   // Build code map for this group
   const codeMap = createMemo(() => {
     const map = new Map<string, { code: Code; codebook: Codebook }>();
+    const idx = indices.codeByGuid();
     for (const sel of props.group.selections) {
       if (!map.has(sel.code.codeGuid)) {
-        const info = findCodeByGuid(props.codebooks, sel.code.codeGuid);
+        const info = idx[sel.code.codeGuid];
         if (info) map.set(sel.code.codeGuid, info);
       }
     }
@@ -138,7 +117,6 @@ export const MatchItem: Component<MatchItemProps> = (props) => {
         <TextView
           content={props.group.content}
           selections={props.group.selections}
-          codebooks={props.codebooks}
           onSelectionCreate={(start, end) => {
             props.onEnsureExpanded();
             props.onSelectionCreate?.(props.group.sourcePath, props.group.start + start, props.group.start + end);
@@ -245,7 +223,6 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
             {(group) => (
               <MatchItem
                 group={group()}
-                codebooks={Object.values(store.codebooks)}
                 isExpanded={isExpanded(group())}
                 onToggleExpand={() => toggleExpanded(group())}
                 onEnsureExpanded={() => ensureExpanded(group())}
