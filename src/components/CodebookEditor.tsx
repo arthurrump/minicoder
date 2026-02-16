@@ -246,7 +246,7 @@ const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
 };
 
 interface CodebookEditorProps {
-  codebookPath: string;
+  codebookGuid: string;
   scrollRef?: (el: HTMLDivElement) => void;
   expandedCodeGuids?: Set<string>;
   onExpandedCodeGuidsChange?: (next: Set<string>) => void;
@@ -274,25 +274,18 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
     setExpandedGuids(next);
   };
 
-  // Find codebook by path
   const codebook = createMemo(() => {
-    return store.codebooks[props.codebookPath] || null;
+    return store.codebooks[props.codebookGuid] || null;
   });
 
-  const updateCodebookName = async (newName: string) => {
+  const updateName = (newName: string) => {
     const cb = codebook();
     if (!cb || !newName.trim()) return;
-    
-    // Delete old file first (it has the old name)
-    await actions.deleteCodebook(cb.guid);
-    
-    // Save with new name
-    const updatedCodebook = { ...cb, name: newName.trim() };
-    await actions.saveCodebook(updatedCodebook);
+    actions.updateCodebook({ ...cb, name: newName.trim() });
     setEditingName(false);
   };
 
-  const updateCodebookCodes = (codes: Code[]) => {
+  const updateCodes = (codes: Code[]) => {
     const cb = codebook();
     if (!cb) return;
     
@@ -300,7 +293,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
     actions.updateCodebook(updatedCodebook);
   };
 
-  const addTopLevelCode = async () => {
+  const addTopLevelCode = () => {
     const cb = codebook();
     if (!cb) return;
     const newCode: Code = {
@@ -310,8 +303,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
       description: '',
       subcodes: []
     };
-    const updatedCodebook = { ...cb, codes: [...cb.codes, newCode] };
-    await actions.saveCodebook(updatedCodebook);
+    actions.updateCodebook({ ...cb, codes: [...cb.codes, newCode] });
   };
 
   const deleteCodebook = async () => {
@@ -346,10 +338,10 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                   type="text"
                   class={styles.codebookTitleInput}
                   value={cb().name}
-                  onBlur={(e) => updateCodebookName(e.target.value)}
+                  onBlur={(e) => updateName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      updateCodebookName((e.target as HTMLInputElement).value);
+                      updateName((e.target as HTMLInputElement).value);
                     }
                     if (e.key === 'Escape') setEditingName(false);
                   }}
@@ -381,7 +373,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                   codes={cb().codes}
                   codebookGuid={cb().guid}
                   depth={0}
-                  onCodesChange={updateCodebookCodes}
+                  onCodesChange={updateCodes}
                   isExpanded={isExpanded}
                   onToggleExpanded={toggleExpanded}
                   onViewSelections={(codeGuid) => setViewingSelectionsForCode(codeGuid)}

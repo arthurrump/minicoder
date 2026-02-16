@@ -1,34 +1,41 @@
 import { createContext, useContext, type ParentComponent } from 'solid-js';
-import { createStore } from 'solid-js/store';
+import { createStore, produce } from 'solid-js/store';
 import { hashText, debounce } from './helpers';
 
-interface AppStore {
-  dirHandle: FileSystemDirectoryHandle | null;
-  codebooks: Record<string, Codebook>;
-  queries: Query[];
-  sources: Record<string, Source>; // relative path -> Source
-  fileContents: Record<string, string>; // relative path -> file content
+/** File location — cached directory handle to avoid tree walks on save */
+export interface FileLocation {
+  path: string;
+  dirHandle: FileSystemDirectoryHandle;
+  fileName: string;
 }
 
-interface StoreActions {
+export interface AppStore {
+  dirHandle: FileSystemDirectoryHandle | null;
+  fileLocations: Record<string, FileLocation>;  // entity guid or path-based key (for sources) -> FileLocation
+  codebooks: Record<string, Codebook>;          // codebook guid -> Codebook
+  queries: Record<string, Query>;               // query guid -> Query
+  sources: Record<string, Source>;              // source file path -> Source
+  fileContents: Record<string, string>;         // source file path -> text content
+}
+
+export interface StoreActions {
   setDirectory: (dirHandle: FileSystemDirectoryHandle) => Promise<void>;
-  loadCodebooks: () => Promise<void>;
-  loadQueries: () => Promise<void>;
-  loadAllSources: () => Promise<void>;
-  loadFileContent: (path: string) => Promise<string | undefined>;
-  getFileContent: (path: string) => string | undefined;
-  getSource: (path: string) => Source | undefined;
-  updateSelections: (path: string, selections: TextSelection[]) => void;
-  saveSource: (path: string) => Promise<void>;
+
+  /** Ensures file content is loaded (triggers async load if not cached). */
+  ensureFileLoaded: (path: string) => void;
+
   updateCodebook: (codebook: Codebook) => void;
-  saveCodebook: (codebook: Codebook) => Promise<void>;
-  deleteCodebook: (codebookGuid: string) => Promise<void>;
   createCodebook: (name: string) => Promise<Codebook | null>;
-  toggleExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => Promise<void>;
-  removeExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => Promise<void>;
-  saveQuery: (query: Query) => Promise<void>;
-  deleteQuery: (queryGuid: string) => Promise<void>;
+  deleteCodebook: (codebookGuid: string) => Promise<void>;
+
+  updateSourceSelections: (path: string, selections: TextSelection[]) => void;
+
+  toggleExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => void;
+  removeExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => void;
+
+  updateQuery: (query: Query) => void;
   createQuery: (name: string) => Promise<Query | null>;
+  deleteQuery: (queryGuid: string) => Promise<void>;
 }
 
 interface StoreContextValue {
@@ -41,335 +48,323 @@ const StoreContext = createContext<StoreContextValue>();
 export const StoreProvider: ParentComponent = (props) => {
   const [store, setStore] = createStore<AppStore>({
     dirHandle: null,
+    fileLocations: {},
     codebooks: {},
-    queries: [],
+    queries: {},
     sources: {},
     fileContents: {},
   });
 
-// Helper to recursively find all files with specific extensions
-async function findAllFiles(
-  dir: FileSystemDirectoryHandle,
-  extensions: string[],
-  basePath: string = ""
-): Promise<{ file: FileSystemFileHandle; path: string; directory: FileSystemDirectoryHandle }[]> {
-  const results: { file: FileSystemFileHandle; path: string; directory: FileSystemDirectoryHandle }[] = [];
-  
-  for await (const [name, handle] of dir.entries()) {
-    const fullPath = basePath ? `${basePath}/${name}` : name;
-    
-    if (handle.kind === 'file' && extensions.some(ext => name.endsWith(ext))) {
-      results.push({
-        file: handle as FileSystemFileHandle,
-        path: fullPath,
-        directory: dir,
-      });
-    } else if (handle.kind === 'directory') {
-      const subResults = await findAllFiles(handle as FileSystemDirectoryHandle, extensions, fullPath);
-      results.push(...subResults);
+  // Track in-progress file content loads to avoid duplicate requests
+  const loadingFiles = new Set<string>();
+
+  // Per-entity debounced save functions
+  const debouncedSavers = new Map<string, () => void>();
+
+  // ---- File system helpers ----
+
+  async function findAllFiles(
+    dir: FileSystemDirectoryHandle,
+    extensions: string[],
+    basePath: string = ""
+  ): Promise<{ file: FileSystemFileHandle; path: string; dirHandle: FileSystemDirectoryHandle; fileName: string }[]> {
+    const results: { file: FileSystemFileHandle; path: string; dirHandle: FileSystemDirectoryHandle; fileName: string }[] = [];
+
+    for await (const [name, handle] of dir.entries()) {
+      const fullPath = basePath ? `${basePath}/${name}` : name;
+
+      if (handle.kind === 'file' && extensions.some(ext => name.endsWith(ext))) {
+        results.push({
+          file: handle as FileSystemFileHandle,
+          path: fullPath,
+          dirHandle: dir,
+          fileName: name,
+        });
+      } else if (handle.kind === 'directory') {
+        const subResults = await findAllFiles(handle as FileSystemDirectoryHandle, extensions, fullPath);
+        results.push(...subResults);
+      }
+    }
+
+    return results;
+  }
+
+  function getDirectoryPath(filePath: string): string {
+    const parts = filePath.split('/');
+    parts.pop();
+    return parts.join('/');
+  }
+
+  async function resolveDirectory(
+    rootDir: FileSystemDirectoryHandle,
+    dirPath: string
+  ): Promise<FileSystemDirectoryHandle> {
+    if (!dirPath) return rootDir;
+    const parts = dirPath.split('/').filter(p => p.length > 0);
+    let current = rootDir;
+    for (const part of parts) {
+      current = await current.getDirectoryHandle(part, { create: true });
+    }
+    return current;
+  }
+
+  // ---- Unified persistence ----
+
+  /** Get or create a FileLocation for a given path, caching the directory handle */
+  async function ensureFileLocation(path: string, key: string): Promise<FileLocation> {
+    const existing = store.fileLocations[key];
+    if (existing && existing.path === path) return existing;
+
+    const dir = store.dirHandle;
+    if (!dir) throw new Error('No directory handle');
+
+    const dirPath = getDirectoryPath(path);
+    const fileName = path.split('/').pop()!;
+    const dirHandle = await resolveDirectory(dir, dirPath);
+
+    const loc: FileLocation = { path, dirHandle, fileName };
+    setStore('fileLocations', key, loc);
+    return loc;
+  }
+
+  async function writeFile(loc: FileLocation, content: string): Promise<void> {
+    const fileHandle = await loc.dirHandle.getFileHandle(loc.fileName, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(content);
+    await writable.close();
+  }
+
+  async function deleteFile(loc: FileLocation): Promise<void> {
+    try {
+      await loc.dirHandle.removeEntry(loc.fileName);
+    } catch (err) {
+      console.warn(`Failed to delete ${loc.path}:`, err);
     }
   }
-  
-  return results;
-}
 
-// Helper to navigate to a directory by path
-async function navigateToDirectory(
-  rootDir: FileSystemDirectoryHandle,
-  path: string
-): Promise<FileSystemDirectoryHandle> {
-  const pathParts = path.split('/').filter(p => p.length > 0);
-  let currentDir = rootDir;
-  
-  for (const part of pathParts) {
-    currentDir = await currentDir.getDirectoryHandle(part);
+  // ---- Save implementations ----
+
+  async function saveCodebook(guid: string): Promise<void> {
+    const codebook = store.codebooks[guid];
+    if (!codebook) return;
+
+    const loc = store.fileLocations[guid];
+    if (!loc) {
+      console.error(`No file location for codebook ${guid}`);
+      return;
+    }
+
+    try {
+      await writeFile(loc, JSON.stringify(codebook, null, 2));
+    } catch (err) {
+      console.error(`Failed to save codebook ${guid}:`, err);
+    }
   }
-  
-  return currentDir;
-}
 
-// Helper to get directory containing a file path
-function getDirectoryPath(filePath: string): string {
-  const parts = filePath.split('/');
-  parts.pop();
-  return parts.join('/');
-}
+  async function saveSource(sourcePath: string): Promise<void> {
+    const source = store.sources[sourcePath];
+    const content = store.fileContents[sourcePath];
+    if (!source) return;
 
-  // Actions
+    try {
+      if (content) {
+        const fileHash = await hashText(content);
+        setStore('sources', sourcePath, 'fileHash', fileHash);
+      }
+
+      const mcsPath = sourcePath + '.mcs';
+      const loc = await ensureFileLocation(mcsPath, `source:${sourcePath}`);
+      await writeFile(loc, JSON.stringify(store.sources[sourcePath], null, 2));
+    } catch (err) {
+      console.error(`Failed to save source ${sourcePath}:`, err);
+    }
+  }
+
+  async function saveQuery(guid: string): Promise<void> {
+    const query = store.queries[guid];
+    if (!query) return;
+
+    const loc = store.fileLocations[guid];
+    if (!loc) {
+      console.error(`No file location for query ${guid}`);
+      return;
+    }
+
+    try {
+      await writeFile(loc, JSON.stringify(query, null, 2));
+    } catch (err) {
+      console.error(`Failed to save query ${guid}:`, err);
+    }
+  }
+
+  async function loadFileContentFromDisk(path: string): Promise<void> {
+    try {
+      const loc = await ensureFileLocation(path, `content:${path}`);
+      const fileHandle = await loc.dirHandle.getFileHandle(loc.fileName);
+      const file = await fileHandle.getFile();
+      const content = await file.text();
+      setStore('fileContents', path, content);
+    } catch (err) {
+      console.warn(`Failed to load file content for ${path}:`, err);
+    } finally {
+      loadingFiles.delete(path);
+    }
+  }
+
+  // ---- Debounced save scheduling ----
+
+  function scheduleSave(key: string, fn: () => Promise<void>, delayMs: number) {
+    if (!debouncedSavers.has(key)) {
+      debouncedSavers.set(key, debounce(() => fn(), delayMs));
+    }
+    debouncedSavers.get(key)!();
+  }
+
+  function registerFileLocation(key: string, loc: FileLocation) {
+    setStore('fileLocations', key, loc);
+  }
+
+  function unregisterFileLocation(key: string) {
+    setStore(produce(s => { delete s.fileLocations[key]; }));
+  }
+
+  // ---- Actions ----
+
   const actions: StoreActions = {
     async setDirectory(dirHandle: FileSystemDirectoryHandle) {
       setStore('dirHandle', dirHandle);
-      
-      // Reset all data
       setStore('codebooks', {});
-      setStore('queries', []);
+      setStore('queries', {});
       setStore('sources', {});
       setStore('fileContents', {});
-      
-      // Eagerly load codebooks, queries, and sources
-      await Promise.all([
-        actions.loadCodebooks(),
-        actions.loadQueries(),
-        actions.loadAllSources(),
+      setStore('fileLocations', {});
+      loadingFiles.clear();
+      debouncedSavers.clear();
+
+      // Discover all data files in parallel
+      const emptyResult: { file: FileSystemFileHandle; path: string; dirHandle: FileSystemDirectoryHandle; fileName: string }[] = [];
+      const [codebookFiles, queryFiles, mcsFiles] = await Promise.all([
+        findAllFiles(dirHandle, ['.mcc']).catch(() => emptyResult),
+        findAllFiles(dirHandle, ['.mcq']).catch(() => emptyResult),
+        findAllFiles(dirHandle, ['.mcs']).catch(() => emptyResult),
       ]);
-    },
 
-    async loadCodebooks() {
-      const dir = store.dirHandle;
-      if (!dir) {
-        setStore('codebooks', {});
-        return;
-      }
-      
-      try {
-        const newCodebooks: Record<string, Codebook> = {};
-        
-        // Find all .mcc files
-        const codebookFiles = await findAllFiles(dir, ['.mcc']);
-        
-        for (const { file, path } of codebookFiles) {
-          try {
-            const fileData = await file.getFile();
-            const text = await fileData.text();
-            const parsedCodebook = JSON.parse(text) as Codebook;
-            newCodebooks[path] = parsedCodebook;
-          } catch (err) {
-            console.warn(`Failed to load codebook ${file.name}:`, err);
-          }
+      // Parse codebooks (keyed by guid)
+      const newCodebooks: Record<string, Codebook> = {};
+      for (const entry of codebookFiles) {
+        try {
+          const fileData = await entry.file.getFile();
+          const text = await fileData.text();
+          const codebook = JSON.parse(text) as Codebook;
+          newCodebooks[codebook.guid] = codebook;
+          registerFileLocation(codebook.guid, { path: entry.path, dirHandle: entry.dirHandle, fileName: entry.fileName });
+        } catch (err) {
+          console.warn(`Failed to load codebook ${entry.fileName}:`, err);
         }
-        
-        setStore('codebooks', newCodebooks);
-      } catch (err) {
-        console.warn("Failed to load codebooks:", err);
-        setStore('codebooks', {});
       }
-    },
+      setStore('codebooks', newCodebooks);
 
-    async loadQueries() {
-      const dir = store.dirHandle;
-      if (!dir) {
-        setStore('queries', []);
-        return;
-      }
-      
-      try {
-        const loadedQueries: Query[] = [];
-        
-        // Find all .mcq files
-        const queryFiles = await findAllFiles(dir, ['.mcq']);
-        
-        for (const { file } of queryFiles) {
-          try {
-            const fileData = await file.getFile();
-            const text = await fileData.text();
-            const parsedQuery = JSON.parse(text) as Query;
-            loadedQueries.push(parsedQuery);
-          } catch (err) {
-            console.warn(`Failed to load query ${file.name}:`, err);
-          }
+      // Parse queries (keyed by guid)
+      const newQueries: Record<string, Query> = {};
+      for (const entry of queryFiles) {
+        try {
+          const fileData = await entry.file.getFile();
+          const text = await fileData.text();
+          const query = JSON.parse(text) as Query;
+          newQueries[query.guid] = query;
+          registerFileLocation(query.guid, { path: entry.path, dirHandle: entry.dirHandle, fileName: entry.fileName });
+        } catch (err) {
+          console.warn(`Failed to load query ${entry.fileName}:`, err);
         }
-        
-        // Sort by name for consistent ordering
-        loadedQueries.sort((a, b) => a.name.localeCompare(b.name));
-        setStore('queries', loadedQueries);
-      } catch (err) {
-        console.warn("Failed to load queries:", err);
-        setStore('queries', []);
       }
-    },
+      setStore('queries', newQueries);
 
-    async loadAllSources() {
-      const dir = store.dirHandle;
-      if (!dir) {
-        setStore('sources', {});
-        return;
-      }
-      
-      try {
-        // Find all .mcs files
-        const mcsFiles = await findAllFiles(dir, ['.mcs']);
-        
-        const newSources: Record<string, Source> = {};
-        
-        for (const { file, path } of mcsFiles) {
-          try {
-            const fileData = await file.getFile();
-            const text = await fileData.text();
-            const source = JSON.parse(text) as Source;
-            
-            // Remove .mcs extension to get the source file path
-            const sourcePath = path.slice(0, -4);
-            newSources[sourcePath] = source;
-          } catch (err) {
-            console.warn(`Failed to load source ${path}:`, err);
-          }
+      // Parse sources (keyed by source file path)
+      const newSources: Record<string, Source> = {};
+      for (const entry of mcsFiles) {
+        try {
+          const fileData = await entry.file.getFile();
+          const text = await fileData.text();
+          const source = JSON.parse(text) as Source;
+          const sourcePath = entry.path.slice(0, -4); // remove .mcs
+          newSources[sourcePath] = source;
+          registerFileLocation(`source:${sourcePath}`, { path: entry.path, dirHandle: entry.dirHandle, fileName: entry.fileName });
+        } catch (err) {
+          console.warn(`Failed to load source ${entry.path}:`, err);
         }
-        
-        setStore('sources', newSources);
-      } catch (err) {
-        console.warn("Failed to load sources:", err);
-        setStore('sources', {});
       }
+      setStore('sources', newSources);
+
+      // Eagerly load file contents for all sources (needed by queries)
+      await Promise.all(
+        Object.keys(newSources).map(path => loadFileContentFromDisk(path))
+      );
     },
 
-    async loadFileContent(path: string): Promise<string | undefined> {
-      // Return cached content if available
-      if (store.fileContents[path]) {
-        return store.fileContents[path];
-      }
-      
+    ensureFileLoaded(path: string) {
+      if (store.fileContents[path] !== undefined) return;
+      if (loadingFiles.has(path)) return;
+      loadingFiles.add(path);
+      loadFileContentFromDisk(path);
+    },
+
+    updateCodebook(codebook: Codebook) {
+      setStore('codebooks', codebook.guid, codebook);
+      scheduleSave(`codebook:${codebook.guid}`, () => saveCodebook(codebook.guid), 500);
+    },
+
+    async createCodebook(name: string): Promise<Codebook | null> {
       const dir = store.dirHandle;
-      if (!dir) return undefined;
-      
-      try {
-        // Navigate to the directory containing the file
-        const dirPath = getDirectoryPath(path);
-        const fileName = path.split('/').pop()!;
-        
-        const fileDir = dirPath ? await navigateToDirectory(dir, dirPath) : dir;
-        const fileHandle = await fileDir.getFileHandle(fileName);
-        const file = await fileHandle.getFile();
-        const content = await file.text();
-        
-        // Cache the content
-        setStore('fileContents', path, content);
-        
-        return content;
-      } catch (err) {
-        console.error(`Failed to load file content for ${path}:`, err);
-        return undefined;
+      const trimmed = name.trim();
+      if (!dir || !trimmed) return null;
+
+      const newCodebook: Codebook = {
+        guid: crypto.randomUUID(),
+        name: trimmed,
+        codes: [],
+      };
+
+      // Register file location before saving
+      const fileName = `${trimmed.toLowerCase()}.mcc`;
+      const loc = await ensureFileLocation(fileName, newCodebook.guid);
+      registerFileLocation(newCodebook.guid, loc);
+
+      setStore('codebooks', newCodebook.guid, newCodebook);
+      await writeFile(loc, JSON.stringify(newCodebook, null, 2));
+
+      return newCodebook;
+    },
+
+    async deleteCodebook(codebookGuid: string) {
+      const loc = store.fileLocations[codebookGuid];
+
+      setStore(produce(s => {
+        delete s.codebooks[codebookGuid];
+      }));
+
+      if (loc) {
+        await deleteFile(loc);
+        unregisterFileLocation(codebookGuid);
       }
     },
 
-    getFileContent(path: string): string | undefined {
-      return store.fileContents[path];
-    },
-
-    getSource(path: string): Source | undefined {
-      return store.sources[path];
-    },
-
-    updateSelections(path: string, selections: TextSelection[]) {
+    updateSourceSelections(path: string, selections: TextSelection[]) {
       if (!store.sources[path]) {
-        // Initialize source if it doesn't exist
         setStore('sources', path, {
           guid: crypto.randomUUID(),
           fileHash: '',
           selections: [],
         });
       }
-      
+
       setStore('sources', path, 'selections', selections);
-      
-      // Trigger debounced save
-      debouncedSaveSource(path);
+      scheduleSave(`source:${path}`, () => saveSource(path), 1000);
     },
 
-    updateCodebook(codebook: Codebook) {
-      // Update store immediately for reactive UI
-      const path = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebook.guid)?.[0];
-      if (path) {
-        setStore('codebooks', path, codebook);
-      }
-      
-      // Trigger debounced save
-      debouncedSaveCodebook(codebook.guid);
-    },
-
-    async saveSource(path: string) {
-      const dir = store.dirHandle;
-      const source = store.sources[path];
-      const content = store.fileContents[path];
-      
-      if (!dir || !source) return;
-      
-      try {
-        // Update hash if we have content
-        if (content) {
-          const fileHash = await hashText(content);
-          setStore('sources', path, 'fileHash', fileHash);
-        }
-        
-        // Navigate to the directory containing the file
-        const dirPath = getDirectoryPath(path);
-        const fileName = path.split('/').pop()!;
-        const mcsFileName = fileName + '.mcs';
-        
-        const fileDir = dirPath ? await navigateToDirectory(dir, dirPath) : dir;
-        const mcsFile = await fileDir.getFileHandle(mcsFileName, { create: true });
-        const writable = await mcsFile.createWritable();
-        await writable.write(JSON.stringify(store.sources[path], null, 2));
-        await writable.close();
-      } catch (err) {
-        console.error(`Failed to save source ${path}:`, err);
-      }
-    },
-
-    async saveCodebook(codebook: Codebook) {
-      const dir = store.dirHandle;
-      if (!dir) return;
-      
-      // Find existing path in store, or compute from name for new codebooks
-      let codebookPath = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebook.guid)?.[0];
-      if (!codebookPath) {
-        codebookPath = `${codebook.name.toLowerCase()}.mcc`;
-      }
-      
-      // Update store
-      setStore('codebooks', codebookPath, codebook);
-      
-      try {
-        const dirPath = getDirectoryPath(codebookPath);
-        const fileName = codebookPath.split('/').pop()!;
-        const fileDir = dirPath ? await navigateToDirectory(dir, dirPath) : dir;
-        const fileHandle = await fileDir.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(JSON.stringify(codebook, null, 2));
-        await writable.close();
-      } catch (err) {
-        console.error(`Failed to save codebook ${codebook.name}:`, err);
-      }
-    },
-
-    async deleteCodebook(codebookGuid: string) {
-      const dir = store.dirHandle;
-      const entry = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebookGuid);
-      
-      if (!dir || !entry) return;
-      const [codebookPath] = entry;
-      
-      try {
-        const dirPath = getDirectoryPath(codebookPath);
-        const fileName = codebookPath.split('/').pop()!;
-        const fileDir = dirPath ? await navigateToDirectory(dir, dirPath) : dir;
-        await fileDir.removeEntry(fileName);
-        
-        // Reload codebooks to reflect changes
-        await actions.loadCodebooks();
-      } catch (err) {
-        console.error(`Failed to delete codebook:`, err);
-      }
-    },
-
-    async createCodebook(name: string): Promise<Codebook | null> {
-      const dir = store.dirHandle;
-      if (!dir || !name.trim()) return null;
-      
-      const newCodebook: Codebook = {
-        guid: crypto.randomUUID(),
-        name: name.trim(),
-        codes: [],
-      };
-      
-      await actions.saveCodebook(newCodebook);
-      return newCodebook;
-    },
-
-    async toggleExample(sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) {
-      const entry = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebookGuid);
+    toggleExample(sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) {
+      const codebook = store.codebooks[codebookGuid];
       const source = store.sources[sourcePath];
-      if (!entry || !source) return;
-      const [codebookPath, codebook] = entry;
+      if (!codebook || !source) return;
 
       const sourceGuid = source.guid;
       const ref: TextSelectionReference = { sourceGuid, textSelectionGuid: selectionGuid };
@@ -399,17 +394,14 @@ function getDirectoryPath(filePath: string): string {
         codes: toggleInCodes(codebook.codes),
       };
 
-      // Update store for reactive UI
-      setStore('codebooks', codebookPath, updatedCodebook);
-
-      await actions.saveCodebook(updatedCodebook);
+      setStore('codebooks', codebookGuid, updatedCodebook);
+      scheduleSave(`codebook:${codebookGuid}`, () => saveCodebook(codebookGuid), 500);
     },
 
-    async removeExample(sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) {
-      const entry = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebookGuid);
+    removeExample(sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) {
+      const codebook = store.codebooks[codebookGuid];
       const source = store.sources[sourcePath];
-      if (!entry || !source) return;
-      const [codebookPath, codebook] = entry;
+      if (!codebook || !source) return;
 
       const sourceGuid = source.guid;
 
@@ -435,73 +427,50 @@ function getDirectoryPath(filePath: string): string {
         codes: removeFromCodes(codebook.codes),
       };
 
-      // Update store for reactive UI
-      setStore('codebooks', codebookPath, updatedCodebook);
-
-      await actions.saveCodebook(updatedCodebook);
+      setStore('codebooks', codebookGuid, updatedCodebook);
+      scheduleSave(`codebook:${codebookGuid}`, () => saveCodebook(codebookGuid), 500);
     },
 
-    async saveQuery(query: Query) {
-      const dir = store.dirHandle;
-      if (!dir) return;
-      
-      try {
-        const fileName = `${query.name.toLowerCase()}.mcq`;
-        const fileHandle = await dir.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(JSON.stringify(query, null, 2));
-        await writable.close();
-        
-        // Reload queries to reflect changes
-        await actions.loadQueries();
-      } catch (err) {
-        console.error(`Failed to save query ${query.name}:`, err);
-      }
-    },
-
-    async deleteQuery(queryGuid: string) {
-      const dir = store.dirHandle;
-      const query = store.queries.find(q => q.guid === queryGuid);
-      
-      if (!dir || !query) return;
-      
-      try {
-        const fileName = `${query.name}.mcq`;
-        await dir.removeEntry(fileName);
-        
-        // Reload queries to reflect changes
-        await actions.loadQueries();
-      } catch (err) {
-        console.error(`Failed to delete query ${query.name}:`, err);
-      }
+    updateQuery(query: Query) {
+      setStore('queries', query.guid, query);
+      scheduleSave(`query:${query.guid}`, () => saveQuery(query.guid), 500);
     },
 
     async createQuery(name: string): Promise<Query | null> {
       const dir = store.dirHandle;
-      if (!dir || !name.trim()) return null;
-      
+      const trimmed = name.trim();
+      if (!dir || !trimmed) return null;
+
       const newQuery: Query = {
         guid: crypto.randomUUID(),
-        name: name.trim(),
+        name: trimmed,
         query: null,
       };
-      
-      await actions.saveQuery(newQuery);
+
+      // Register file location before saving
+      const fileName = `${trimmed.toLowerCase()}.mcq`;
+      const loc = await ensureFileLocation(fileName, newQuery.guid);
+      registerFileLocation(newQuery.guid, loc);
+
+      setStore('queries', newQuery.guid, newQuery);
+      await writeFile(loc, JSON.stringify(newQuery, null, 2));
+
       return newQuery;
     },
-  };
 
-  // Debounced save functions
-  const debouncedSaveSource = debounce((path: string) => {
-    actions.saveSource(path);
-  }, 1000);
-  
-  const debouncedSaveCodebook = debounce((codebookGuid: string) => {
-    const entry = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebookGuid);
-    if (entry) {
-      actions.saveCodebook(entry[1]);
-    }
-  }, 500);
+    async deleteQuery(queryGuid: string) {
+      const loc = store.fileLocations[queryGuid];
+
+      setStore(produce(s => {
+        delete s.queries[queryGuid];
+      }));
+
+      if (loc) {
+        await deleteFile(loc);
+        unregisterFileLocation(queryGuid);
+      }
+    },
+  };
 
   return (
     <StoreContext.Provider value={{ store, actions }}>

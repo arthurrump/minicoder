@@ -432,15 +432,6 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
     return groups;
   });
 
-  // Ensure file content is loaded for sources
-  createMemo(() => {
-    for (const sourcePath of Object.keys(store.sources)) {
-      if (!store.fileContents[sourcePath]) {
-        actions.loadFileContent(sourcePath);
-      }
-    }
-  });
-
   return (
     <MatchingSelectionsList
       matchGroups={matchGroups()}
@@ -458,7 +449,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
 };
 
 interface QueryEditorProps {
-  queryPath: string;
+  queryGuid: string;
   scrollRef?: (el: HTMLDivElement) => void;
   expandedKeys?: Set<string>;
   onExpandedKeysChange?: (keys: Set<string>) => void;
@@ -474,49 +465,33 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
   const { store, actions } = useStore();
   const [editingName, setEditingName] = createSignal(false);
 
-  // Find query by matching the path (filename should be {name}.mcq)
   const query = createMemo(() => {
-    const pathParts = props.queryPath.split('/');
-    const filename = pathParts[pathParts.length - 1];
-    const queryName = filename.replace(/\.mcq$/, '');
-    
-    // Case-insensitive comparison since filenames are lowercased
-    return store.queries.find(q => q.name.toLowerCase() === queryName.toLowerCase()) || null;
+    return store.queries[props.queryGuid] || null;
   });
 
-  const updateQueryName = async (newName: string) => {
+  const updateName = (newName: string) => {
     const q = query();
     if (!q || !newName.trim()) return;
-    
-    // Delete old file first (it has the old name)
-    await actions.deleteQuery(q.guid);
-    
-    // Save with new name
-    const updatedQuery = { ...q, name: newName.trim() };
-    await actions.saveQuery(updatedQuery);
+    actions.updateQuery({ ...q, name: newName.trim() });
     setEditingName(false);
   };
 
-  const updateQuery = async (queryNode: QueryNode | null) => {
+  const updateQueryNode = (queryNode: QueryNode | null) => {
     const q = query();
     if (!q) return;
-    const updatedQuery = { ...q, query: queryNode };
-    await actions.saveQuery(updatedQuery);
+    actions.updateQuery({ ...q, query: queryNode });
   };
 
-
-  const updateQueryFilter = async (value: string) => {
+  const updateFileFilter = (value: string) => {
     const q = query();
     if (!q) return;
-    const updatedQuery = { ...q, fileFilter: value };
-    await actions.saveQuery(updatedQuery);
+    actions.updateQuery({ ...q, fileFilter: value });
   };
 
-  const updateUserFilter = async (value: string) => {
+  const updateUserFilter = (value: string) => {
     const q = query();
     if (!q) return;
-    const updatedQuery = { ...q, userFilter: value };
-    await actions.saveQuery(updatedQuery);
+    actions.updateQuery({ ...q, userFilter: value });
   };
 
   // Collect all unique user IDs from selections
@@ -532,8 +507,8 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
     return Array.from(users).sort();
   });
 
-  const clearQuery = async () => {
-    await updateQuery(null);
+  const clearQuery = () => {
+    updateQueryNode(null);
   };
 
   const deleteQuery = async () => {
@@ -568,10 +543,10 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                   type="text"
                   class={styles.queryTitleInput}
                   value={q().name}
-                  onBlur={(e) => updateQueryName(e.target.value)}
+                  onBlur={(e) => updateName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      updateQueryName((e.target as HTMLInputElement).value);
+                      updateName((e.target as HTMLInputElement).value);
                     }
                     if (e.key === 'Escape') setEditingName(false);
                   }}
@@ -604,7 +579,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                 type="text"
                 placeholder="e.g. interviews/**/*.txt, notes/*.md"
                 value={q().fileFilter || ''}
-                onInput={(e) => updateQueryFilter((e.target as HTMLInputElement).value)}
+                onInput={(e) => updateFileFilter((e.target as HTMLInputElement).value)}
               />
             </div>
             
@@ -652,12 +627,12 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
               <Show when={q().query} fallback={
                 <QueryInitialPicker 
                   codebooks={Object.values(store.codebooks)}
-                  onSelect={(node) => updateQuery(node)}
+                  onSelect={(node) => updateQueryNode(node)}
                 />
               }>
                 <QueryNodeEditor
                   node={q().query!}
-                  onUpdate={(updated) => updateQuery(updated)}
+                  onUpdate={(updated) => updateQueryNode(updated)}
                   onDelete={() => clearQuery()}
                   codebooks={Object.values(store.codebooks)}
                   depth={0}

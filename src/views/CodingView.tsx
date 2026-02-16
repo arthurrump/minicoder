@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createResource, createSignal, For, on, Show, type Component } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, on, Show, type Component } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import Resizable from '@corvu/resizable';
 import FileBrowser from '../components/FileBrowser';
@@ -93,6 +93,26 @@ const CodingView: Component = () => {
   const codebooksList = createMemo(() =>
     Object.values(store.codebooks).sort((a, b) => a.name.localeCompare(b.name))
   );
+
+  // Resolve codebook guid from file path (for .mcc files)
+  const selectedCodebookGuid = createMemo(() => {
+    const path = selectedFilePath();
+    if (!path || !path.endsWith('.mcc')) return undefined;
+    for (const [guid, loc] of Object.entries(store.fileLocations)) {
+      if (loc.path === path) return guid;
+    }
+    return undefined;
+  });
+
+  // Resolve query guid from file path (for .mcq files)
+  const selectedQueryGuid = createMemo(() => {
+    const path = selectedFilePath();
+    if (!path || !path.endsWith('.mcq')) return undefined;
+    for (const [guid, loc] of Object.entries(store.fileLocations)) {
+      if (loc.path === path) return guid;
+    }
+    return undefined;
+  });
   
   // Tab management
   const [openTabs, setOpenTabs] = createSignal<string[]>([]);
@@ -164,10 +184,18 @@ const CodingView: Component = () => {
     }
   }));
 
-  // Load file content when selectedFilePath changes (using resource pattern)
-  const [fileContent] = createResource(selectedFilePath, async (path) => {
+  // Ensure file content is loaded when a file is selected
+  createEffect(on(selectedFilePath, (path) => {
+    if (path && !isSpecialFile()) {
+      actions.ensureFileLoaded(path);
+    }
+  }));
+
+  // Read file content reactively from the store
+  const fileContent = createMemo(() => {
+    const path = selectedFilePath();
     if (!path) return undefined;
-    return await actions.loadFileContent(path);
+    return store.fileContents[path];
   });
 
   // Restore scroll position when file content loads
@@ -263,7 +291,7 @@ const CodingView: Component = () => {
       };
       
       const currentSelections = store.sources[pending.sourcePath]?.selections || [];
-      actions.updateSelections(pending.sourcePath, [...currentSelections, newSelection]);
+      actions.updateSourceSelections(pending.sourcePath, [...currentSelections, newSelection]);
       
       setPendingSelection(null);
       setSelectedCode(null);
@@ -289,7 +317,7 @@ const CodingView: Component = () => {
       };
       
       const currentSelections = store.sources[sourcePath]?.selections || [];
-      actions.updateSelections(sourcePath, [...currentSelections, newSelection]);
+      actions.updateSourceSelections(sourcePath, [...currentSelections, newSelection]);
     } else {
       // Store the pending selection and wait for code selection
       setPendingSelection({ sourcePath, start, end });
@@ -310,7 +338,7 @@ const CodingView: Component = () => {
       // Remove from examples if it was marked as one
       actions.removeExample(sourcePath, selectionGuid, sel.code.codebookGuid, sel.code.codeGuid);
     }
-    actions.updateSelections(sourcePath, currentSelections.filter(s => s.guid !== selectionGuid));
+    actions.updateSourceSelections(sourcePath, currentSelections.filter(s => s.guid !== selectionGuid));
   }
 
   function handleSelectionRemove(selectionGuid: string) {
@@ -322,7 +350,7 @@ const CodingView: Component = () => {
 
   function handleSelectionUpdateForSource(sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) {
     const currentSelections = store.sources[sourcePath]?.selections || [];
-    actions.updateSelections(
+    actions.updateSourceSelections(
       sourcePath,
       currentSelections.map(s => 
         s.guid === selectionGuid 
@@ -492,17 +520,17 @@ const CodingView: Component = () => {
             
             {/* Content area - conditionally show codebook editor, query editor, or text view */}
             <Show when={selectedFilePath()} fallback={<p style={{ padding: '10px' }}>Select a file to view its contents</p>}>
-              <Show when={isCodebookFile()}>
+              <Show when={isCodebookFile() && selectedCodebookGuid()}>
                 <CodebookEditor
-                  codebookPath={selectedFilePath()}
+                  codebookGuid={selectedCodebookGuid()!}
                   scrollRef={(el) => { codebookViewWrapperRef = el; }}
                   expandedCodeGuids={codebookExpandedByPath().get(selectedFilePath())}
                   onExpandedCodeGuidsChange={(keys) => handleCodebookExpandedChange(selectedFilePath(), keys)}
                 />
               </Show>
-              <Show when={isQueryFile()}>
+              <Show when={isQueryFile() && selectedQueryGuid()}>
                 <QueryEditor
-                  queryPath={selectedFilePath()}
+                  queryGuid={selectedQueryGuid()!}
                   scrollRef={(el) => { queryViewWrapperRef = el; }}
                   expandedKeys={queryExpandedByPath().get(selectedFilePath())}
                   onExpandedKeysChange={(keys) => handleQueryExpandedChange(selectedFilePath(), keys)}
@@ -573,7 +601,7 @@ const CodingView: Component = () => {
               onCodeClick={handleCodeClick}
               onInfoClick={(code, codebook) => setInfoModal({ codeGuid: code.guid, codebookGuid: codebook.guid })}
               onEditClick={(codebook) => {
-                const path = Object.entries(store.codebooks).find(([_, cb]) => cb.guid === codebook.guid)?.[0];
+                const path = store.fileLocations[codebook.guid]?.path;
                 if (!path) return;
                 saveCurrentScrollPosition();
                 if (!openTabs().includes(path)) {

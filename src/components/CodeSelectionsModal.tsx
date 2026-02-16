@@ -37,15 +37,6 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
     return new Set([info.code.guid]);
   });
 
-  // Ensure file content is loaded for all sources
-  createMemo(() => {
-    for (const sourcePath of Object.keys(store.sources)) {
-      if (!store.fileContents[sourcePath]) {
-        actions.loadFileContent(sourcePath);
-      }
-    }
-  });
-
   // Build all match groups for this code
   const allGroups = createMemo(() =>
     buildMatchGroups(targetGuids(), store.sources, store.fileContents)
