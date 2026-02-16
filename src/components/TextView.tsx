@@ -88,11 +88,8 @@ function computeSelectionLayers(selections: TextSelection[]): { layers: Map<stri
         return { layers: new Map(), maxLayer: 0 };
     }
     
-    // Sort by start position, then by end position for stability
-    const sorted = [...selections].sort((a, b) => {
-        if (a.start !== b.start) return a.start - b.start;
-        return a.end - b.end;
-    });
+    // Selections are kept sorted by start position in the store
+    const sorted = selections;
     
     const layers = new Map<string, number>();
     // Track which selections are assigned to each layer (for overlap checking)

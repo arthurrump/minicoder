@@ -331,8 +331,8 @@ export function buildMatchGroups(
     const content = fileContents[sourcePath] || '';
     if (!content) continue;
 
-    // Sort ALL source selections once for efficient overlap queries
-    const allSorted = [...source.selections].sort((a, b) => a.start - b.start || a.end - b.end);
+    // Selections are kept sorted by start position in the store
+    const allSorted = source.selections;
 
     // Find all selections matching any of the target code GUIDs
     const matchingSelections = allSorted.filter(s => codeGuids.has(s.code.codeGuid));

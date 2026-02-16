@@ -301,8 +301,8 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       const content = store.fileContents[sourcePath] || '';
       if (!content) continue;
       
-      // Sort all selections once for efficient overlap queries
-      const allSorted = [...source.selections].sort((a, b) => a.start - b.start || a.end - b.end);
+      // Selections are kept sorted by start position in the store
+      const allSorted = source.selections;
       const subcodeIdx = indices.subcodesByGuid();
 
       const matchingSelectionGuids = new Set<string>();
