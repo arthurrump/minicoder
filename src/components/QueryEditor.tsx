@@ -64,7 +64,6 @@ interface QueryNodeEditorProps {
   onUpdate: (node: QueryNode) => void;
   onDelete: () => void;
   depth: number;
-  showDelete?: boolean;
 }
 
 const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
@@ -125,17 +124,13 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
     setShowCodePicker(false);
   };
 
-  const handleConvertToOperator = (operator: QueryOperator) => {
+  const handleWrapWithOperator = (operator: QueryOperator) => {
     // If this is currently a code node, wrap it in an operator
-    if (props.node.type === 'code') {
-      props.onUpdate({
-        type: 'operator',
-        operator,
-        children: [{ type: 'code', codeGuid: props.node.codeGuid, includeSubcodes: props.node.includeSubcodes }],
-      });
-    } else {
-      handleOperatorChange(operator);
-    }
+    props.onUpdate({
+      type: 'operator',
+      operator,
+      children: [ props.node ],
+    });
   };
 
   return (
@@ -188,37 +183,33 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
         </Show>
         
         <div class={styles.nodeActions}>
-          <Show when={props.node.type === 'code'}>
-            <button
-              class={styles.convertBtn}
-              onClick={() => handleConvertToOperator('AND')}
-              title="Wrap in AND"
-            >
-              AND
-            </button>
-            <button
-              class={styles.convertBtn}
-              onClick={() => handleConvertToOperator('OR')}
-              title="Wrap in OR"
-            >
-              OR
-            </button>
-            <button
-              class={styles.convertBtn}
-              onClick={() => handleConvertToOperator('NOT')}
-              title="Wrap in NOT"
-            >
-              NOT
-            </button>
-          </Show>
-          <Show when={props.showDelete || props.depth > 0}>
-            <button
-              class={styles.deleteBtn}
-              onClick={props.onDelete}
-              title="Remove"
-              innerHTML={octicons.trash.toSVG({ width: 14 })}
-            />
-          </Show>
+          <button
+            class={styles.convertBtn}
+            onClick={() => handleWrapWithOperator('AND')}
+            title="Wrap in AND"
+          >
+            AND
+          </button>
+          <button
+            class={styles.convertBtn}
+            onClick={() => handleWrapWithOperator('OR')}
+            title="Wrap in OR"
+          >
+            OR
+          </button>
+          <button
+            class={styles.convertBtn}
+            onClick={() => handleWrapWithOperator('NOT')}
+            title="Wrap in NOT"
+          >
+            NOT
+          </button>
+          <button
+            class={styles.deleteBtn}
+            onClick={props.onDelete}
+            title="Remove"
+            innerHTML={octicons.trash.toSVG({ width: 14 })}
+          />
         </div>
       </div>
       
@@ -579,7 +570,6 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                   onUpdate={(updated) => updateQueryNode(updated)}
                   onDelete={() => clearQuery()}
                   depth={0}
-                  showDelete
                 />
               </Show>
             </div>
