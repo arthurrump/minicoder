@@ -59,65 +59,6 @@ function matchesAnyGlob(path: string, patterns: string[]): boolean {
   return patterns.some(pattern => globToRegExp(pattern).test(path));
 }
 
-// Component for initial query creation - choose between code or operator
-interface QueryInitialPickerProps {
-  onSelect: (node: QueryNode) => void;
-}
-
-const QueryInitialPicker: Component<QueryInitialPickerProps> = (props) => {
-  const { store } = useStore();
-  const [mode, setMode] = createSignal<'choose' | 'code'>('choose');
-  const allCodes = createMemo(() => flattenCodes(Object.values(store.codebooks)));
-
-  const handleCodeSelect = (codeGuid: string) => {
-    props.onSelect({ type: 'code', codeGuid, includeSubcodes: true });
-  };
-
-  const handleOperatorSelect = () => {
-    // Use AND as default, matching the default when adding operators inside a query
-    props.onSelect({ type: 'operator', operator: 'AND', children: [] });
-  };
-
-  return (
-    <div class={styles.initialPicker}>
-      <Show when={mode() === 'choose'}>
-        <div class={styles.pickerButtons}>
-          <button class={styles.pickerBtn} onClick={() => setMode('code')}>
-            <span innerHTML={octicons.code.toSVG({ width: 16 })} />
-            Select a Code
-          </button>
-          <button class={styles.pickerBtn} onClick={() => handleOperatorSelect()}>
-            <span innerHTML={octicons['git-merge'].toSVG({ width: 16 })} />
-            Start with Operator
-          </button>
-        </div>
-      </Show>
-      
-      <Show when={mode() === 'code'}>
-        <div class={styles.codePickerInline}>
-          <div class={styles.codePickerHeader}>
-            <button onClick={() => setMode('choose')}>← Back</button>
-            <span>Select a code:</span>
-          </div>
-          <div class={styles.codePickerList}>
-            <For each={allCodes()}>
-              {(item) => (
-                <div
-                  class={styles.codePickerItem}
-                  onClick={() => handleCodeSelect(item.code.guid)}
-                >
-                  <ColorChip color={item.code.color} class={styles.codeChip} />
-                  <span>{item.path.join(' › ')}</span>
-                </div>
-              )}
-            </For>
-          </div>
-        </div>
-      </Show>
-    </div>
-  );
-};
-
 interface QueryNodeEditorProps {
   node: QueryNode;
   onUpdate: (node: QueryNode) => void;
@@ -624,9 +565,14 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
             
             <div class={styles.queryBuilder}>
               <Show when={q().query} fallback={
-                <QueryInitialPicker 
-                  onSelect={(node) => updateQueryNode(node)}
-                />
+                <div class={styles.addChildButtons}>
+                  <button class={styles.addChildBtn} onClick={() => updateQueryNode({ type: 'code', codeGuid: '', includeSubcodes: true })}>
+                    + Add Code
+                  </button>
+                  <button class={styles.addChildBtn} onClick={() => updateQueryNode({ type: 'operator', operator: 'AND', children: [] })}>
+                    + Add Operator
+                  </button>
+                </div>
               }>
                 <QueryNodeEditor
                   node={q().query!}
