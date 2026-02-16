@@ -141,7 +141,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
   };
 
   return (
-    <div class={styles.queryNode} style={{ "margin-left": `${props.depth * 16}px` }}>
+    <div class={styles.queryNode}>
       <div class={styles.queryNodeHeader}>
         <Show when={props.node.type === 'operator'}>
           <select
@@ -305,7 +305,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       const allSorted = source.selections;
       const subcodeIdx = indices.subcodesByGuid();
 
-      const matchingSelectionGuids = new Set<string>();
+      const matchingSelections: TextSelection[] = [];
       
       for (const selection of allSorted) {
         // Apply user filter first
@@ -316,7 +316,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
         }
 
         if (matchAll) {
-          matchingSelectionGuids.add(selection.guid);
+          matchingSelections.push(selection);
           continue;
         }
 
@@ -324,14 +324,11 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
         const codeGuids = new Set(overlappingSelections.map(s => s.code.codeGuid));
         
         if (evaluateQuery(queryNode, codeGuids, subcodeIdx)) {
-          matchingSelectionGuids.add(selection.guid);
+          matchingSelections.push(selection);
         }
       }
       
-      if (matchingSelectionGuids.size === 0) continue;
-      
-      // Filter matched and merge into groups (allSorted is already sorted)
-      const matchingSelections = allSorted.filter(s => matchingSelectionGuids.has(s.guid));
+      if (matchingSelections.length === 0) continue;
       
       const mergedGroups: { start: number; end: number; selections: TextSelection[] }[] = [];
       
