@@ -24,7 +24,7 @@ export function findOverlapping(
   const result: TextSelection[] = [];
   for (let i = lo; i < sorted.length; i++) {
     if (sorted[i].start >= end) break;
-    result.push(sorted[i]);
+    if (sorted[i].end > start) result.push(sorted[i]);
   }
   return result;
 }

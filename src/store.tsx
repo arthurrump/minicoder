@@ -293,7 +293,7 @@ export const StoreProvider: ParentComponent = (props) => {
           const fileData = await entry.file.getFile();
           const text = await fileData.text();
           const source = JSON.parse(text) as Source;
-          source.selections.sort((a, b) => a.start - b.start || a.end - b.end);
+          source.selections.sort((a, b) => a.start - b.start || b.end - a.end);
           const sourcePath = entry.path.slice(0, -4); // remove .mcs
           newSources[sourcePath] = source;
           registerFileLocation(`source:${sourcePath}`, { path: entry.path, dirHandle: entry.dirHandle, fileName: entry.fileName });
@@ -365,7 +365,7 @@ export const StoreProvider: ParentComponent = (props) => {
         });
       }
 
-      selections.sort((a, b) => a.start - b.start || a.end - b.end);
+      selections.sort((a, b) => a.start - b.start || b.end - a.end);
       setStore('sources', path, 'selections', selections);
       scheduleSave(`source:${path}`, () => saveSource(path), 1000);
     },
