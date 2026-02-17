@@ -209,6 +209,18 @@ export function FileBrowser(props: FileBrowserProps) {
     );
   }
 
+  const [refreshing, setRefreshing] = createSignal(false);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await actions.refresh();
+      await refreshDirectory();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <div class={styles.fileBrowser}>
       <div class={styles.fileBrowserHeader}>
@@ -219,6 +231,15 @@ export function FileBrowser(props: FileBrowserProps) {
         <button class={styles.createBtn} onClick={handleCreateQuery} title="New Query">
           <span innerHTML={octicons.search.toSVG({ width: 14 })} />
           <span>+</span>
+        </button>
+        <button
+          class={`${styles.createBtn} ${styles.refreshBtn}`}
+          classList={{ [styles.spinning]: refreshing() }}
+          onClick={handleRefresh}
+          title="Refresh files"
+          disabled={refreshing()}
+        >
+          <span innerHTML={octicons.sync.toSVG({ width: 14 })} />
         </button>
       </div>
       <div class={styles.fileBrowserTree}>

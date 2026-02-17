@@ -39,6 +39,9 @@ export interface StoreActions {
   updateQuery: (query: Query) => void;
   createQuery: (name: string) => Promise<Query | null>;
   deleteQuery: (queryGuid: string) => Promise<void>;
+
+  /** Re-scan the directory and reload all codebooks, sources, queries, and file contents from disk. */
+  refresh: () => Promise<void>;
 }
 
 export interface StoreIndices {
@@ -592,6 +595,20 @@ export const StoreProvider: ParentComponent = (props) => {
         await deleteFile(loc);
         unregisterFileLocation(queryGuid);
       }
+    },
+
+    async refresh() {
+      const dirHandle = store.dirHandle;
+      if (!dirHandle) return;
+
+      // Flush any pending debounced saves before reloading
+      for (const save of debouncedSavers.values()) {
+        save();
+      }
+      // Small delay to let flushed saves complete
+      await new Promise(r => setTimeout(r, 100));
+
+      await actions.setDirectory(dirHandle);
     },
   };
 
