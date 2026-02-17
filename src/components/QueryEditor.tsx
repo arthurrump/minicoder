@@ -309,7 +309,8 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       if (!matchesAnyGlob(sourcePath, fileFilter)) continue;
 
       // Skip empty files (shouldn't happen, just to be sure)
-      const content = store.fileContents[sourcePath] || '';
+      const fc = store.fileContents[sourcePath];
+      const content = fc?.type === 'plain-text' ? fc.content : '';
       if (!content) continue;
       
       // Filter all selections that match the query

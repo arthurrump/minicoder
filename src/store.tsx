@@ -1,6 +1,6 @@
 import { createContext, createMemo, useContext, type Accessor, type ParentComponent } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { hashText, debounce } from './helpers';
+import { hashBytes, debounce, isPlainText } from './helpers';
 
 /** File location — cached directory handle to avoid tree walks on save */
 export interface FileLocation {
@@ -9,13 +9,17 @@ export interface FileLocation {
   fileName: string;
 }
 
+export type FileContent =
+  | { type: "plain-text", hash: string, content: string }
+  | { type: "binary", hash: string };
+
 export interface AppStore {
   dirHandle: FileSystemDirectoryHandle | null;
   fileLocations: Record<string, FileLocation>;  // entity guid or path-based key (for sources) -> FileLocation
   codebooks: Record<string, Codebook>;          // codebook guid -> Codebook
   queries: Record<string, Query>;               // query guid -> Query
   sources: Record<string, Source>;              // source file path -> Source
-  fileContents: Record<string, string>;         // source file path -> text content
+  fileContents: Record<string, FileContent>;    // source file path -> FileContent
   /** Whether any saves are currently pending (debounced or in-flight). */
   isSaving: boolean;
 }
@@ -182,13 +186,12 @@ export const StoreProvider: ParentComponent = (props) => {
 
   async function saveSource(sourcePath: string): Promise<void> {
     const source = store.sources[sourcePath];
-    const content = store.fileContents[sourcePath];
+    const fc = store.fileContents[sourcePath];
     if (!source) return;
 
     try {
-      if (content) {
-        const fileHash = await hashText(content);
-        setStore('sources', sourcePath, 'fileHash', fileHash);
+      if (fc) {
+        setStore('sources', sourcePath, 'fileHash', fc.hash);
       }
 
       const mcsPath = sourcePath + '.mcs';
@@ -221,8 +224,14 @@ export const StoreProvider: ParentComponent = (props) => {
       const loc = await ensureFileLocation(path, `content:${path}`);
       const fileHandle = await loc.dirHandle.getFileHandle(loc.fileName);
       const file = await fileHandle.getFile();
-      const content = await file.text();
-      setStore('fileContents', path, content);
+      const buffer = await file.arrayBuffer();
+      const hash = await hashBytes(buffer);
+      const content = new TextDecoder().decode(buffer);
+      if (isPlainText(content)) {
+        setStore('fileContents', path, { type: 'plain-text', hash, content });
+      } else {
+        setStore('fileContents', path, { type: 'binary', hash });
+      }
     } catch (err) {
       console.warn(`Failed to load file content for ${path}:`, err);
     } finally {

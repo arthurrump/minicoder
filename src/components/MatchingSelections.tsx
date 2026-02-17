@@ -1,6 +1,6 @@
 import { createSignal, createMemo, For, Index, Show, onMount, onCleanup, type Component } from 'solid-js';
 import octicons from '@primer/octicons';
-import { useStore } from '../store';
+import { useStore, type FileContent } from '../store';
 import styles from './MatchingSelections.module.css';
 import ColorChip from './ColorChip';
 import TextView from './TextView';
@@ -330,12 +330,13 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
 export function buildMatchGroups(
   codeGuids: Set<string>,
   sources: Record<string, Source>,
-  fileContents: Record<string, string>,
+  fileContents: Record<string, FileContent>,
 ): MatchGroup[] {
   const groups: MatchGroup[] = [];
 
   for (const [sourcePath, source] of Object.entries(sources)) {
-    const content = fileContents[sourcePath] || '';
+    const fc = fileContents[sourcePath];
+    const content = fc?.type === 'plain-text' ? fc.content : '';
     if (!content) continue;
 
     // Selections are kept sorted by start position in the store

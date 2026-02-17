@@ -8,7 +8,6 @@ import ColorChip from '../components/ColorChip';
 import CodebookEditor from '../components/CodebookEditor';
 import QueryEditor from '../components/QueryEditor';
 import CodeSelectionsModal from '../components/CodeSelectionsModal';
-import { hashText, isPlainText } from '../helpers';
 import { useStore } from '../store';
 import { useSettings } from '../settings';
 import styles from './CodingView.module.css';
@@ -152,7 +151,12 @@ const CodingView: Component = () => {
   const [infoModal, setInfoModal] = createSignal<{ codeGuid: string; codebookGuid: string } | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ sourcePath: string; start: number; end: number } | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
-  const [nonPlainTextWarning, setNonPlainTextWarning] = createSignal<boolean>(false);
+  const nonPlainTextWarning = createMemo(() => {
+    const path = selectedFilePath();
+    if (!path) return false;
+    const fc = store.fileContents[path];
+    return fc?.type === 'binary';
+  });
 
   // Clear pending selection when switching tabs
   createEffect(on(selectedFilePath, () => {
@@ -189,7 +193,8 @@ const CodingView: Component = () => {
   const fileContent = createMemo(() => {
     const path = selectedFilePath();
     if (!path) return undefined;
-    return store.fileContents[path];
+    const fc = store.fileContents[path];
+    return fc?.type === 'plain-text' ? fc.content : undefined;
   });
 
   // Restore scroll position when file content loads
@@ -248,12 +253,8 @@ const CodingView: Component = () => {
   createEffect(on([selectedFilePath, () => fileContent()], async ([path, content]) => {
     if (!path || !content) {
       setHashMismatchWarning(false);
-      setNonPlainTextWarning(false);
       return;
     }
-
-    // Check if file is plain text
-    setNonPlainTextWarning(!isPlainText(content));
 
     const source = store.sources[path];
     if (!source) {
@@ -261,9 +262,10 @@ const CodingView: Component = () => {
       return;
     }
 
-    // Check hash
-    const currentHash = await hashText(content);
-    if (source.fileHash !== currentHash) {
+    // Check hash (pre-computed at load time)
+    const fc = store.fileContents[path];
+    const currentHash = fc?.hash;
+    if (currentHash && source.fileHash !== currentHash) {
       setHashMismatchWarning(true);
       console.warn("File content has changed since selections were saved");
     } else {
