@@ -138,7 +138,7 @@ interface CodeEditorProps {
   code: Code;
   codebookGuid: string;
   onUpdate: (updates: Partial<Code>) => void;
-  onDelete: () => void;
+  onDelete: (codeGuid: string) => void;
   onMerge: (sourceGuid: string) => void;
   onAddSubcode: () => void;
   onSubcodesChange: (subcodes: Code[]) => void;
@@ -187,7 +187,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
           />
           <button 
             class={`${styles.codeActionBtn} ${styles.codeDeleteBtn}`} 
-            onClick={props.onDelete}
+            onClick={() => props.onDelete(props.code.guid)}
             title="Delete code"
             innerHTML={octicons.trash.toSVG()}
           />
@@ -218,6 +218,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
                   codebookGuid={props.codebookGuid}
                   depth={props.depth + 1}
                   onCodesChange={props.onSubcodesChange}
+                  onDelete={props.onDelete}
                   isExpanded={props.isExpandedForCode}
                   onToggleExpanded={props.onToggleExpandedForCode}
                   onViewSelections={props.onViewSelections}
@@ -242,6 +243,7 @@ interface CodeTreeEditorProps {
   codes: Code[];
   codebookGuid: string;
   onCodesChange: (codes: Code[]) => void;
+  onDelete: (codeGuid: string) => void;
   depth: number;
   isExpanded: (guid: string) => boolean;
   onToggleExpanded: (guid: string) => void;
@@ -256,9 +258,8 @@ const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
     props.onCodesChange(newCodes);
   };
 
-  const deleteCode = (index: number) => {
-    const newCodes = props.codes.filter((_, i) => i !== index);
-    props.onCodesChange(newCodes);
+  const deleteCode = (codeGuid: string) => {
+    props.onDelete(codeGuid);
   };
 
   const addSubcode = (index: number) => {
@@ -293,7 +294,7 @@ const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
           codebookGuid={props.codebookGuid}
           depth={props.depth}
           onUpdate={(updates) => updateCode(index, updates)}
-          onDelete={() => deleteCode(index)}
+          onDelete={(codeGuid) => deleteCode(codeGuid)}
           onMerge={props.onMerge}
           onAddSubcode={() => addSubcode(index)}
           onSubcodesChange={(subcodes) => updateSubcodes(index, subcodes)}
@@ -380,6 +381,12 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
     setMergingCodeGuid(sourceGuid);
   };
 
+  const handleDeleteCode = (codeGuid: string) => {
+    const cb = codebook();
+    if (!cb) return;
+    actions.deleteCode(cb.guid, codeGuid);
+  };
+
   const confirmMerge = (targetGuid: string) => {
     const sourceGuid = mergingCodeGuid();
     if (!sourceGuid) return;
@@ -457,6 +464,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                   codebookGuid={cb().guid}
                   depth={0}
                   onCodesChange={updateCodes}
+                  onDelete={handleDeleteCode}
                   isExpanded={isExpanded}
                   onToggleExpanded={toggleExpanded}
                   onViewSelections={(codeGuid) => setViewingSelectionsForCode(codeGuid)}

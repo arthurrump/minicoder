@@ -27,6 +27,7 @@ export interface StoreActions {
   updateCodebook: (codebook: Codebook) => void;
   createCodebook: (name: string) => Promise<Codebook | null>;
   deleteCodebook: (codebookGuid: string) => Promise<void>;
+  deleteCode: (codebookGuid: string, codeGuid: string) => void;
 
   updateSourceSelections: (path: string, selections: TextSelection[]) => void;
 
@@ -355,6 +356,33 @@ export const StoreProvider: ParentComponent = (props) => {
       if (loc) {
         await deleteFile(loc);
         unregisterFileLocation(codebookGuid);
+      }
+    },
+
+    deleteCode(codebookGuid: string, codeGuid: string) {
+      const codebook = store.codebooks[codebookGuid];
+      if (!codebook) return;
+
+      // Collect all guids being removed: the code itself + all nested subcodes
+      const removedGuids = indices.subcodesByGuid()[codeGuid];
+      if (!removedGuids || removedGuids.size === 0) return;
+
+      // Remove the code from the codebook tree
+      function removeCode(codes: Code[]): Code[] {
+        return codes
+          .filter(c => c.guid !== codeGuid)
+          .map(c => c.subcodes ? { ...c, subcodes: removeCode(c.subcodes) } : c);
+      }
+      const updatedCodebook = { ...codebook, codes: removeCode(codebook.codes) };
+      actions.updateCodebook(updatedCodebook);
+
+      // Remove all selections referencing any of the deleted codes
+      for (const [path, source] of Object.entries(store.sources)) {
+        const filtered = source.selections.filter(sel => !removedGuids.has(sel.code.codeGuid));
+        if (filtered.length !== source.selections.length) {
+          setStore('sources', path, 'selections', filtered);
+          scheduleSave(`source:${path}`, () => saveSource(path), 500);
+        }
       }
     },
 
