@@ -1,8 +1,9 @@
-import { createSignal, createMemo, Index, Show, type Component } from 'solid-js';
+import { createSignal, createMemo, Index, Show, For, type Component } from 'solid-js';
 import octicons from '@primer/octicons';
 import { useStore } from '../store';
 import styles from './CodebookEditor.module.css';
 import CodeSelectionsModal from './CodeSelectionsModal';
+import ColorChip from './ColorChip';
 
 // Color generation utilities using HSL color space
 
@@ -81,11 +82,64 @@ function generateSubcodeColor(parentColor: string, depth: number, index: number)
   return hslToHex(h, Math.round(s), Math.round(l));
 }
 
+/** Flatten all codes in a code tree into a list with depth info */
+function flattenCodes(codes: Code[], depth: number = 0): { code: Code; depth: number }[] {
+  const result: { code: Code; depth: number }[] = [];
+  for (const code of codes) {
+    result.push({ code, depth });
+    if (code.subcodes) {
+      result.push(...flattenCodes(code.subcodes, depth + 1));
+    }
+  }
+  return result;
+}
+
+interface MergeTargetPickerProps {
+  sourceCodeGuid: string;
+  allCodes: { code: Code; depth: number }[];
+  onSelect: (targetGuid: string) => void;
+  onCancel: () => void;
+}
+
+const MergeTargetPicker: Component<MergeTargetPickerProps> = (props) => {
+  const availableTargets = createMemo(() =>
+    props.allCodes.filter(c => c.code.guid !== props.sourceCodeGuid)
+  );
+
+  return (
+    <div class={styles.mergeOverlay} onClick={(e) => { if (e.target === e.currentTarget) props.onCancel(); }}>
+      <div class={styles.mergePanel}>
+        <div class={styles.mergePanelHeader}>
+          <span>Merge into…</span>
+          <button class={styles.codeActionBtn} onClick={props.onCancel}>
+            ✕
+          </button>
+        </div>
+        <div class={styles.mergePanelList}>
+          <For each={availableTargets()}>
+            {(item) => (
+              <button
+                class={styles.mergeTargetItem}
+                style={{ "padding-left": `${12 + item.depth * 16}px` }}
+                onClick={() => props.onSelect(item.code.guid)}
+              >
+                <ColorChip color={item.code.color} />
+                <span>{item.code.name}</span>
+              </button>
+            )}
+          </For>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface CodeEditorProps {
   code: Code;
   codebookGuid: string;
   onUpdate: (updates: Partial<Code>) => void;
   onDelete: () => void;
+  onMerge: (sourceGuid: string) => void;
   onAddSubcode: () => void;
   onSubcodesChange: (subcodes: Code[]) => void;
   isExpanded: boolean;
@@ -126,6 +180,12 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
             innerHTML={octicons['list-unordered'].toSVG()}
           />
           <button 
+            class={styles.codeActionBtn}
+            onClick={() => props.onMerge(props.code.guid)}
+            title="Merge into another code"
+            innerHTML={octicons['git-merge'].toSVG()}
+          />
+          <button 
             class={`${styles.codeActionBtn} ${styles.codeDeleteBtn}`} 
             onClick={props.onDelete}
             title="Delete code"
@@ -161,6 +221,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
                   isExpanded={props.isExpandedForCode}
                   onToggleExpanded={props.onToggleExpandedForCode}
                   onViewSelections={props.onViewSelections}
+                  onMerge={props.onMerge}
                 />
               </Show>
               <button 
@@ -185,6 +246,7 @@ interface CodeTreeEditorProps {
   isExpanded: (guid: string) => boolean;
   onToggleExpanded: (guid: string) => void;
   onViewSelections: (codeGuid: string) => void;
+  onMerge: (sourceGuid: string) => void;
 }
 
 const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
@@ -232,6 +294,7 @@ const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
           depth={props.depth}
           onUpdate={(updates) => updateCode(index, updates)}
           onDelete={() => deleteCode(index)}
+          onMerge={props.onMerge}
           onAddSubcode={() => addSubcode(index)}
           onSubcodesChange={(subcodes) => updateSubcodes(index, subcodes)}
           isExpanded={props.isExpanded(code().guid)}
@@ -257,6 +320,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
   const [editingName, setEditingName] = createSignal(false);
   const [localExpandedGuids, setLocalExpandedGuids] = createSignal<Set<string>>(new Set());
   const [viewingSelectionsForCode, setViewingSelectionsForCode] = createSignal<string | null>(null);
+  const [mergingCodeGuid, setMergingCodeGuid] = createSignal<string | null>(null);
 
   const getExpandedGuids = () => props.expandedCodeGuids ?? localExpandedGuids();
   const setExpandedGuids = (next: Set<string>) => {
@@ -276,6 +340,12 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
 
   const codebook = createMemo(() => {
     return store.codebooks[props.codebookGuid] || null;
+  });
+
+  const allFlatCodes = createMemo(() => {
+    const cb = codebook();
+    if (!cb) return [];
+    return flattenCodes(cb.codes);
   });
 
   const updateName = (newName: string) => {
@@ -304,6 +374,19 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
       subcodes: []
     };
     actions.updateCodebook({ ...cb, codes: [...cb.codes, newCode] });
+  };
+
+  const handleMerge = (sourceGuid: string) => {
+    setMergingCodeGuid(sourceGuid);
+  };
+
+  const confirmMerge = (targetGuid: string) => {
+    const sourceGuid = mergingCodeGuid();
+    if (!sourceGuid) return;
+    const cb = codebook();
+    if (!cb) return;
+    actions.mergeCode(cb.guid, sourceGuid, targetGuid);
+    setMergingCodeGuid(null);
   };
 
   const deleteCodebook = async () => {
@@ -377,6 +460,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                   isExpanded={isExpanded}
                   onToggleExpanded={toggleExpanded}
                   onViewSelections={(codeGuid) => setViewingSelectionsForCode(codeGuid)}
+                  onMerge={handleMerge}
                 />
               </Show>
             </div>
@@ -387,6 +471,17 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                   codeGuid={codeGuid()}
                   codebookGuid={cb().guid}
                   onClose={() => setViewingSelectionsForCode(null)}
+                />
+              )}
+            </Show>
+
+            <Show when={mergingCodeGuid()}>
+              {(sourceGuid) => (
+                <MergeTargetPicker
+                  sourceCodeGuid={sourceGuid()}
+                  allCodes={allFlatCodes()}
+                  onSelect={confirmMerge}
+                  onCancel={() => setMergingCodeGuid(null)}
                 />
               )}
             </Show>

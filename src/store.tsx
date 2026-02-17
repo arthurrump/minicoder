@@ -30,6 +30,8 @@ export interface StoreActions {
 
   updateSourceSelections: (path: string, selections: TextSelection[]) => void;
 
+  mergeCode: (codebookGuid: string, sourceCodeGuid: string, targetCodeGuid: string) => void;
+
   toggleExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => void;
   removeExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => void;
 
@@ -368,6 +370,88 @@ export const StoreProvider: ParentComponent = (props) => {
       selections.sort((a, b) => a.start - b.start || b.end - a.end);
       setStore('sources', path, 'selections', selections);
       scheduleSave(`source:${path}`, () => saveSource(path), 1000);
+    },
+
+    mergeCode(codebookGuid: string, sourceCodeGuid: string, targetCodeGuid: string) {
+      // 1. Replace code references in all selections across all sources
+      for (const [path, source] of Object.entries(store.sources)) {
+        let changed = false;
+        const updatedSelections = source.selections.map(sel => {
+          if (sel.code.codeGuid === sourceCodeGuid) {
+            changed = true;
+            return { ...sel, code: { ...sel.code, codeGuid: targetCodeGuid } };
+          }
+          return sel;
+        });
+        if (changed) {
+          setStore('sources', path, 'selections', updatedSelections);
+          scheduleSave(`source:${path}`, () => saveSource(path), 500);
+        }
+      }
+
+      // 2. Replace code references in all queries
+      function replaceInQueryNode(node: QueryNode): QueryNode {
+        if (node.type === 'code') {
+          if (node.codeGuid === sourceCodeGuid) {
+            return { ...node, codeGuid: targetCodeGuid };
+          }
+          return node;
+        }
+        return { ...node, children: node.children.map(replaceInQueryNode) };
+      }
+
+      for (const [guid, query] of Object.entries(store.queries)) {
+        if (query.query) {
+          const updatedNode = replaceInQueryNode(query.query);
+          if (updatedNode !== query.query) {
+            setStore('queries', guid, 'query', updatedNode);
+            scheduleSave(`query:${guid}`, () => saveQuery(guid), 500);
+          }
+        }
+      }
+
+      // 3. Transfer examples from source code to target code, then remove source code from codebook
+      const codebook = store.codebooks[codebookGuid];
+      if (!codebook) return;
+
+      const sourceCode = indices.codeByGuid()[sourceCodeGuid]?.code;
+      const sourceExamples = sourceCode?.examples || [];
+      const sourceSubcodes = sourceCode?.subcodes || [];
+
+      // Walk the entire code tree to:
+      // 1. Remove the source code wherever it appears (filter)
+      // 2. At the target code, append the source's examples and re-parent its subcodes (map)
+      // Both source and target can be at any depth, so we must recurse into
+      // every code's subcodes. The filter keeps all non-source codes, so the
+      // map always runs on the remaining codes at each level — ensuring we
+      // reach nested targets and nested source codes alike.
+      function removeAndMerge(codes: Code[]): Code[] {
+        return codes
+          // Remove the source code at this level (no-op if it's deeper)
+          .filter(c => c.guid !== sourceCodeGuid)
+          .map(code => {
+            let updated = code;
+            if (code.guid === targetCodeGuid) {
+              // Transfer examples from source to target
+              if (sourceExamples.length > 0) {
+                updated = { ...updated, examples: [...(code.examples || []), ...sourceExamples] };
+              }
+              // Re-parent subcodes from source code under the target
+              if (sourceSubcodes.length > 0) {
+                updated = { ...updated, subcodes: [...(updated.subcodes || []), ...sourceSubcodes] };
+              }
+            }
+            // Recurse into subcodes to handle source/target at deeper levels
+            if (updated.subcodes) {
+              updated = { ...updated, subcodes: removeAndMerge(updated.subcodes) };
+            }
+            return updated;
+          });
+      }
+
+      const updatedCodebook = { ...codebook, codes: removeAndMerge(codebook.codes) };
+      setStore('codebooks', codebookGuid, updatedCodebook);
+      scheduleSave(`codebook:${codebookGuid}`, () => saveCodebook(codebookGuid), 500);
     },
 
     toggleExample(sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) {
