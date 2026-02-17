@@ -5,21 +5,57 @@ export async function hashBytes(data: ArrayBuffer): Promise<string> {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Debounce utility
+// Debounce utility with flush/cancel support
+export type Debounced<T extends (...args: any[]) => any> =
+    ((...args: Parameters<T>) => void) & {
+        /** Immediately execute the pending call (if any), cancelling the timer. */
+        flush(): ReturnType<T> | undefined;
+        /** Cancel the pending call without executing it. */
+        cancel(): void;
+    };
+
 export function debounce<T extends (...args: any[]) => any>(
     fn: T,
     delay: number
-): (...args: Parameters<T>) => void {
+): Debounced<T> {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    return (...args: Parameters<T>) => {
+    let savedArgs: Parameters<T> | null = null;
+
+    const debounced = (...args: Parameters<T>) => {
+        savedArgs = args;
         if (timeoutId) {
             clearTimeout(timeoutId);
         }
         timeoutId = setTimeout(() => {
-            fn(...args);
+            const args = savedArgs;
             timeoutId = null;
+            savedArgs = null;
+            if (args) fn(...args);
         }, delay);
     };
+
+    debounced.flush = (): ReturnType<T> | undefined => {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+        }
+        if (savedArgs !== null) {
+            const args = savedArgs;
+            savedArgs = null;
+            return fn(...args);
+        }
+        return undefined;
+    };
+
+    debounced.cancel = () => {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+        }
+        savedArgs = null;
+    };
+
+    return debounced as Debounced<T>;
 }
 
 // Check if file content appears to be plain text

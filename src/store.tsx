@@ -1,6 +1,6 @@
 import { createContext, createMemo, useContext, type Accessor, type ParentComponent } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { hashBytes, debounce, isPlainText } from './helpers';
+import { hashBytes, debounce, isPlainText, type Debounced } from './helpers';
 
 /** File location — cached directory handle to avoid tree walks on save */
 export interface FileLocation {
@@ -79,7 +79,7 @@ export const StoreProvider: ParentComponent = (props) => {
   const loadingFiles = new Set<string>();
 
   // Per-entity debounced save functions
-  const debouncedSavers = new Map<string, () => void>();
+  const debouncedSavers = new Map<string, Debounced<() => Promise<void>>>();
 
   // Track pending saves for the saving indicator
   const pendingKeys = new Set<string>();
@@ -276,6 +276,7 @@ export const StoreProvider: ParentComponent = (props) => {
       setStore('fileContents', {});
       setStore('fileLocations', {});
       loadingFiles.clear();
+      for (const saver of debouncedSavers.values()) saver.cancel();
       debouncedSavers.clear();
       pendingKeys.clear();
       setStore('isSaving', false);
@@ -627,12 +628,11 @@ export const StoreProvider: ParentComponent = (props) => {
       const dirHandle = store.dirHandle;
       if (!dirHandle) return;
 
-      // Flush any pending debounced saves before reloading
-      for (const save of debouncedSavers.values()) {
-        save();
-      }
-      // Small delay to let flushed saves complete
-      await new Promise(r => setTimeout(r, 100));
+      // Flush all pending debounced saves immediately and wait for them to complete
+      const flushPromises = [...debouncedSavers.values()]
+        .map(saver => saver.flush())
+        .filter((p): p is Promise<void> => p !== undefined);
+      await Promise.all(flushPromises);
 
       await actions.setDirectory(dirHandle);
     },
