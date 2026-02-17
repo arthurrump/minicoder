@@ -1,4 +1,4 @@
-import { createSignal, For, Show, createEffect, JSX } from 'solid-js';
+import { createSignal, For, Show, createEffect, type JSX } from 'solid-js';
 import octicons from '@primer/octicons';
 
 import { useStore } from '../store';
@@ -32,7 +32,7 @@ interface FileNode {
 }
 
 export function FileBrowser(props: FileBrowserProps) {
-  const { actions } = useStore();
+  const { store, actions } = useStore();
   const [rootNodes, setRootNodes] = createSignal<FileNode[]>([]);
   const [expandedDirs, setExpandedDirs] = createSignal<Set<string>>(new Set());
 
@@ -232,8 +232,15 @@ export function FileBrowser(props: FileBrowserProps) {
           <span innerHTML={octicons.search.toSVG({ width: 14 })} />
           <span>+</span>
         </button>
+        <span class={styles.saveIndicator} title={store.isSaving ? 'Saving...' : 'Saved'}>
+          <Show when={store.isSaving} fallback={
+            <span innerHTML={octicons['issue-closed'].toSVG({ width: 14 })} />
+          }>
+            <span class={styles.spinning} innerHTML={octicons['issue-draft'].toSVG({ width: 14 })} />
+          </Show>
+        </span>
         <button
-          class={`${styles.createBtn} ${styles.refreshBtn}`}
+          class={styles.createBtn}
           classList={{ [styles.spinning]: refreshing() }}
           onClick={handleRefresh}
           title="Refresh files"

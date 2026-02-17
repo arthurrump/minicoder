@@ -16,6 +16,8 @@ export interface AppStore {
   queries: Record<string, Query>;               // query guid -> Query
   sources: Record<string, Source>;              // source file path -> Source
   fileContents: Record<string, string>;         // source file path -> text content
+  /** Whether any saves are currently pending (debounced or in-flight). */
+  isSaving: boolean;
 }
 
 export interface StoreActions {
@@ -66,6 +68,7 @@ export const StoreProvider: ParentComponent = (props) => {
     queries: {},
     sources: {},
     fileContents: {},
+    isSaving: false,
   });
 
   // Track in-progress file content loads to avoid duplicate requests
@@ -73,6 +76,9 @@ export const StoreProvider: ParentComponent = (props) => {
 
   // Per-entity debounced save functions
   const debouncedSavers = new Map<string, () => void>();
+
+  // Track pending saves for the saving indicator
+  const pendingKeys = new Set<string>();
 
   // ---- File system helpers ----
 
@@ -228,8 +234,17 @@ export const StoreProvider: ParentComponent = (props) => {
 
   function scheduleSave(key: string, fn: () => Promise<void>, delayMs: number) {
     if (!debouncedSavers.has(key)) {
-      debouncedSavers.set(key, debounce(() => fn(), delayMs));
+      debouncedSavers.set(key, debounce(async () => {
+        try {
+          await fn();
+        } finally {
+          pendingKeys.delete(key);
+          if (pendingKeys.size === 0) setStore('isSaving', false);
+        }
+      }, delayMs));
     }
+    pendingKeys.add(key);
+    setStore('isSaving', true);
     debouncedSavers.get(key)!();
   }
 
@@ -253,6 +268,8 @@ export const StoreProvider: ParentComponent = (props) => {
       setStore('fileLocations', {});
       loadingFiles.clear();
       debouncedSavers.clear();
+      pendingKeys.clear();
+      setStore('isSaving', false);
 
       // Discover all data files in parallel
       const emptyResult: { file: FileSystemFileHandle; path: string; dirHandle: FileSystemDirectoryHandle; fileName: string }[] = [];
