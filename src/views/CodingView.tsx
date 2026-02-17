@@ -380,6 +380,25 @@ const CodingView: Component = () => {
     }
   }
 
+  function handleChangeCodeForSource(sourcePath: string, selectionGuid: string, newCode: CodeReference) {
+    const currentSelections = store.sources[sourcePath]?.selections || [];
+    actions.updateSourceSelections(
+      sourcePath,
+      currentSelections.map(s =>
+        s.guid === selectionGuid
+          ? { ...s, code: newCode }
+          : s
+      )
+    );
+  }
+
+  function handleChangeCode(selectionGuid: string, newCode: CodeReference) {
+    const path = selectedFilePath();
+    if (path) {
+      handleChangeCodeForSource(path, selectionGuid, newCode);
+    }
+  }
+
   function handleQueryExpandedChange(path: string, keys: Set<string>) {
     setQueryExpandedByPath(prev => {
       const next = new Map(prev);
@@ -534,6 +553,7 @@ const CodingView: Component = () => {
                     handleSelectionUpdateForSource(sourcePath, selectionGuid, start, end, note)
                   }
                   onToggleExample={handleToggleExampleForSource}
+                  onChangeCode={handleChangeCodeForSource}
                   onSelectionClear={handleSelectionClear}
                   selectedCode={selectedCode()}
                 />
@@ -561,6 +581,7 @@ const CodingView: Component = () => {
                           onSelectionRemove={handleSelectionRemove}
                           onSelectionUpdate={handleSelectionUpdate}
                           onToggleExample={handleToggleExample}
+                          onChangeCode={handleChangeCode}
                           onSelectionClear={handleSelectionClear}
                           selectedCode={selectedCode()}
                         />

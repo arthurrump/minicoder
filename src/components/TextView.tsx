@@ -12,6 +12,7 @@ interface TextViewProps {
     onSelectionRemove?: (selectionGuid: string) => void;
     onSelectionUpdate?: (selectionGuid: string, start: number, end: number, note?: string) => void;
     onToggleExample?: (selectionGuid: string) => void;
+    onChangeCode?: (selectionGuid: string, newCode: CodeReference) => void;
     onSelectionClear?: () => void;
     selectedCode?: { code: Code; codebook: Codebook } | null;
 }
@@ -763,8 +764,11 @@ const TextView: Component<TextViewProps> = (props) => {
         
             <Show when={popover()}>
                 {(p) => {
+                    const liveSelection = createMemo(() =>
+                        props.selections.find(s => s.guid === p().selection.guid) ?? p().selection
+                    );
                     const isExample = createMemo(() => {
-                        const sel = p().selection;
+                        const sel = liveSelection();
                         const info = codeIndex()[sel.code.codeGuid];
                         return info?.code.examples?.some(ex => ex.textSelectionGuid === sel.guid) ?? false;
                     });
@@ -772,11 +776,12 @@ const TextView: Component<TextViewProps> = (props) => {
                         <HighlightPopover
                             x={p().x}
                             y={p().y}
-                            selection={p().selection}
+                            selection={liveSelection()}
                             isExample={isExample()}
                             onRemoveCode={handleRemoveCode}
                             onToggleExample={(selectionGuid) => props.onToggleExample?.(selectionGuid)}
                             onNoteChange={handleNoteChange}
+                            onChangeCode={(selectionGuid, newCode) => props.onChangeCode?.(selectionGuid, newCode)}
                             onClick={(e: MouseEvent) => e.stopPropagation()}
                         />
                     );

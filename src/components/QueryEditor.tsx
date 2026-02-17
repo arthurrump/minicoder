@@ -287,6 +287,7 @@ interface QueryMatchingSelectionsProps {
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
   onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
+  onChangeCode?: (sourcePath: string, selectionGuid: string, newCode: CodeReference) => void;
   onSelectionClear?: () => void;
   selectedCode?: { code: Code; codebook: Codebook } | null;
 }
@@ -377,6 +378,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       onSelectionRemove={props.onSelectionRemove}
       onSelectionUpdate={props.onSelectionUpdate}
       onToggleExample={props.onToggleExample}
+      onChangeCode={props.onChangeCode}
       onSelectionClear={props.onSelectionClear}
       selectedCode={props.selectedCode}
     />
@@ -392,6 +394,7 @@ interface QueryEditorProps {
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
   onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
+  onChangeCode?: (sourcePath: string, selectionGuid: string, newCode: CodeReference) => void;
   onSelectionClear?: () => void;
   selectedCode?: { code: Code; codebook: Codebook } | null;
 }
@@ -594,6 +597,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
               onSelectionRemove={props.onSelectionRemove}
               onSelectionUpdate={props.onSelectionUpdate}
               onToggleExample={props.onToggleExample}
+              onChangeCode={props.onChangeCode}
               onSelectionClear={props.onSelectionClear}
               selectedCode={props.selectedCode}
             />

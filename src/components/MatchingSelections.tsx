@@ -67,6 +67,7 @@ export interface MatchItemProps {
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
   onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
+  onChangeCode?: (sourcePath: string, selectionGuid: string, newCode: CodeReference) => void;
   onSelectionClear?: () => void;
   selectedCode?: { code: Code; codebook: Codebook } | null;
 }
@@ -143,6 +144,9 @@ export const MatchItem: Component<MatchItemProps> = (props) => {
           onToggleExample={(selectionGuid) =>
             props.onToggleExample?.(props.group.sourcePath, selectionGuid)
           }
+          onChangeCode={(selectionGuid, newCode) =>
+            props.onChangeCode?.(props.group.sourcePath, selectionGuid, newCode)
+          }
           onSelectionClear={props.onSelectionClear}
           selectedCode={props.selectedCode}
         />
@@ -210,6 +214,7 @@ const LazyMatchItem: Component<MatchItemProps> = (props) => {
           onSelectionRemove={props.onSelectionRemove}
           onSelectionUpdate={props.onSelectionUpdate}
           onToggleExample={props.onToggleExample}
+          onChangeCode={props.onChangeCode}
           onSelectionClear={props.onSelectionClear}
           selectedCode={props.selectedCode}
         />
@@ -227,6 +232,7 @@ export interface MatchingSelectionsListProps {
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
   onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
+  onChangeCode?: (sourcePath: string, selectionGuid: string, newCode: CodeReference) => void;
   onSelectionClear?: () => void;
   selectedCode?: { code: Code; codebook: Codebook } | null;
 }
@@ -305,6 +311,7 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
                 onSelectionRemove={props.onSelectionRemove}
                 onSelectionUpdate={props.onSelectionUpdate}
                 onToggleExample={props.onToggleExample}
+                onChangeCode={props.onChangeCode}
                 onSelectionClear={props.onSelectionClear}
                 selectedCode={props.selectedCode}
               />
