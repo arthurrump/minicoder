@@ -66,7 +66,6 @@ const App: Component = () => {
     <SettingsProvider>
       <StoreProvider>
         <HashRouter root={Layout}>
-          <Route path="/" component={CodingView} />
           <Route path="/*filePath" component={CodingView} />
         </HashRouter>
       </StoreProvider>
