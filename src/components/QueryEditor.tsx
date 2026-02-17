@@ -5,33 +5,39 @@ import styles from './QueryEditor.module.css';
 import ColorChip from './ColorChip';
 import { flattenCodes, findOverlapping, MatchingSelectionsList, buildMatchGroups, type MatchGroup } from './MatchingSelections';
 
-// Evaluate a query against a set of code GUIDs
-export function evaluateQuery(node: QueryNode | null, selectionCodeGuids: Set<string>, subcodeIndex: Record<string, Set<string>>): boolean {
-  if (!node) return false;
-  
-  if (node.type === 'code') {
-    const includeSubcodes = node.includeSubcodes !== false;
-    if (!includeSubcodes) {
-      return selectionCodeGuids.has(node.codeGuid);
-    }
-
-    const targetGuids = subcodeIndex[node.codeGuid];
-    if (!targetGuids) return false;
-    for (const guid of targetGuids) {
-      if (selectionCodeGuids.has(guid)) return true;
-    }
+// Evaluate a query against a TextSelection
+export function evaluateQuery(node: QueryNode | null, userFilter: (string | undefined)[], subcodeIndex: Record<string, Set<string>>, selection: TextSelection): boolean {
+  // If the user filter is set, filter out all selections where the user doesn't match
+  if (userFilter.length !== 0 && !userFilter.includes(selection.creatingUser))
     return false;
-  }
-  
-  if (node.type === 'operator') {
+
+  // If no query is set, include everything
+  if (!node) 
+    return true;
+
+  if (node.type === 'code') {
+    if (node.includeSubcodes === false) {
+      // Exactly match the code if subcodes are not included
+      return selection.code.codeGuid === node.codeGuid;
+    } else {
+      // Find all subcodes
+      const subcodeGuids = subcodeIndex[node.codeGuid];
+      if (!subcodeGuids) return false;
+      // Return true if any subcode matches
+      for (const guid of subcodeGuids) {
+        if (selection.code.codeGuid === guid) return true;
+      }
+      return false;
+    }
+  } else if (node.type === 'operator') {
     switch (node.operator) {
       case 'AND':
-        return node.children.length > 0 && node.children.every(child => evaluateQuery(child, selectionCodeGuids, subcodeIndex));
+        return node.children.length > 0 && node.children.every(child => evaluateQuery(child, userFilter, subcodeIndex, selection));
       case 'OR':
-        return node.children.some(child => evaluateQuery(child, selectionCodeGuids, subcodeIndex));
+        return node.children.some(child => evaluateQuery(child, userFilter, subcodeIndex, selection));
       case 'NOT':
         // NOT operates on the first child only
-        return node.children.length > 0 ? !evaluateQuery(node.children[0], selectionCodeGuids, subcodeIndex) : false;
+        return node.children.length > 0 ? !evaluateQuery(node.children[0], userFilter, subcodeIndex, selection) : false;
       default:
         return false;
     }
@@ -286,83 +292,73 @@ interface QueryMatchingSelectionsProps {
 }
 
 const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props) => {
-  const { store, actions, indices } = useStore();
+  const { store, indices } = useStore();
 
   // Compute match groups via query evaluation
   const matchGroups = createMemo((): MatchGroup[] => {
     const groups: MatchGroup[] = [];
-    const queryNode = props.query.query;
-    const filterPatterns = compileGlobs(parseFilterList(props.query.fileFilter));
-    const userFilterList = parseFilterList(props.query.userFilter);
-    const matchAll = !queryNode;
+
+    const query = props.query;
+    const queryNode = query.query;
+    const fileFilter = compileGlobs(parseFilterList(query.fileFilter));
     
-    for (const [sourcePath, source] of Object.entries(store.sources)) {
-      if (!matchesAnyGlob(sourcePath, filterPatterns)) continue;
+    for (const [sourcePath, source] of Object.entries(store.sources).sort()) {
+      // Skip files that don't match any of the file filters
+      if (!matchesAnyGlob(sourcePath, fileFilter)) continue;
+
+      // Skip empty files (shouldn't happen, just to be sure)
       const content = store.fileContents[sourcePath] || '';
       if (!content) continue;
       
-      // Selections are kept sorted by start position in the store
-      const allSorted = source.selections;
-      const subcodeIdx = indices.subcodesByGuid();
-
-      const matchingSelections: TextSelection[] = [];
-      
-      for (const selection of allSorted) {
-        // Apply user filter first
-        if (userFilterList.length > 0) {
-          if (!selection.creatingUser || !userFilterList.includes(selection.creatingUser)) {
-            continue;
-          }
-        }
-
-        if (matchAll) {
-          matchingSelections.push(selection);
-          continue;
-        }
-
-        const overlappingSelections = findOverlapping(allSorted, selection.start, selection.end);
-        const codeGuids = new Set(overlappingSelections.map(s => s.code.codeGuid));
-        
-        if (evaluateQuery(queryNode, codeGuids, subcodeIdx)) {
-          matchingSelections.push(selection);
-        }
-      }
-      
+      // Filter all selections that match the query
+      const subcodeIndex = indices.subcodesByGuid();
+      const matchingSelections = source.selections.filter(s => evaluateQuery(queryNode, query.userFilter, subcodeIndex, s));
+      // And short-circuit if none match
       if (matchingSelections.length === 0) continue;
+
+      // Extend with all selections that overlap the matches and ensure they are
+      // sorted correctly. This introduces duplicates, which are handled when grouping
+      const matchingAndOverlappingSelections = 
+        matchingSelections
+          .flatMap(s => [ s, ...findOverlapping(source.selections, s.start, s.end)])
+          .sort((a, b) => a.start - b.start || b.end - a.end);
       
-      const mergedGroups: { start: number; end: number; selections: TextSelection[] }[] = [];
-      
-      for (const sel of matchingSelections) {
-        const lastGroup = mergedGroups[mergedGroups.length - 1];
-        if (lastGroup && sel.start <= lastGroup.end) {
-          lastGroup.end = Math.max(lastGroup.end, sel.end);
-          lastGroup.selections.push(sel);
+      // Merge overlapping selections into groups
+      for (const sel of matchingAndOverlappingSelections) {
+        const group = groups[groups.length - 1];
+
+        // Discard duplicates which we just added in the last group
+        if (group && group.selections[group.selections.length - 1].guid === sel.guid)
+          continue;
+
+        // If this selection overlaps with the last group,
+        if (group && group.sourcePath === sourcePath && sel.start <= group.end) {
+          // then add the selection
+          group.selections.push({ ...sel, start: sel.start - group.start, end: sel.end - group.start });
+          // and adjust the end position
+          group.end = Math.max(group.end, sel.end);
         } else {
-          mergedGroups.push({ start: sel.start, end: sel.end, selections: [sel] });
+          // If we need to start a new group,
+          // first set the content for the previous group now that we know the full range
+          if (group && group.sourcePath === sourcePath) {
+            group.content = content.slice(group.start, group.end);
+          }
+
+          // then create the new group, leaving the content to be set until we know the range
+          groups.push({
+            sourcePath,
+            start: sel.start,
+            end: sel.end,
+            content: "",
+            selections: [{ ...sel, start: 0, end: sel.end - sel.start }],
+          });
         }
       }
-      
-      for (const group of mergedGroups) {
-        const groupSelections = findOverlapping(allSorted, group.start, group.end);
-        groups.push({
-          sourcePath,
-          start: group.start,
-          end: group.end,
-          content: content.slice(group.start, group.end),
-          selections: groupSelections.map(s => ({
-            ...s,
-            start: s.start - group.start,
-            end: s.end - group.start,
-          })),
-        });
-      }
+
+      // Set the content of the final group in this block
+      const lastGroup = groups[groups.length - 1];
+      lastGroup.content = content.slice(lastGroup.start, lastGroup.end);
     }
-    
-    groups.sort((a, b) => {
-      const pathCompare = a.sourcePath.localeCompare(b.sourcePath);
-      if (pathCompare !== 0) return pathCompare;
-      return a.start - b.start;
-    });
     
     return groups;
   });
@@ -423,7 +419,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
     actions.updateQuery({ ...q, fileFilter: value });
   };
 
-  const updateUserFilter = (value: string) => {
+  const updateUserFilter = (value: (string | undefined)[]) => {
     const q = query();
     if (!q) return;
     actions.updateQuery({ ...q, userFilter: value });
@@ -513,7 +509,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                 class={styles.queryFilterInput}
                 type="text"
                 placeholder="e.g. interviews/**/*.txt, notes/*.md"
-                value={q().fileFilter || ''}
+                value={q().fileFilter}
                 onInput={(e) => updateFileFilter((e.target as HTMLInputElement).value)}
               />
             </div>
@@ -523,9 +519,9 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                 <label class={styles.queryFilterLabel}>Filter users</label>
                 <div class={styles.userFilterContainer}>
                   <div class={styles.userChips}>
-                    <For each={allUsers()}>
+                    <For each={[ undefined, ...allUsers() ]}>
                       {(user) => {
-                        const isSelected = () => parseFilterList(q().userFilter || '').includes(user);
+                        const isSelected = () => q().userFilter.includes(user);
                         return (
                           <label
                             class={styles.userChip}
@@ -535,20 +531,16 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                               type="checkbox"
                               checked={isSelected()}
                               onChange={() => {
-                                const current = q().userFilter || '';
-                                const users = parseFilterList(current);
-                                if (users.includes(user)) {
+                                if (q().userFilter.includes(user)) {
                                   // Remove user
-                                  const newUsers = users.filter(u => u !== user);
-                                  updateUserFilter(newUsers.join(', '));
+                                  updateUserFilter(q().userFilter.filter(u => u !== user));
                                 } else {
                                   // Add user
-                                  const newUsers = [...users, user];
-                                  updateUserFilter(newUsers.join(', '));
+                                  updateUserFilter([...q().userFilter, user]);
                                 }
                               }}
                             />
-                            <span>{user}</span>
+                            <span>{user || <code>undefined</code>}</span>
                           </label>
                         );
                       }}

@@ -454,6 +454,8 @@ export const StoreProvider: ParentComponent = (props) => {
         guid: crypto.randomUUID(),
         name: trimmed,
         query: null,
+        fileFilter: "",
+        userFilter: []
       };
 
       // Register file location before saving

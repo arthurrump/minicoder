@@ -4,8 +4,8 @@ interface Query {
     guid: string;
     name: string;
     query: QueryNode | null;
-    fileFilter?: string; // Comma-seperated list of globs
-    userFilter?: string; // Comma-separated list of user IDs
+    fileFilter: string; // Comma separated list of globs
+    userFilter: (string | undefined)[]; // List of user IDs
 }
 
 type QueryNode =
