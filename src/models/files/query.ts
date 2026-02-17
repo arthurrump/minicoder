@@ -6,6 +6,7 @@ interface Query {
     query: QueryNode | null;
     fileFilter: string; // Comma separated list of globs
     userFilter: (string | undefined)[]; // List of user IDs
+    showOnlyMatching?: boolean;
 }
 
 type QueryNode =

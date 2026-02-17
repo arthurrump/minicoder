@@ -312,19 +312,21 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       
       // Filter all selections that match the query
       const subcodeIndex = indices.subcodesByGuid();
-      const matchingSelections = source.selections.filter(s => evaluateQuery(queryNode, query.userFilter, subcodeIndex, s));
+      let selections = source.selections.filter(s => evaluateQuery(queryNode, query.userFilter, subcodeIndex, s));
       // And short-circuit if none match
-      if (matchingSelections.length === 0) continue;
+      if (selections.length === 0) continue;
 
       // Extend with all selections that overlap the matches and ensure they are
       // sorted correctly. This introduces duplicates, which are handled when grouping
-      const matchingAndOverlappingSelections = 
-        matchingSelections
+      if (!query.showOnlyMatching) {
+        selections = 
+          selections
           .flatMap(s => [ s, ...findOverlapping(source.selections, s.start, s.end)])
           .sort((a, b) => a.start - b.start || b.end - a.end);
+      }
       
       // Merge overlapping selections into groups
-      for (const sel of matchingAndOverlappingSelections) {
+      for (const sel of selections) {
         const group = groups[groups.length - 1];
 
         // Discard duplicates which we just added in the last group
@@ -425,6 +427,12 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
     actions.updateQuery({ ...q, userFilter: value });
   };
 
+  const updateShowOnlyMatching = (value: boolean) => {
+    const q = query();
+    if (!q) return;
+    actions.updateQuery({ ...q, showOnlyMatching: value });
+  };
+
   // Collect all unique user IDs from selections
   const allUsers = createMemo(() => {
     const users = new Set<string>();
@@ -503,7 +511,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
               </div>
             </div>
 
-            <div class={styles.queryFilterRow}>
+            <div class={styles.queryFilterGrid}>
               <label class={styles.queryFilterLabel}>Filter files</label>
               <input
                 class={styles.queryFilterInput}
@@ -512,43 +520,48 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                 value={q().fileFilter}
                 onInput={(e) => updateFileFilter((e.target as HTMLInputElement).value)}
               />
+              <Show when={allUsers().length > 0}>
+                  <label class={styles.queryFilterLabel}>Filter users</label>
+                  <div class={styles.userFilterContainer}>
+                    <div class={styles.userChips}>
+                      <For each={[ undefined, ...allUsers() ]}>
+                        {(user) => {
+                          const isSelected = () => q().userFilter.includes(user);
+                          return (
+                            <label
+                              class={styles.userChip}
+                              classList={{ [styles.userChipChecked]: isSelected() }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected()}
+                                onChange={() => {
+                                  if (q().userFilter.includes(user)) {
+                                    // Remove user
+                                    updateUserFilter(q().userFilter.filter(u => u !== user));
+                                  } else {
+                                    // Add user
+                                    updateUserFilter([...q().userFilter, user]);
+                                  }
+                                }}
+                              />
+                              <span>{user || <code>undefined</code>}</span>
+                            </label>
+                          );
+                        }}
+                      </For>
+                    </div>
+                  </div>
+              </Show>
+              <label class={styles.queryFilterLabel}>Show only matching</label>
+              <input
+                class={styles.queryFilterCheckbox}
+                type="checkbox"
+                checked={q().showOnlyMatching || false} 
+                onChange={(e) => updateShowOnlyMatching(e.target.checked)} 
+              />
             </div>
             
-            <Show when={allUsers().length > 0}>
-              <div class={styles.queryFilterRow}>
-                <label class={styles.queryFilterLabel}>Filter users</label>
-                <div class={styles.userFilterContainer}>
-                  <div class={styles.userChips}>
-                    <For each={[ undefined, ...allUsers() ]}>
-                      {(user) => {
-                        const isSelected = () => q().userFilter.includes(user);
-                        return (
-                          <label
-                            class={styles.userChip}
-                            classList={{ [styles.userChipChecked]: isSelected() }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isSelected()}
-                              onChange={() => {
-                                if (q().userFilter.includes(user)) {
-                                  // Remove user
-                                  updateUserFilter(q().userFilter.filter(u => u !== user));
-                                } else {
-                                  // Add user
-                                  updateUserFilter([...q().userFilter, user]);
-                                }
-                              }}
-                            />
-                            <span>{user || <code>undefined</code>}</span>
-                          </label>
-                        );
-                      }}
-                    </For>
-                  </div>
-                </div>
-              </div>
-            </Show>
             
             <div class={styles.queryBuilder}>
               <Show when={q().query} fallback={

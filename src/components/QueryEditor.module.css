@@ -56,10 +56,11 @@
     margin-bottom: 8px;
 }
 
-.queryFilterRow {
-    display: flex;
+.queryFilterGrid {
+    display: grid;
+    grid-template-columns: auto 1fr;
     align-items: center;
-    gap: 8px;
+    gap: 6px 8px;
     margin: 6px 0;
 }
 
@@ -77,6 +78,11 @@
     background: var(--bg-color);
     color: var(--text-color);
     font-size: 0.85rem;
+}
+
+.queryFilterCheckbox {
+    justify-self: start;
+    margin-left: 0;
 }
 
 .noQueryMessage {
