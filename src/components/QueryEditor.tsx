@@ -295,8 +295,9 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
   const { store, indices } = useStore();
 
   // Compute match groups via query evaluation
-  const matchGroups = createMemo((): MatchGroup[] => {
+  const matches = createMemo((): { matchCount: number, groups: MatchGroup[] } => {
     const groups: MatchGroup[] = [];
+    let matchCount = 0;
 
     const query = props.query;
     const queryNode = query.query;
@@ -313,6 +314,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       // Filter all selections that match the query
       const subcodeIndex = indices.subcodesByGuid();
       let selections = source.selections.filter(s => evaluateQuery(queryNode, query.userFilter, subcodeIndex, s));
+      matchCount += selections.length;
       // And short-circuit if none match
       if (selections.length === 0) continue;
 
@@ -362,13 +364,13 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       lastGroup.content = content.slice(lastGroup.start, lastGroup.end);
     }
     
-    return groups;
+    return { matchCount, groups };
   });
 
   return (
     <MatchingSelectionsList
-      matchGroups={matchGroups()}
-      title={`Matching Selections (${matchGroups().length})`}
+      matchGroups={matches().groups}
+      title={`Matching Selections (${matches().matchCount})`}
       expandedKeys={props.expandedKeys}
       onExpandedKeysChange={props.onExpandedKeysChange}
       onSelectionCreate={props.onSelectionCreate}
