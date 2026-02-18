@@ -93,19 +93,6 @@ const CodingView: Component = () => {
     Object.values(store.codebooks).sort((a, b) => a.name.localeCompare(b.name))
   );
 
-  // Resolve codebook guid from file path (for .mcc files)
-  const selectedCodebookGuid = createMemo(() => {
-    const path = selectedFilePath();
-    if (!path || !path.endsWith('.mcc')) return undefined;
-    return indices.pathToGuid()[path];
-  });
-
-  // Resolve query guid from file path (for .mcq files)
-  const selectedQueryGuid = createMemo(() => {
-    const path = selectedFilePath();
-    if (!path || !path.endsWith('.mcq')) return undefined;
-    return indices.pathToGuid()[path];
-  });
   
   // Tab management
   const [openTabs, setOpenTabs] = createSignal<string[]>([]);
@@ -113,37 +100,26 @@ const CodingView: Component = () => {
   // Compute display names for tabs with disambiguation
   const tabDisplayNames = createMemo(() => getTabDisplayNames(openTabs()));
   
-  // Store scroll positions per tab
+  // Store scroll positions for text file tabs (query/codebook tabs preserve scroll via per-tab instances)
   const scrollPositions = new Map<string, number>();
   let textViewWrapperRef: HTMLDivElement | undefined;
-  let queryViewWrapperRef: HTMLDivElement | undefined;
-  let codebookViewWrapperRef: HTMLDivElement | undefined;
 
-  const [queryExpandedByPath, setQueryExpandedByPath] = createSignal<Map<string, Set<string>>>(new Map());
-  const [codebookExpandedByPath, setCodebookExpandedByPath] = createSignal<Map<string, Set<string>>>(new Map());
+  // Derived lists of open query/codebook tabs for per-tab rendering
+  const openQueryTabs = createMemo(() => openTabs().filter(p => p.endsWith('.mcq')));
+  const openCodebookTabs = createMemo(() => openTabs().filter(p => p.endsWith('.mcc')));
   
-  // Helper to save current scroll position before navigating away
+  // Helper to save current text file scroll position before navigating away
   function saveCurrentScrollPosition() {
     const currentPath = selectedFilePath();
-    if (!currentPath) return;
-    const ref = currentPath.endsWith('.mcc')
-      ? codebookViewWrapperRef
-      : currentPath.endsWith('.mcq')
-        ? queryViewWrapperRef
-        : textViewWrapperRef;
-    if (ref) {
-      scrollPositions.set(currentPath, ref.scrollTop);
+    if (!currentPath || currentPath.endsWith('.mcc') || currentPath.endsWith('.mcq')) return;
+    if (textViewWrapperRef) {
+      scrollPositions.set(currentPath, textViewWrapperRef.scrollTop);
     }
   }
 
   function restoreScrollPosition(path: string) {
-    const ref = path.endsWith('.mcc')
-      ? codebookViewWrapperRef
-      : path.endsWith('.mcq')
-        ? queryViewWrapperRef
-        : textViewWrapperRef;
-    if (ref) {
-      ref.scrollTop = scrollPositions.get(path) || 0;
+    if (textViewWrapperRef) {
+      textViewWrapperRef.scrollTop = scrollPositions.get(path) || 0;
     }
   }
   
@@ -197,7 +173,7 @@ const CodingView: Component = () => {
     return fc?.type === 'plain-text' ? fc.content : undefined;
   });
 
-  // Restore scroll position when file content loads
+  // Restore scroll position when file content loads (text files only)
   createEffect(on(() => fileContent(), () => {
     const path = selectedFilePath();
     if (path && textViewWrapperRef) {
@@ -205,39 +181,6 @@ const CodingView: Component = () => {
       requestAnimationFrame(() => {
         restoreScrollPosition(path);
       });
-    }
-  }));
-
-  // Restore scroll position for codebook/query editors
-  createEffect(on(selectedFilePath, (path) => {
-    if (!path) return;
-    if (path.endsWith('.mcc') || path.endsWith('.mcq')) {
-      requestAnimationFrame(() => {
-        restoreScrollPosition(path);
-      });
-    }
-  }));
-
-  // Initialize per-tab expanded state containers
-  createEffect(on(selectedFilePath, (path) => {
-    if (!path) return;
-    if (path.endsWith('.mcq')) {
-      if (!queryExpandedByPath().has(path)) {
-        setQueryExpandedByPath(prev => {
-          const next = new Map(prev);
-          next.set(path, new Set());
-          return next;
-        });
-      }
-    }
-    if (path.endsWith('.mcc')) {
-      if (!codebookExpandedByPath().has(path)) {
-        setCodebookExpandedByPath(prev => {
-          const next = new Map(prev);
-          next.set(path, new Set());
-          return next;
-        });
-      }
     }
   }));
 
@@ -401,22 +344,6 @@ const CodingView: Component = () => {
     }
   }
 
-  function handleQueryExpandedChange(path: string, keys: Set<string>) {
-    setQueryExpandedByPath(prev => {
-      const next = new Map(prev);
-      next.set(path, new Set(keys));
-      return next;
-    });
-  }
-
-  function handleCodebookExpandedChange(path: string, keys: Set<string>) {
-    setCodebookExpandedByPath(prev => {
-      const next = new Map(prev);
-      next.set(path, new Set(keys));
-      return next;
-    });
-  }
-
   function handleFileSelect(info: { file: FileSystemFileHandle; directory: FileSystemDirectoryHandle; relativePath: string }) {
     const path = info.relativePath;
     
@@ -533,34 +460,56 @@ const CodingView: Component = () => {
               </div>
             </Show>
             
-            {/* Content area - conditionally show codebook editor, query editor, or text view */}
-            <Show when={selectedFilePath()} fallback={<p style={{ padding: '10px' }}>Select a file to view its contents</p>}>
-              <Show when={isCodebookFile() && selectedCodebookGuid()}>
-                <CodebookEditor
-                  codebookGuid={selectedCodebookGuid()!}
-                  scrollRef={(el) => { codebookViewWrapperRef = el; }}
-                  expandedCodeGuids={codebookExpandedByPath().get(selectedFilePath())}
-                  onExpandedCodeGuidsChange={(keys) => handleCodebookExpandedChange(selectedFilePath(), keys)}
-                />
+            {/* Content area - views are layered with absolute positioning.
+                Each open query/codebook tab gets its own component instance that stays
+                alive (hidden) to preserve scroll position and LazyMatchItem state.
+                Text views are conditional since their scroll restore works reliably. */}
+            <div class={styles.contentArea}>
+              <Show when={!selectedFilePath()}>
+                <p style={{ padding: '10px' }}>Select a file to view its contents</p>
               </Show>
-              <Show when={isQueryFile() && selectedQueryGuid()}>
-                <QueryEditor
-                  queryGuid={selectedQueryGuid()!}
-                  scrollRef={(el) => { queryViewWrapperRef = el; }}
-                  expandedKeys={queryExpandedByPath().get(selectedFilePath())}
-                  onExpandedKeysChange={(keys) => handleQueryExpandedChange(selectedFilePath(), keys)}
-                  onSelectionCreate={handleSelectionCreateForSource}
-                  onSelectionRemove={handleSelectionRemoveForSource}
-                  onSelectionUpdate={(sourcePath, selectionGuid, start, end, note) =>
-                    handleSelectionUpdateForSource(sourcePath, selectionGuid, start, end, note)
-                  }
-                  onToggleExample={handleToggleExampleForSource}
-                  onChangeCode={handleChangeCodeForSource}
-                  onSelectionClear={handleSelectionClear}
-                  selectedCode={selectedCode()}
-                />
-              </Show>
-              <Show when={!isSpecialFile()}>
+
+              {/* Per-tab codebook editors */}
+              <For each={openCodebookTabs()}>
+                {(tabPath) => {
+                  const guid = () => indices.pathToGuid()[tabPath];
+                  return (
+                    <Show when={guid()}>
+                      <div class={tabPath === selectedFilePath() ? styles.viewActive : styles.viewHidden}>
+                        <CodebookEditor codebookGuid={guid()!} />
+                      </div>
+                    </Show>
+                  );
+                }}
+              </For>
+
+              {/* Per-tab query editors */}
+              <For each={openQueryTabs()}>
+                {(tabPath) => {
+                  const guid = () => indices.pathToGuid()[tabPath];
+                  return (
+                    <Show when={guid()}>
+                      <div class={tabPath === selectedFilePath() ? styles.viewActive : styles.viewHidden}>
+                        <QueryEditor
+                          queryGuid={guid()!}
+                          onSelectionCreate={handleSelectionCreateForSource}
+                          onSelectionRemove={handleSelectionRemoveForSource}
+                          onSelectionUpdate={(sourcePath, selectionGuid, start, end, note) =>
+                            handleSelectionUpdateForSource(sourcePath, selectionGuid, start, end, note)
+                          }
+                          onToggleExample={handleToggleExampleForSource}
+                          onChangeCode={handleChangeCodeForSource}
+                          onSelectionClear={handleSelectionClear}
+                          selectedCode={selectedCode()}
+                        />
+                      </div>
+                    </Show>
+                  );
+                }}
+              </For>
+
+              {/* Text view - conditional rendering (scroll restore works reliably) */}
+              <Show when={selectedFilePath() && !isSpecialFile()}>
                 <div class={styles.textViewWrapper} ref={textViewWrapperRef}>
                   <Show when={nonPlainTextWarning()}>
                     <div class={styles.hashMismatchWarning}>
@@ -592,7 +541,7 @@ const CodingView: Component = () => {
                   </Show>
                 </div>
               </Show>
-            </Show>
+            </div>
           </div>
         </Resizable.Panel>
         <Resizable.Handle aria-label="Resize editor and code picker">
