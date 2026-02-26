@@ -134,6 +134,44 @@ const MergeTargetPicker: Component<MergeTargetPickerProps> = (props) => {
   );
 };
 
+interface CodebookMergeTargetPickerProps {
+  sourceCodebookGuid: string;
+  codebooks: Codebook[];
+  onSelect: (targetGuid: string) => void;
+  onCancel: () => void;
+}
+
+const CodebookMergeTargetPicker: Component<CodebookMergeTargetPickerProps> = (props) => {
+  const availableTargets = createMemo(() =>
+    props.codebooks.filter(cb => cb.guid !== props.sourceCodebookGuid)
+  );
+
+  return (
+    <div class={styles.mergeOverlay} onClick={(e) => { if (e.target === e.currentTarget) props.onCancel(); }}>
+      <div class={styles.mergePanel}>
+        <div class={styles.mergePanelHeader}>
+          <span>Merge codebook into…</span>
+          <button class={styles.codeActionBtn} onClick={props.onCancel}>
+            ✕
+          </button>
+        </div>
+        <div class={styles.mergePanelList}>
+          <For each={availableTargets()}>
+            {(cb) => (
+              <button
+                class={styles.mergeTargetItem}
+                onClick={() => props.onSelect(cb.guid)}
+              >
+                <span>{cb.name}</span>
+              </button>
+            )}
+          </For>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface CodeEditorProps {
   code: Code;
   codebookGuid: string;
@@ -322,6 +360,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
   const [localExpandedGuids, setLocalExpandedGuids] = createSignal<Set<string>>(new Set());
   const [viewingSelectionsForCode, setViewingSelectionsForCode] = createSignal<string | null>(null);
   const [mergingCodeGuid, setMergingCodeGuid] = createSignal<string | null>(null);
+  const [mergingCodebook, setMergingCodebook] = createSignal(false);
 
   const getExpandedGuids = () => props.expandedCodeGuids ?? localExpandedGuids();
   const setExpandedGuids = (next: Set<string>) => {
@@ -338,6 +377,10 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
     }
     setExpandedGuids(next);
   };
+
+  const codebooksList = createMemo(() =>
+    Object.values(store.codebooks).sort((a, b) => a.name.localeCompare(b.name))
+  );
 
   const codebook = createMemo(() => {
     return store.codebooks[props.codebookGuid] || null;
@@ -396,6 +439,17 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
     setMergingCodeGuid(null);
   };
 
+  const mergeCodebook = async (targetCodebookGuid: string) => {
+    const cb = codebook();
+    if (!cb) return;
+    if (!confirm(`Are you sure you want to merge this codebook into another? All codes and selections will be moved.`)) {
+      setMergingCodebook(false);
+      return;
+    }
+    await actions.mergeCodebook(cb.guid, targetCodebookGuid);
+    setMergingCodebook(false);
+  };
+
   const deleteCodebook = async () => {
     const cb = codebook();
     if (!cb) return;
@@ -447,6 +501,13 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                   Add Code
                 </button>
                 <button 
+                  class={`${styles.btnSmall}`}
+                  onClick={() => setMergingCodebook(true)}
+                  title="Merge all codes into another codebook"
+                >
+                  Merge Into…
+                </button>
+                <button 
                   class={`${styles.btnSmall} ${styles.btnDanger}`}
                   onClick={deleteCodebook}
                 >
@@ -492,6 +553,15 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                   onCancel={() => setMergingCodeGuid(null)}
                 />
               )}
+            </Show>
+
+            <Show when={mergingCodebook()}>
+              <CodebookMergeTargetPicker
+                sourceCodebookGuid={cb().guid}
+                codebooks={codebooksList()}
+                onSelect={mergeCodebook}
+                onCancel={() => setMergingCodebook(false)}
+              />
             </Show>
           </>
         )}

@@ -38,6 +38,7 @@ export interface StoreActions {
   updateSourceSelections: (path: string, selections: TextSelection[]) => void;
 
   mergeCode: (codebookGuid: string, sourceCodeGuid: string, targetCodeGuid: string) => void;
+  mergeCodebook: (sourceCodebookGuid: string, targetCodebookGuid: string) => Promise<void>;
 
   toggleExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => void;
   removeExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => void;
@@ -580,6 +581,39 @@ export const StoreProvider: ParentComponent = (props) => {
 
       setStore('codebooks', codebookGuid, updatedCodebook);
       scheduleSave(`codebook:${codebookGuid}`, () => saveCodebook(codebookGuid), 500);
+    },
+
+    async mergeCodebook(sourceCodebookGuid: string, targetCodebookGuid: string) {
+      const sourceCodebook = store.codebooks[sourceCodebookGuid];
+      const targetCodebook = store.codebooks[targetCodebookGuid];
+      if (!sourceCodebook || !targetCodebook) return;
+
+      // 1. Move all codes from source codebook into target codebook
+      const updatedTarget = {
+        ...targetCodebook,
+        codes: [...targetCodebook.codes, ...sourceCodebook.codes],
+      };
+      setStore('codebooks', targetCodebookGuid, updatedTarget);
+      scheduleSave(`codebook:${targetCodebookGuid}`, () => saveCodebook(targetCodebookGuid), 500);
+
+      // 2. Update all selections that reference the source codebook
+      for (const [path, source] of Object.entries(store.sources)) {
+        let changed = false;
+        const updatedSelections = source.selections.map(sel => {
+          if (sel.code.codebookGuid === sourceCodebookGuid) {
+            changed = true;
+            return { ...sel, code: { ...sel.code, codebookGuid: targetCodebookGuid } };
+          }
+          return sel;
+        });
+        if (changed) {
+          setStore('sources', path, 'selections', updatedSelections);
+          scheduleSave(`source:${path}`, () => saveSource(path), 500);
+        }
+      }
+
+      // 3. Delete the source codebook
+      await actions.deleteCodebook(sourceCodebookGuid);
     },
 
     updateQuery(query: Query) {
