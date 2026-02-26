@@ -11,6 +11,7 @@ interface Query {
 
 type QueryNode =
     | { type: 'operator'; operator: QueryOperator; children: QueryNode[] }
-    | { type: 'code'; codeGuid: string; includeSubcodes?: boolean };
+    | { type: 'code'; codeGuid: string; includeSubcodes?: boolean }
+    | { type: 'codebook'; codebookGuid: string };
 
 type QueryOperator = 'AND' | 'OR' | 'NOT';

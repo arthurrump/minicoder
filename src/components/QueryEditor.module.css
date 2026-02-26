@@ -298,6 +298,17 @@
     background: var(--code-hover);
 }
 
+.codePickerCodebook {
+    font-weight: bold;
+    font-size: 0.85em;
+    opacity: 0.8;
+    padding: 6px 10px 2px;
+    position: sticky;
+    top: 0;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
 /* Children container */
 .queryChildren {
     margin-top: 8px;

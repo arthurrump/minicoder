@@ -54,6 +54,7 @@ export interface StoreActions {
 export interface StoreIndices {
   codeByGuid: Accessor<Record<string, { code: Code; codebook: Codebook }>>;
   subcodesByGuid: Accessor<Record<string, Set<string>>>;
+  codesByCodebook: Accessor<Record<string, Set<string>>>;
   pathToGuid: Accessor<Record<string, string>>;
 }
 
@@ -456,7 +457,10 @@ export const StoreProvider: ParentComponent = (props) => {
           }
           return node;
         }
-        return { ...node, children: node.children.map(replaceInQueryNode) };
+        if (node.type === 'operator') {
+          return { ...node, children: node.children.map(replaceInQueryNode) };
+        }
+        return node;
       }
 
       for (const [guid, query] of Object.entries(store.queries)) {
@@ -702,6 +706,21 @@ export const StoreProvider: ParentComponent = (props) => {
       }
       for (const codebook of Object.values(store.codebooks)) {
         for (const code of codebook.codes) collect(code);
+      }
+      return index;
+    }),
+    codesByCodebook: createMemo(() => {
+      const index: Record<string, Set<string>> = {};
+      function collect(codes: Code[], guids: Set<string>) {
+        for (const code of codes) {
+          guids.add(code.guid);
+          if (code.subcodes) collect(code.subcodes, guids);
+        }
+      }
+      for (const codebook of Object.values(store.codebooks)) {
+        const guids = new Set<string>();
+        collect(codebook.codes, guids);
+        index[codebook.guid] = guids;
       }
       return index;
     }),

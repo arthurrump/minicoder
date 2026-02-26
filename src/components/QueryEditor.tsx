@@ -6,7 +6,7 @@ import ColorChip from './ColorChip';
 import { flattenCodes, findOverlapping, MatchingSelectionsList, buildMatchGroups, type MatchGroup } from './MatchingSelections';
 
 // Evaluate a query against a TextSelection
-export function evaluateQuery(node: QueryNode | null, userFilter: (string | undefined)[], subcodeIndex: Record<string, Set<string>>, selection: TextSelection): boolean {
+export function evaluateQuery(node: QueryNode | null, userFilter: (string | undefined)[], subcodeIndex: Record<string, Set<string>>, codebookIndex: Record<string, Set<string>>, selection: TextSelection): boolean {
   // If the user filter is set, filter out all selections where the user doesn't match
   if (userFilter.length !== 0 && !userFilter.includes(selection.creatingUser))
     return false;
@@ -29,15 +29,20 @@ export function evaluateQuery(node: QueryNode | null, userFilter: (string | unde
       }
       return false;
     }
+  } else if (node.type === 'codebook') {
+    // Match any code that belongs to the codebook
+    const codebookGuids = codebookIndex[node.codebookGuid];
+    if (!codebookGuids) return false;
+    return codebookGuids.has(selection.code.codeGuid);
   } else if (node.type === 'operator') {
     switch (node.operator) {
       case 'AND':
-        return node.children.length > 0 && node.children.every(child => evaluateQuery(child, userFilter, subcodeIndex, selection));
+        return node.children.length > 0 && node.children.every(child => evaluateQuery(child, userFilter, subcodeIndex, codebookIndex, selection));
       case 'OR':
-        return node.children.some(child => evaluateQuery(child, userFilter, subcodeIndex, selection));
+        return node.children.some(child => evaluateQuery(child, userFilter, subcodeIndex, codebookIndex, selection));
       case 'NOT':
         // NOT operates on the first child only
-        return node.children.length > 0 ? !evaluateQuery(node.children[0], userFilter, subcodeIndex, selection) : false;
+        return node.children.length > 0 ? !evaluateQuery(node.children[0], userFilter, subcodeIndex, codebookIndex, selection) : false;
       default:
         return false;
     }
@@ -84,9 +89,18 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
   const [showCodePicker, setShowCodePicker] = createSignal(false);
   const allCodes = createMemo(() => flattenCodes(Object.values(store.codebooks)));
   
+  const isCodeLike = () => props.node.type === 'code' || props.node.type === 'codebook';
+
   const codeInfo = createMemo(() => {
     if (props.node.type === 'code') {
       return indices.codeByGuid()[props.node.codeGuid] ?? null;
+    }
+    return null;
+  });
+
+  const codebookInfo = createMemo(() => {
+    if (props.node.type === 'codebook') {
+      return store.codebooks[props.node.codebookGuid] ?? null;
     }
     return null;
   });
@@ -137,6 +151,11 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
     setShowCodePicker(false);
   };
 
+  const handleCodebookSelect = (codebookGuid: string) => {
+    props.onUpdate({ type: 'codebook', codebookGuid });
+    setShowCodePicker(false);
+  };
+
   const handleWrapWithOperator = (operator: QueryOperator) => {
     // If this is currently a code node, wrap it in an operator
     props.onUpdate({
@@ -161,13 +180,9 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
           </select>
         </Show>
         
-        <Show when={props.node.type === 'code'}>
+        <Show when={isCodeLike()}>
           <div class={styles.codeDisplay}>
-            <Show when={codeInfo()} fallback={
-              <button class={styles.selectCodeBtn} onClick={() => setShowCodePicker(true)}>
-                Select Code...
-              </button>
-            }>
+            <Show when={codeInfo()}>
               {(info) => (
                 <div class={styles.selectedCode} onClick={() => setShowCodePicker(true)}>
                   <ColorChip color={info().code.color} class={styles.codeChip} />
@@ -176,20 +191,36 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
                 </div>
               )}
             </Show>
+            <Show when={codebookInfo()}>
+              {(cb) => (
+                <div class={styles.selectedCode} onClick={() => setShowCodePicker(true)}>
+                  <span>{cb().name}</span>
+                  <span class={styles.codebookName}>(codebook)</span>
+                </div>
+              )}
+            </Show>
+            <Show when={!codeInfo() && !codebookInfo()}>
+              <button class={styles.selectCodeBtn} onClick={() => setShowCodePicker(true)}>
+                Select Code...
+              </button>
+            </Show>
           </div>
         </Show>
-        <Show when={props.node.type === 'code'}>
+        <Show when={isCodeLike()}>
           <label class={styles.subcodeToggle}>
             <input
               type="checkbox"
-              checked={props.node.type === 'code' ? props.node.includeSubcodes !== false : true}
-              onChange={(e) =>
-                props.onUpdate({
-                  type: 'code',
-                  codeGuid: props.node.type === 'code' ? props.node.codeGuid : '',
-                  includeSubcodes: (e.target as HTMLInputElement).checked,
-                })
-              }
+              checked={props.node.type === 'codebook' || (props.node.type === 'code' ? props.node.includeSubcodes !== false : true)}
+              disabled={props.node.type === 'codebook'}
+              onChange={(e) => {
+                if (props.node.type === 'code') {
+                  props.onUpdate({
+                    type: 'code',
+                    codeGuid: props.node.codeGuid,
+                    includeSubcodes: (e.target as HTMLInputElement).checked,
+                  });
+                }
+              }}
             />
             <span>Include subcodes</span>
           </label>
@@ -230,19 +261,31 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
       <Show when={showCodePicker()}>
         <div class={styles.codePicker}>
           <div class={styles.codePickerHeader}>
-            <span>Select a code:</span>
+            <span>Select a code or codebook:</span>
             <button onClick={() => setShowCodePicker(false)}>×</button>
           </div>
           <div class={styles.codePickerList}>
-            <For each={allCodes()}>
-              {(item) => (
-                <div
-                  class={styles.codePickerItem}
-                  onClick={() => handleCodeSelect(item.code.guid)}
-                >
-                  <ColorChip color={item.code.color} class={styles.codeChip} />
-                  <span>{item.path.join(' › ')}</span>
-                </div>
+            <For each={Object.values(store.codebooks)}>
+              {(codebook) => (
+                <>
+                  <div
+                    class={`${styles.codePickerItem} ${styles.codePickerCodebook}`}
+                    onClick={() => handleCodebookSelect(codebook.guid)}
+                  >
+                    <span>{codebook.name}</span>
+                  </div>
+                  <For each={allCodes().filter(c => c.codebook.guid === codebook.guid)}>
+                    {(item) => (
+                      <div
+                        class={styles.codePickerItem}
+                        onClick={() => handleCodeSelect(item.code.guid)}
+                      >
+                        <ColorChip color={item.code.color} class={styles.codeChip} />
+                        <span>{item.path.slice(1).join(' › ')}</span>
+                      </div>
+                    )}
+                  </For>
+                </>
               )}
             </For>
           </div>
@@ -315,7 +358,8 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       
       // Filter all selections that match the query
       const subcodeIndex = indices.subcodesByGuid();
-      let selections = source.selections.filter(s => evaluateQuery(queryNode, query.userFilter, subcodeIndex, s));
+      const codebookIndex = indices.codesByCodebook();
+      let selections = source.selections.filter(s => evaluateQuery(queryNode, query.userFilter, subcodeIndex, codebookIndex, s));
       matchCount += selections.length;
       // And short-circuit if none match
       if (selections.length === 0) continue;
