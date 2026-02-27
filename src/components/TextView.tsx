@@ -459,27 +459,14 @@ const TextView: Component<TextViewProps> = (props) => {
     const [activeSelectionGuid, setActiveSelectionGuid] = createSignal<string | null>(null);
     const [draggingHandle, setDraggingHandle] = createSignal<'start' | 'end' | null>(null);
     const [mousePosition, setMousePosition] = createSignal<{ x: number; y: number } | null>(null);
-    // Local override for the selection being dragged, so we don't trigger store updates mid-drag
-    const [dragOverride, setDragOverride] = createSignal<{ guid: string; start: number; end: number } | null>(null);
     
     let containerRef: HTMLElement | null = null;
     let lastValidDragPosition: number | null = null;
     
     // Store refs to all segment elements, keyed by segment index
     const segmentElements = new Map<number, HTMLSpanElement>();
-
-    // Selections with the drag override merged in for local visual feedback
-    const displaySelections = createMemo(() => {
-        const override = dragOverride();
-        if (!override) return props.selections;
-        return props.selections.map(s =>
-            s.guid === override.guid
-                ? { ...s, start: override.start, end: override.end }
-                : s
-        );
-    });
     
-    const segments = createMemo(() => buildSegments(displaySelections(), props.content));
+    const segments = createMemo(() => buildSegments(props.selections, props.content));
     
     // Close popover if the active selection disappears from the selections list
     // (e.g. when toggling example status moves a selection between groups)
@@ -608,11 +595,11 @@ const TextView: Component<TextViewProps> = (props) => {
         setActiveSelectionGuid(null);
     }
     
-    // Get the active selection object (uses displaySelections to reflect drag state)
+    // Get the active selection object
     const activeSelection = createMemo(() => {
         const guid = activeSelectionGuid();
         if (!guid) return null;
-        return displaySelections().find(s => s.guid === guid) ?? null;
+        return props.selections.find(s => s.guid === guid) ?? null;
     });
     
     // Handle resize drag
@@ -659,21 +646,11 @@ const TextView: Component<TextViewProps> = (props) => {
         
         if (newStart !== sel.start || newEnd !== sel.end) {
             lastValidDragPosition = handle === 'start' ? newStart : newEnd;
-            // Buffer the update locally — don't trigger store cascade mid-drag
-            setDragOverride({ guid: sel.guid, start: newStart, end: newEnd });
+            props.onSelectionUpdate?.(sel.guid, newStart, newEnd, sel.note);
         }
     }
     
     function handleDragEnd() {
-        // Commit the buffered drag override to the store
-        const override = dragOverride();
-        if (override) {
-            const sel = props.selections.find(s => s.guid === override.guid);
-            if (sel) {
-                props.onSelectionUpdate?.(override.guid, override.start, override.end, sel.note);
-            }
-        }
-        setDragOverride(null);
         setDraggingHandle(null);
         lastValidDragPosition = null;
     }

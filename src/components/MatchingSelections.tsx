@@ -209,34 +209,6 @@ export const MatchItem: Component<MatchItemProps> = (props) => {
   const uniqueCodes = createMemo(() => {
     return Array.from(codeMap().values());
   });
-
-  const renderTextView = (content: string, selections: TextSelection[], baseOffset: number, nonResizableGuids?: Set<string>) => {
-    return (
-      <TextView
-        content={content}
-        selections={selections}
-        nonResizableGuids={nonResizableGuids}
-        onSelectionCreate={(start, end) => {
-          props.onEnsureExpanded();
-          props.onSelectionCreate?.(props.group.sourcePath, props.group.start + baseOffset + start, props.group.start + baseOffset + end);
-        }}
-        onSelectionRemove={(selectionGuid) =>
-          props.onSelectionRemove?.(props.group.sourcePath, selectionGuid)
-        }
-        onSelectionUpdate={(selectionGuid, start, end, note) =>
-          props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + baseOffset + start, props.group.start + baseOffset + end, note)
-        }
-        onToggleExample={(selectionGuid) =>
-          props.onToggleExample?.(props.group.sourcePath, selectionGuid)
-        }
-        onChangeCode={(selectionGuid, newCode) =>
-          props.onChangeCode?.(props.group.sourcePath, selectionGuid, newCode)
-        }
-        onSelectionClear={props.onSelectionClear}
-        selectedCode={props.selectedCode}
-      />
-    );
-  };
   
   return (
     <div class={styles.matchItem}>
@@ -255,20 +227,66 @@ export const MatchItem: Component<MatchItemProps> = (props) => {
       </div>
       <div class={styles.matchContent}>
         <Show when={props.isExpanded || !hasGaps()} fallback={
-          /* Collapsed view: show only matching sub-regions with ellipsis separators */
-          <For each={collapsedRegions()}>
+          /* Collapsed view: show only matching sub-regions with ellipsis separators.
+           * Index preserves component instances by position so that interactions
+           * (popovers, drag handles, note editing) survive reactive updates. */
+          <Index each={collapsedRegions()}>
             {(region, i) => (
               <>
-                <Show when={i() > 0}>
+                <Show when={i > 0}>
                   <div class={styles.ellipsisSeparator}>···</div>
                 </Show>
-                {renderTextView(region.content, region.selections, region.offsetInGroup, region.clippedGuids.size > 0 ? region.clippedGuids : undefined)}
+                <TextView
+                  content={region().content}
+                  selections={region().selections}
+                  nonResizableGuids={region().clippedGuids.size > 0 ? region().clippedGuids : undefined}
+                  onSelectionCreate={(start, end) => {
+                    props.onEnsureExpanded();
+                    props.onSelectionCreate?.(props.group.sourcePath, props.group.start + region().offsetInGroup + start, props.group.start + region().offsetInGroup + end);
+                  }}
+                  onSelectionRemove={(selectionGuid) =>
+                    props.onSelectionRemove?.(props.group.sourcePath, selectionGuid)
+                  }
+                  onSelectionUpdate={(selectionGuid, start, end, note) =>
+                    props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + region().offsetInGroup + start, props.group.start + region().offsetInGroup + end, note)
+                  }
+                  onToggleExample={(selectionGuid) =>
+                    props.onToggleExample?.(props.group.sourcePath, selectionGuid)
+                  }
+                  onChangeCode={(selectionGuid, newCode) =>
+                    props.onChangeCode?.(props.group.sourcePath, selectionGuid, newCode)
+                  }
+                  onSelectionClear={props.onSelectionClear}
+                  selectedCode={props.selectedCode}
+                />
               </>
             )}
-          </For>
+          </Index>
         }>
           {/* Expanded view: full group content with all selections */}
-          {renderTextView(props.group.content, props.group.selections, 0, boundaryGuids().size > 0 ? boundaryGuids() : undefined)}
+          <TextView
+            content={props.group.content}
+            selections={props.group.selections}
+            nonResizableGuids={boundaryGuids().size > 0 ? boundaryGuids() : undefined}
+            onSelectionCreate={(start, end) => {
+              props.onEnsureExpanded();
+              props.onSelectionCreate?.(props.group.sourcePath, props.group.start + start, props.group.start + end);
+            }}
+            onSelectionRemove={(selectionGuid) =>
+              props.onSelectionRemove?.(props.group.sourcePath, selectionGuid)
+            }
+            onSelectionUpdate={(selectionGuid, start, end, note) =>
+              props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + start, props.group.start + end, note)
+            }
+            onToggleExample={(selectionGuid) =>
+              props.onToggleExample?.(props.group.sourcePath, selectionGuid)
+            }
+            onChangeCode={(selectionGuid, newCode) =>
+              props.onChangeCode?.(props.group.sourcePath, selectionGuid, newCode)
+            }
+            onSelectionClear={props.onSelectionClear}
+            selectedCode={props.selectedCode}
+          />
         </Show>
       </div>
       <Show when={hasGaps()}>
