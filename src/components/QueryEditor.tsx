@@ -4,51 +4,129 @@ import { useStore } from '../store';
 import styles from './QueryEditor.module.css';
 import ColorChip from './ColorChip';
 import { flattenCodes, findOverlapping, MatchingSelectionsList, buildMatchGroups, type MatchGroup } from './MatchingSelections';
+import { buildSegments } from '../helpers';
 
-// Evaluate a query against a TextSelection
-export function evaluateQuery(node: QueryNode | null, userFilter: (string | undefined)[], subcodeIndex: Record<string, Set<string>>, codebookIndex: Record<string, Set<string>>, selection: TextSelection): boolean {
-  // If the user filter is set, filter out all selections where the user doesn't match
-  if (userFilter.length !== 0 && !userFilter.includes(selection.creatingUser))
-    return false;
-
-  // If no query is set, include everything
-  if (!node) 
-    return true;
-
+/**
+ * Evaluate a query node against a single atomic segment (a region of text
+ * covered by a known set of selections). Returns the set of selection GUIDs
+ * that contribute to the match. An empty set means no match.
+ *
+ * - code / codebook leaf: return GUIDs of covering selections whose code matches.
+ * - OR:  union of all children's results (any child matching is sufficient).
+ * - AND: if every child matches (non-empty), return the union; otherwise empty.
+ * - NOT: if the child does NOT match (empty), return all covering selection GUIDs
+ *        (the segment "survived" the negation); if it does match, return empty.
+ */
+function evaluateQueryOnSegment(
+  node: QueryNode,
+  subcodeIndex: Record<string, Set<string>>,
+  codebookIndex: Record<string, Set<string>>,
+  coveringSelections: TextSelection[],
+): Set<string> {
   if (node.type === 'code') {
+    const result = new Set<string>();
     if (node.includeSubcodes === false) {
-      // Exactly match the code if subcodes are not included
-      return selection.code.codeGuid === node.codeGuid;
-    } else {
-      // Find all subcodes
-      const subcodeGuids = subcodeIndex[node.codeGuid];
-      if (!subcodeGuids) return false;
-      // Return true if any subcode matches
-      for (const guid of subcodeGuids) {
-        if (selection.code.codeGuid === guid) return true;
+      for (const sel of coveringSelections) {
+        if (sel.code.codeGuid === node.codeGuid) result.add(sel.guid);
       }
-      return false;
+    } else {
+      const subcodeGuids = subcodeIndex[node.codeGuid];
+      if (subcodeGuids) {
+        for (const sel of coveringSelections) {
+          if (subcodeGuids.has(sel.code.codeGuid)) result.add(sel.guid);
+        }
+      }
     }
-  } else if (node.type === 'codebook') {
-    // Match any code that belongs to the codebook
-    const codebookGuids = codebookIndex[node.codebookGuid];
-    if (!codebookGuids) return false;
-    return codebookGuids.has(selection.code.codeGuid);
-  } else if (node.type === 'operator') {
-    switch (node.operator) {
-      case 'AND':
-        return node.children.length > 0 && node.children.every(child => evaluateQuery(child, userFilter, subcodeIndex, codebookIndex, selection));
-      case 'OR':
-        return node.children.some(child => evaluateQuery(child, userFilter, subcodeIndex, codebookIndex, selection));
-      case 'NOT':
-        // NOT operates on the first child only
-        return node.children.length > 0 ? !evaluateQuery(node.children[0], userFilter, subcodeIndex, codebookIndex, selection) : false;
-      default:
-        return false;
-    }
+    return result;
   }
-  
-  return false;
+
+  if (node.type === 'codebook') {
+    const result = new Set<string>();
+    const codeGuids = codebookIndex[node.codebookGuid];
+    if (codeGuids) {
+      for (const sel of coveringSelections) {
+        if (codeGuids.has(sel.code.codeGuid)) result.add(sel.guid);
+      }
+    }
+    return result;
+  }
+
+  // Operator node
+  switch (node.operator) {
+    case 'AND': {
+      if (node.children.length === 0) return new Set();
+      const childResults = node.children.map(child =>
+        evaluateQueryOnSegment(child, subcodeIndex, codebookIndex, coveringSelections)
+      );
+      // Every child must match (non-empty)
+      if (childResults.some(r => r.size === 0)) return new Set();
+      // Union all contributing GUIDs
+      const union = new Set<string>();
+      for (const r of childResults) for (const guid of r) union.add(guid);
+      return union;
+    }
+    case 'OR': {
+      const union = new Set<string>();
+      for (const child of node.children) {
+        for (const guid of evaluateQueryOnSegment(child, subcodeIndex, codebookIndex, coveringSelections)) {
+          union.add(guid);
+        }
+      }
+      return union;
+    }
+    case 'NOT': {
+      if (node.children.length === 0) return new Set();
+      const childResult = evaluateQueryOnSegment(node.children[0], subcodeIndex, codebookIndex, coveringSelections);
+      if (childResult.size > 0) {
+        // Child matched → negation fails
+        return new Set();
+      }
+      // Child didn't match → all covering selections survive the negation
+      return new Set(coveringSelections.map(s => s.guid));
+    }
+    default:
+      return new Set();
+  }
+}
+
+/**
+ * Evaluate a query against a source's selections using segment-based logic.
+ *
+ * Instead of testing each selection independently (which breaks AND — a single
+ * selection only has one code), this decomposes the selections into atomic
+ * segments where each segment knows all covering selections. The query tree
+ * is then evaluated per-segment, and the union of contributing selections
+ * across all segments is returned.
+ */
+export function evaluateQueryOnSource(
+  node: QueryNode | null,
+  userFilter: (string | undefined)[],
+  subcodeIndex: Record<string, Set<string>>,
+  codebookIndex: Record<string, Set<string>>,
+  selections: TextSelection[],
+): TextSelection[] {
+  // Pre-filter by user
+  let filtered = selections;
+  if (userFilter.length > 0) {
+    filtered = selections.filter(s => userFilter.includes(s.creatingUser));
+  }
+
+  // No query node → include all filtered selections
+  if (!node) return filtered;
+
+  // Build atomic segments from the filtered selections (no content needed)
+  const segments = buildSegments(filtered);
+
+  // Evaluate each segment, collecting the union of contributing selection GUIDs
+  const contributingGuids = new Set<string>();
+  for (const segment of segments) {
+    if (segment.selections.length === 0) continue;
+    const guids = evaluateQueryOnSegment(node, subcodeIndex, codebookIndex, segment.selections);
+    for (const guid of guids) contributingGuids.add(guid);
+  }
+
+  // Return the filtered selections whose GUIDs ended up in the contributing set
+  return filtered.filter(s => contributingGuids.has(s.guid));
 }
 
 function parseFilterList(filter: string | undefined): string[] {
@@ -356,10 +434,10 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       const content = fc?.type === 'plain-text' ? fc.content : '';
       if (!content) continue;
       
-      // Filter all selections that match the query
+      // Evaluate the query on all source selections
       const subcodeIndex = indices.subcodesByGuid();
       const codebookIndex = indices.codesByCodebook();
-      let selections = source.selections.filter(s => evaluateQuery(queryNode, query.userFilter, subcodeIndex, codebookIndex, s));
+      let selections = evaluateQueryOnSource(queryNode, query.userFilter, subcodeIndex, codebookIndex, source.selections);
       matchCount += selections.length;
       // And short-circuit if none match
       if (selections.length === 0) continue;

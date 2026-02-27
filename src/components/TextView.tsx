@@ -4,6 +4,7 @@ import styles from './TextView.module.css';
 import HighlightPopover from './HighlightPopover';
 import ColorChip from './ColorChip';
 import { useStore } from '../store';
+import { buildSegments, type Segment } from '../helpers';
 
 interface TextViewProps {
     content: string;
@@ -17,63 +18,10 @@ interface TextViewProps {
     selectedCode?: { code: Code; codebook: Codebook } | null;
 }
 
-interface Segment {
-    start: number;
-    end: number;
-    text: string;
-    selections: TextSelection[];
-}
-
 interface HandlePosition {
     x: number;
     y: number;
     height: number;
-}
-
-/**
- * Build a list of atomic segments from overlapping selections.
- * Each segment has a unique combination of applied codes.
- */
-function buildSegments(content: string, selections: TextSelection[]): Segment[] {
-    if (!content) return [];
-    
-    // Collect all boundary points
-    const points = new Set<number>();
-    points.add(0);
-    points.add(content.length);
-    
-    for (const sel of selections) {
-        if (sel.start >= 0 && sel.start <= content.length) {
-            points.add(sel.start);
-        }
-        if (sel.end >= 0 && sel.end <= content.length) {
-            points.add(sel.end);
-        }
-    }
-    
-    // Sort points
-    const sortedPoints = Array.from(points).sort((a, b) => a - b);
-    
-    // Build segments between consecutive points
-    const segments: Segment[] = [];
-    for (let i = 0; i < sortedPoints.length - 1; i++) {
-        const start = sortedPoints[i];
-        const end = sortedPoints[i + 1];
-        
-        // Find which selections cover this segment
-        const coveringSelections = selections.filter(
-            sel => sel.start <= start && sel.end >= end
-        );
-        
-        segments.push({
-            start,
-            end,
-            text: content.slice(start, end),
-            selections: coveringSelections
-        });
-    }
-    
-    return segments;
 }
 
 const UNDERLINE_HEIGHT = 4;
@@ -516,7 +464,7 @@ const TextView: Component<TextViewProps> = (props) => {
     // Store refs to all segment elements, keyed by segment index
     const segmentElements = new Map<number, HTMLSpanElement>();
     
-    const segments = createMemo(() => buildSegments(props.content, props.selections));
+    const segments = createMemo(() => buildSegments(props.selections, props.content));
     
     // Close popover if the active selection disappears from the selections list
     // (e.g. when toggling example status moves a selection between groups)
