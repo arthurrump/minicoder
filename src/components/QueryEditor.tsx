@@ -404,6 +404,7 @@ interface QueryMatchingSelectionsProps {
   query: Query;
   expandedKeys?: Set<string>;
   onExpandedKeysChange?: (keys: Set<string>) => void;
+  onOpenSource?: (sourcePath: string, charOffset: number) => void;
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
@@ -537,6 +538,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       title={`Matching Selections (${matches().matchCount})`}
       expandedKeys={props.expandedKeys}
       onExpandedKeysChange={props.onExpandedKeysChange}
+      onOpenSource={props.onOpenSource}
       onSelectionCreate={props.onSelectionCreate}
       onSelectionRemove={props.onSelectionRemove}
       onSelectionUpdate={props.onSelectionUpdate}
@@ -553,6 +555,7 @@ interface QueryEditorProps {
   scrollRef?: (el: HTMLDivElement) => void;
   expandedKeys?: Set<string>;
   onExpandedKeysChange?: (keys: Set<string>) => void;
+  onOpenSource?: (sourcePath: string, charOffset: number) => void;
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
@@ -756,6 +759,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
               query={q()}
               expandedKeys={props.expandedKeys}
               onExpandedKeysChange={props.onExpandedKeysChange}
+              onOpenSource={props.onOpenSource}
               onSelectionCreate={props.onSelectionCreate}
               onSelectionRemove={props.onSelectionRemove}
               onSelectionUpdate={props.onSelectionUpdate}

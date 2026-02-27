@@ -11,6 +11,7 @@ interface CodeSelectionsModalProps {
   codebookGuid: string;
   currentFilePath?: string;
   onClose: () => void;
+  onOpenSource?: (sourcePath: string, charOffset: number) => void;
 }
 
 function updateCodeInTree(codes: Code[], guid: string, updates: Partial<Code>): Code[] {
@@ -194,6 +195,7 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
             <MatchingSelectionsList
               matchGroups={exampleGroups()}
               title={`Examples (${exampleGroups().length})`}
+              onOpenSource={(sourcePath, charOffset) => { props.onClose(); props.onOpenSource?.(sourcePath, charOffset); }}
               onToggleExample={handleToggleExample}
             />
           </Show>
@@ -202,6 +204,7 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
             <MatchingSelectionsList
               matchGroups={currentFileGroups()}
               title={`In Current File (${currentFileGroups().length})`}
+              onOpenSource={(sourcePath, charOffset) => { props.onClose(); props.onOpenSource?.(sourcePath, charOffset); }}
               onToggleExample={handleToggleExample}
             />
           </Show>
@@ -209,6 +212,7 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
           <MatchingSelectionsList
             matchGroups={otherGroups()}
             title={`Selections (${otherGroups().length})`}
+            onOpenSource={(sourcePath, charOffset) => { props.onClose(); props.onOpenSource?.(sourcePath, charOffset); }}
             onToggleExample={handleToggleExample}
           />
         </div>

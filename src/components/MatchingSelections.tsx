@@ -152,6 +152,7 @@ export interface MatchItemProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onEnsureExpanded: () => void;
+  onOpenSource?: (sourcePath: string, charOffset: number) => void;
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
@@ -213,7 +214,13 @@ export const MatchItem: Component<MatchItemProps> = (props) => {
   return (
     <div class={styles.matchItem}>
       <div class={styles.matchHeader}>
-        <span class={styles.matchSource}>{props.group.sourcePath}</span>
+        <span
+          class={`${styles.matchSource} ${props.onOpenSource ? styles.matchSourceLink : ''}`}
+          onClick={() => props.onOpenSource?.(props.group.sourcePath, props.group.start)}
+          title={props.onOpenSource ? 'Open file at this position' : undefined}
+        >
+          {props.group.sourcePath}
+        </span>
         <div class={styles.matchCodes}>
           <For each={uniqueCodes()}>
             {(info) => (
@@ -348,6 +355,7 @@ const LazyMatchItem: Component<MatchItemProps> = (props) => {
           isExpanded={props.isExpanded}
           onToggleExpand={props.onToggleExpand}
           onEnsureExpanded={props.onEnsureExpanded}
+          onOpenSource={props.onOpenSource}
           onSelectionCreate={props.onSelectionCreate}
           onSelectionRemove={props.onSelectionRemove}
           onSelectionUpdate={props.onSelectionUpdate}
@@ -366,6 +374,7 @@ export interface MatchingSelectionsListProps {
   title?: string;
   expandedKeys?: Set<string>;
   onExpandedKeysChange?: (keys: Set<string>) => void;
+  onOpenSource?: (sourcePath: string, charOffset: number) => void;
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
   onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
   onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
@@ -445,6 +454,7 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
                 isExpanded={isExpanded(group())}
                 onToggleExpand={() => toggleExpanded(group())}
                 onEnsureExpanded={() => ensureExpanded(group())}
+                onOpenSource={props.onOpenSource}
                 onSelectionCreate={props.onSelectionCreate}
                 onSelectionRemove={props.onSelectionRemove}
                 onSelectionUpdate={props.onSelectionUpdate}

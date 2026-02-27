@@ -62,6 +62,39 @@ function getTabDisplayNames(openTabs: string[]): Map<string, string> {
   return result;
 }
 
+/**
+ * Scroll a container so that the text at `charOffset` is visible.
+ * Finds the segment span whose range contains the offset using the
+ * data-segment-start/end attributes already on each span, then
+ * scrolls it into view near the top of the container.
+ */
+function scrollToCharOffset(container: HTMLElement, _content: string, charOffset: number) {
+  // Find the segment span that contains this character offset
+  const spans = container.querySelectorAll<HTMLSpanElement>('[data-segment-start]');
+  let target: HTMLSpanElement | null = null;
+  for (const span of spans) {
+    const start = Number(span.dataset.segmentStart);
+    const end = Number(span.dataset.segmentEnd);
+    if (charOffset >= start && charOffset < end) {
+      target = span;
+      break;
+    }
+  }
+  // Fall back to the nearest span before the offset
+  if (!target && spans.length > 0) {
+    for (const span of spans) {
+      const start = Number(span.dataset.segmentStart);
+      if (start <= charOffset) target = span;
+      else break;
+    }
+  }
+  if (target) {
+    target.scrollIntoView({ block: 'start' });
+    // Nudge up so the target isn't pinned to the very top edge
+    container.scrollTop = Math.max(0, container.scrollTop - container.clientHeight / 4);
+  }
+}
+
 const CodingView: Component = () => {
   const { store, actions, indices } = useStore();
   const { settings } = useSettings();
@@ -126,6 +159,7 @@ const CodingView: Component = () => {
   const [selectedCode, setSelectedCode] = createSignal<{ code: Code, codebook: Codebook } | null>(null);
   const [infoModal, setInfoModal] = createSignal<{ codeGuid: string; codebookGuid: string } | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ sourcePath: string; start: number; end: number } | null>(null);
+  const [pendingScrollOffset, setPendingScrollOffset] = createSignal<number | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
   const nonPlainTextWarning = createMemo(() => {
     const path = selectedFilePath();
@@ -173,14 +207,25 @@ const CodingView: Component = () => {
     return fc?.type === 'plain-text' ? fc.content : undefined;
   });
 
-  // Restore scroll position when file content loads (text files only)
-  createEffect(on(() => fileContent(), () => {
+  // Restore scroll position when file content loads or path changes (text files only)
+  createEffect(on([() => fileContent(), selectedFilePath], () => {
     const path = selectedFilePath();
     if (path && textViewWrapperRef) {
-      // Use requestAnimationFrame to ensure DOM has updated
-      requestAnimationFrame(() => {
-        restoreScrollPosition(path);
-      });
+      const charOffset = pendingScrollOffset();
+      if (charOffset !== null) {
+        const content = fileContent();
+        if (!content) return; // Content not loaded yet, wait for next trigger
+        setPendingScrollOffset(null);
+        // Scroll to the character offset by finding the target line
+        requestAnimationFrame(() => {
+          scrollToCharOffset(textViewWrapperRef!, content, charOffset);
+        });
+      } else {
+        // Use requestAnimationFrame to ensure DOM has updated
+        requestAnimationFrame(() => {
+          restoreScrollPosition(path);
+        });
+      }
     }
   }));
 
@@ -407,6 +452,42 @@ const CodingView: Component = () => {
     navigate('/');
   }
 
+  function handleOpenSource(sourcePath: string, charOffset: number) {
+    // Don't open special files (codebook/query) - they don't have text to scroll to
+    if (sourcePath.endsWith('.mcc') || sourcePath.endsWith('.mcq')) return;
+
+    saveCurrentScrollPosition();
+
+    // Add tab if not already open
+    if (!openTabs().includes(sourcePath)) {
+      const currentTabs = openTabs();
+      const currentIndex = currentTabs.indexOf(selectedFilePath());
+      if (currentIndex >= 0) {
+        const newTabs = [...currentTabs];
+        newTabs.splice(currentIndex + 1, 0, sourcePath);
+        setOpenTabs(newTabs);
+      } else {
+        setOpenTabs([...currentTabs, sourcePath]);
+      }
+    }
+
+    // If the file is already selected and content loaded, scroll immediately
+    const fc = store.fileContents[sourcePath];
+    const content = fc?.type === 'plain-text' ? fc.content : undefined;
+    if (sourcePath === selectedFilePath() && content) {
+      requestAnimationFrame(() => {
+        if (textViewWrapperRef) {
+          scrollToCharOffset(textViewWrapperRef, content, charOffset);
+        }
+      });
+      return;
+    }
+
+    // Set the pending scroll offset so scroll restore uses it
+    setPendingScrollOffset(charOffset);
+    navigate(`/${encodeURIComponent(sourcePath)}`);
+  }
+
   return (
     <>
       <Resizable orientation="horizontal">
@@ -492,6 +573,7 @@ const CodingView: Component = () => {
                       <div class={tabPath === selectedFilePath() ? styles.viewActive : styles.viewHidden}>
                         <QueryEditor
                           queryGuid={guid()!}
+                          onOpenSource={handleOpenSource}
                           onSelectionCreate={handleSelectionCreateForSource}
                           onSelectionRemove={handleSelectionRemoveForSource}
                           onSelectionUpdate={(sourcePath, selectionGuid, start, end, note) =>
@@ -593,6 +675,7 @@ const CodingView: Component = () => {
            codebookGuid={modal().codebookGuid}
            currentFilePath={!isSpecialFile() ? selectedFilePath() : undefined}
            onClose={() => setInfoModal(null)}
+           onOpenSource={handleOpenSource}
          />
        )}
      </Show>
