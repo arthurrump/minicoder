@@ -442,6 +442,9 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       // And short-circuit if none match
       if (selections.length === 0) continue;
 
+      // Capture the directly-matching GUIDs before transitive expansion
+      const matchingGuids = new Set(selections.map(s => s.guid));
+
       // Extend with all selections that transitively overlap the matches.
       // We need a closure: overlapping selections may extend the range,
       // pulling in further selections that overlap the extended range.
@@ -515,6 +518,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
             end: sel.end,
             content: "",
             selections: [{ ...sel, start: 0, end: sel.end - sel.start }],
+            matchingGuids,
           });
         }
       }

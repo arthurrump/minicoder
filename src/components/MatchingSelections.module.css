@@ -95,23 +95,6 @@
     word-break: break-word;
 }
 
-.matchContentCollapsed {
-    max-height: 200px;
-    overflow: hidden;
-    position: relative;
-}
-
-.matchContentCollapsed::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 20px;
-    background: linear-gradient(transparent, var(--bg-color));
-    pointer-events: none;
-}
-
 .expandBtn {
     display: block;
     margin-top: 8px;
@@ -132,6 +115,16 @@
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--bg-color);
+}
+
+.ellipsisSeparator {
+    text-align: center;
+    color: var(--text-color);
+    opacity: 0.4;
+    font-size: 0.9em;
+    padding: 2px 0;
+    letter-spacing: 2px;
+    user-select: none;
 }
 
 .codeChip {

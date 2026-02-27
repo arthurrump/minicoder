@@ -1,5 +1,4 @@
 import { createSignal, createMemo, For, Index, Show, onMount, onCleanup, type Component } from 'solid-js';
-import octicons from '@primer/octicons';
 import { useStore, type FileContent } from '../store';
 import styles from './MatchingSelections.module.css';
 import ColorChip from './ColorChip';
@@ -57,6 +56,95 @@ export interface MatchGroup {
   end: number;
   content: string;
   selections: TextSelection[]; // All selections that overlap with this region (with adjusted offsets)
+  matchingGuids?: Set<string>; // GUIDs of selections that directly match the query (vs overlapping context)
+}
+
+/** A sub-region of a MatchGroup shown in the collapsed view. */
+export interface CollapsedRegion {
+  /** Text content for this sub-region */
+  content: string;
+  /** Selections with offsets relative to this sub-region's content */
+  selections: TextSelection[];
+  /** Offset of this sub-region within the parent MatchGroup's content */
+  offsetInGroup: number;
+  /** GUIDs of selections that were clipped to fit this sub-region */
+  clippedGuids: Set<string>;
+}
+
+/**
+ * Compute the collapsed sub-regions for a MatchGroup.
+ * Each sub-region covers one or more matching selections extended to line boundaries,
+ * with gaps between non-adjacent matches omitted (shown as ellipsis separators).
+ * If no matchingGuids are set, returns a single region covering the whole group.
+ */
+export function computeCollapsedRegions(group: MatchGroup): CollapsedRegion[] {
+  const matchingGuids = group.matchingGuids;
+  if (!matchingGuids || matchingGuids.size === 0) {
+    // No matching info — treat entire group as one region
+    return [{ content: group.content, selections: group.selections, offsetInGroup: 0, clippedGuids: new Set() }];
+  }
+
+  // Find the matching selections (offsets are relative to group content)
+  const matchingSels = group.selections.filter(s => matchingGuids.has(s.guid));
+  if (matchingSels.length === 0) {
+    return [{ content: group.content, selections: group.selections, offsetInGroup: 0, clippedGuids: new Set() }];
+  }
+
+  // Merge matching selections into contiguous ranges
+  const sorted = [...matchingSels].sort((a, b) => a.start - b.start);
+  const ranges: { start: number; end: number }[] = [];
+  for (const sel of sorted) {
+    const last = ranges[ranges.length - 1];
+    if (last && sel.start <= last.end) {
+      last.end = Math.max(last.end, sel.end);
+    } else {
+      ranges.push({ start: sel.start, end: sel.end });
+    }
+  }
+
+  // Extend each range to line boundaries within group.content
+  const content = group.content;
+  for (const range of ranges) {
+    // Extend start to the character after the previous newline (or 0)
+    let lineStart = range.start;
+    while (lineStart > 0 && content[lineStart - 1] !== '\n') lineStart--;
+    range.start = lineStart;
+
+    // Extend end to the next newline (or content length)
+    let lineEnd = range.end;
+    while (lineEnd < content.length && content[lineEnd] !== '\n') lineEnd++;
+    range.end = lineEnd;
+  }
+
+  // Merge ranges that became adjacent or overlapping after line extension
+  const merged: { start: number; end: number }[] = [ranges[0]];
+  for (let i = 1; i < ranges.length; i++) {
+    const prev = merged[merged.length - 1];
+    if (ranges[i].start <= prev.end) {
+      prev.end = Math.max(prev.end, ranges[i].end);
+    } else {
+      merged.push(ranges[i]);
+    }
+  }
+
+  // Build CollapsedRegion for each merged range
+  return merged.map(range => {
+    const subContent = content.slice(range.start, range.end);
+    // Collect all selections (matching and non-matching) overlapping this sub-range
+    const clippedGuids = new Set<string>();
+    const subSelections = group.selections
+      .filter(s => s.end > range.start && s.start < range.end)
+      .map(s => {
+        const clampedStart = Math.max(0, s.start - range.start);
+        const clampedEnd = Math.min(subContent.length, s.end - range.start);
+        // Track if this selection was clipped (its range extends beyond the sub-region)
+        if (s.start < range.start || s.end > range.end) {
+          clippedGuids.add(s.guid);
+        }
+        return { ...s, start: clampedStart, end: clampedEnd };
+      });
+    return { content: subContent, selections: subSelections, offsetInGroup: range.start, clippedGuids };
+  });
 }
 
 export interface MatchItemProps {
@@ -74,9 +162,35 @@ export interface MatchItemProps {
 }
 
 export const MatchItem: Component<MatchItemProps> = (props) => {
-  let contentRef: HTMLDivElement | undefined;
-  const [needsExpand, setNeedsExpand] = createSignal(false);
   const { indices } = useStore();
+
+  // Compute collapsed sub-regions
+  const collapsedRegions = createMemo(() => computeCollapsedRegions(props.group));
+
+  // Whether there are gaps between collapsed regions (non-matching text is hidden)
+  const hasGaps = createMemo(() => {
+    const regions = collapsedRegions();
+    if (regions.length > 1) return true;
+    if (regions.length === 1) {
+      const r = regions[0];
+      return r.offsetInGroup > 0 || r.content.length < props.group.content.length;
+    }
+    return false;
+  });
+
+  // In expanded view, selections that define the outer bounds of the group
+  // (start === 0 or end === content.length) should not be resizable since
+  // the group range was derived from their extent.
+  const boundaryGuids = createMemo(() => {
+    const guids = new Set<string>();
+    const contentLen = props.group.content.length;
+    for (const sel of props.group.selections) {
+      if (sel.start <= 0 || sel.end >= contentLen) {
+        guids.add(sel.guid);
+      }
+    }
+    return guids;
+  });
   
   // Build code map for this group
   const codeMap = createMemo(() => {
@@ -95,20 +209,34 @@ export const MatchItem: Component<MatchItemProps> = (props) => {
   const uniqueCodes = createMemo(() => {
     return Array.from(codeMap().values());
   });
-  
-  onMount(() => {
-    if (!contentRef) return;
-    
-    const observer = new ResizeObserver(() => {
-      if (contentRef) {
-        setNeedsExpand(contentRef.scrollHeight > 200);
-      }
-    });
-    
-    observer.observe(contentRef);
-    
-    return () => observer.disconnect();
-  });
+
+  const renderTextView = (content: string, selections: TextSelection[], baseOffset: number, nonResizableGuids?: Set<string>) => {
+    return (
+      <TextView
+        content={content}
+        selections={selections}
+        nonResizableGuids={nonResizableGuids}
+        onSelectionCreate={(start, end) => {
+          props.onEnsureExpanded();
+          props.onSelectionCreate?.(props.group.sourcePath, props.group.start + baseOffset + start, props.group.start + baseOffset + end);
+        }}
+        onSelectionRemove={(selectionGuid) =>
+          props.onSelectionRemove?.(props.group.sourcePath, selectionGuid)
+        }
+        onSelectionUpdate={(selectionGuid, start, end, note) =>
+          props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + baseOffset + start, props.group.start + baseOffset + end, note)
+        }
+        onToggleExample={(selectionGuid) =>
+          props.onToggleExample?.(props.group.sourcePath, selectionGuid)
+        }
+        onChangeCode={(selectionGuid, newCode) =>
+          props.onChangeCode?.(props.group.sourcePath, selectionGuid, newCode)
+        }
+        onSelectionClear={props.onSelectionClear}
+        selectedCode={props.selectedCode}
+      />
+    );
+  };
   
   return (
     <div class={styles.matchItem}>
@@ -125,34 +253,25 @@ export const MatchItem: Component<MatchItemProps> = (props) => {
           </For>
         </div>
       </div>
-      <div 
-        class={`${styles.matchContent} ${!props.isExpanded && needsExpand() ? styles.matchContentCollapsed : ''}`}
-        ref={contentRef}
-      >
-        <TextView
-          content={props.group.content}
-          selections={props.group.selections}
-          onSelectionCreate={(start, end) => {
-            props.onEnsureExpanded();
-            props.onSelectionCreate?.(props.group.sourcePath, props.group.start + start, props.group.start + end);
-          }}
-          onSelectionRemove={(selectionGuid) =>
-            props.onSelectionRemove?.(props.group.sourcePath, selectionGuid)
-          }
-          onSelectionUpdate={(selectionGuid, start, end, note) =>
-            props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + start, props.group.start + end, note)
-          }
-          onToggleExample={(selectionGuid) =>
-            props.onToggleExample?.(props.group.sourcePath, selectionGuid)
-          }
-          onChangeCode={(selectionGuid, newCode) =>
-            props.onChangeCode?.(props.group.sourcePath, selectionGuid, newCode)
-          }
-          onSelectionClear={props.onSelectionClear}
-          selectedCode={props.selectedCode}
-        />
+      <div class={styles.matchContent}>
+        <Show when={props.isExpanded || !hasGaps()} fallback={
+          /* Collapsed view: show only matching sub-regions with ellipsis separators */
+          <For each={collapsedRegions()}>
+            {(region, i) => (
+              <>
+                <Show when={i() > 0}>
+                  <div class={styles.ellipsisSeparator}>···</div>
+                </Show>
+                {renderTextView(region.content, region.selections, region.offsetInGroup, region.clippedGuids.size > 0 ? region.clippedGuids : undefined)}
+              </>
+            )}
+          </For>
+        }>
+          {/* Expanded view: full group content with all selections */}
+          {renderTextView(props.group.content, props.group.selections, 0, boundaryGuids().size > 0 ? boundaryGuids() : undefined)}
+        </Show>
       </div>
-      <Show when={needsExpand()}>
+      <Show when={hasGaps()}>
         <button class={styles.expandBtn} onClick={props.onToggleExpand}>
           {props.isExpanded ? 'Show less' : 'Show more'}
         </button>
@@ -326,7 +445,9 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
 
 /**
  * Build match groups for selections that match the given code GUIDs.
- * Returns grouped, overlapping selections with content slices.
+ * Performs transitive expansion: overlapping non-matching selections widen
+ * the group range so the expanded view shows full context.
+ * Returns grouped selections with content slices and matchingGuids.
  */
 export function buildMatchGroups(
   codeGuids: Set<string>,
@@ -347,33 +468,64 @@ export function buildMatchGroups(
     const matchingSelections = allSorted.filter(s => codeGuids.has(s.code.codeGuid));
     if (matchingSelections.length === 0) continue;
 
-    // Group overlapping matched selections (already sorted)
-    const mergedGroups: { start: number; end: number; selections: TextSelection[] }[] = [];
+    // Collect matching GUIDs
+    const matchingGuidSet = new Set(matchingSelections.map(s => s.guid));
 
+    // Group overlapping matched selections into contiguous ranges (already sorted)
+    let ranges: { start: number; end: number }[] = [];
     for (const sel of matchingSelections) {
-      const lastGroup = mergedGroups[mergedGroups.length - 1];
-      if (lastGroup && sel.start <= lastGroup.end) {
-        lastGroup.end = Math.max(lastGroup.end, sel.end);
-        lastGroup.selections.push(sel);
+      const last = ranges[ranges.length - 1];
+      if (last && sel.start <= last.end) {
+        last.end = Math.max(last.end, sel.end);
       } else {
-        mergedGroups.push({ start: sel.start, end: sel.end, selections: [sel] });
+        ranges.push({ start: sel.start, end: sel.end });
       }
     }
 
-    // Convert to MatchGroup with content and adjusted offsets
-    for (const group of mergedGroups) {
-      // Include all selections that overlap with this region (not just matching ones)
-      const groupSelections = findOverlapping(allSorted, group.start, group.end);
+    // Transitively expand ranges with overlapping non-matching selections
+    const seen = new Set(matchingGuidSet);
+    let allSelections = [...matchingSelections];
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const newRanges: { start: number; end: number }[] = [];
+      for (const range of ranges) {
+        const overlapping = findOverlapping(allSorted, range.start, range.end);
+        let rStart = range.start, rEnd = range.end;
+        for (const s of overlapping) {
+          if (!seen.has(s.guid)) {
+            seen.add(s.guid);
+            allSelections.push(s);
+            changed = true;
+          }
+          rStart = Math.min(rStart, s.start);
+          rEnd = Math.max(rEnd, s.end);
+        }
+        const prev = newRanges[newRanges.length - 1];
+        if (prev && rStart <= prev.end) {
+          prev.end = Math.max(prev.end, rEnd);
+        } else {
+          newRanges.push({ start: rStart, end: rEnd });
+        }
+      }
+      ranges = newRanges;
+    }
+    allSelections.sort((a, b) => a.start - b.start || b.end - a.end);
+
+    // Build MatchGroups from the final expanded ranges
+    for (const range of ranges) {
+      const groupSelections = findOverlapping(allSelections, range.start, range.end);
       groups.push({
         sourcePath,
-        start: group.start,
-        end: group.end,
-        content: content.slice(group.start, group.end),
+        start: range.start,
+        end: range.end,
+        content: content.slice(range.start, range.end),
         selections: groupSelections.map(s => ({
           ...s,
-          start: s.start - group.start,
-          end: s.end - group.start,
+          start: s.start - range.start,
+          end: s.end - range.start,
         })),
+        matchingGuids: matchingGuidSet,
       });
     }
   }
