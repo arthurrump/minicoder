@@ -7,23 +7,24 @@ import TextView from './TextView';
 
 /**
  * Given selections sorted by start, find all that overlap the interval [start, end).
- * Uses binary search to find the starting point, then scans forward.
+ * Uses binary search on `start` to find the upper bound, then scans checking end.
  */
 export function findOverlapping(
   sorted: TextSelection[],
   start: number,
   end: number,
 ): TextSelection[] {
-  // Binary search: find first selection whose end > start
+  // Binary search: find first selection whose start >= end
+  // (all selections from this point onward can't overlap)
   let lo = 0, hi = sorted.length;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if (sorted[mid].end <= start) lo = mid + 1;
+    if (sorted[mid].start < end) lo = mid + 1;
     else hi = mid;
   }
+  const upperBound = lo;
   const result: TextSelection[] = [];
-  for (let i = lo; i < sorted.length; i++) {
-    if (sorted[i].start >= end) break;
+  for (let i = 0; i < upperBound; i++) {
     if (sorted[i].end > start) result.push(sorted[i]);
   }
   return result;

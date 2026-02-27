@@ -442,13 +442,49 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       // And short-circuit if none match
       if (selections.length === 0) continue;
 
-      // Extend with all selections that overlap the matches and ensure they are
-      // sorted correctly. This introduces duplicates, which are handled when grouping
+      // Extend with all selections that transitively overlap the matches.
+      // We need a closure: overlapping selections may extend the range,
+      // pulling in further selections that overlap the extended range.
       if (!query.showOnlyMatching) {
-        selections = 
-          selections
-          .flatMap(s => [ s, ...findOverlapping(source.selections, s.start, s.end)])
-          .sort((a, b) => a.start - b.start || b.end - a.end);
+        const seen = new Set(selections.map(s => s.guid));
+        // Merge matched selections into contiguous ranges
+        let ranges: { start: number; end: number }[] = [];
+        for (const s of selections) {
+          const last = ranges[ranges.length - 1];
+          if (last && s.start <= last.end) {
+            last.end = Math.max(last.end, s.end);
+          } else {
+            ranges.push({ start: s.start, end: s.end });
+          }
+        }
+        // Repeatedly expand ranges with overlapping selections until stable
+        let changed = true;
+        while (changed) {
+          changed = false;
+          const newRanges: { start: number; end: number }[] = [];
+          for (const range of ranges) {
+            const overlapping = findOverlapping(source.selections, range.start, range.end);
+            let rStart = range.start, rEnd = range.end;
+            for (const s of overlapping) {
+              if (!seen.has(s.guid)) {
+                seen.add(s.guid);
+                selections.push(s);
+                changed = true;
+              }
+              rStart = Math.min(rStart, s.start);
+              rEnd = Math.max(rEnd, s.end);
+            }
+            // Merge with previous range if now overlapping
+            const prev = newRanges[newRanges.length - 1];
+            if (prev && rStart <= prev.end) {
+              prev.end = Math.max(prev.end, rEnd);
+            } else {
+              newRanges.push({ start: rStart, end: rEnd });
+            }
+          }
+          ranges = newRanges;
+        }
+        selections.sort((a, b) => a.start - b.start || b.end - a.end);
       }
       
       // Merge overlapping selections into groups
