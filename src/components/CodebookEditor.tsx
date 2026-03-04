@@ -224,11 +224,13 @@ interface CodeEditorProps {
   isExpandedForCode: (guid: string) => boolean;
   onToggleExpandedForCode: (guid: string) => void;
   onViewSelections: (codeGuid: string) => void;
+  getSelectionCount: (codeGuid: string) => number;
   depth: number;
 }
 
 const CodeEditor: Component<CodeEditorProps> = (props) => {
   const hasSubcodes = () => props.code.subcodes && props.code.subcodes.length > 0;
+  const selectionCount = () => props.getSelectionCount(props.code.guid);
 
   return (
     <>
@@ -254,8 +256,10 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
             class={styles.codeActionBtn}
             onClick={() => props.onViewSelections(props.code.guid)}
             title="View selections"
-            innerHTML={octicons['list-unordered'].toSVG()}
-          />
+          >
+            <span class={styles.selectionCount}>{selectionCount()}</span>
+            <span innerHTML={octicons['list-unordered'].toSVG()} />
+          </button>
           <button 
             class={styles.codeActionBtn}
             onClick={() => props.onMerge(props.code.guid)}
@@ -307,6 +311,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
                   onViewSelections={props.onViewSelections}
                   onMerge={props.onMerge}
                   onMove={props.onMove}
+                  getSelectionCount={props.getSelectionCount}
                 />
               </Show>
               <button 
@@ -334,6 +339,7 @@ interface CodeTreeEditorProps {
   onViewSelections: (codeGuid: string) => void;
   onMerge: (sourceGuid: string) => void;
   onMove: (codeGuid: string) => void;
+  getSelectionCount: (codeGuid: string) => number;
 }
 
 const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
@@ -389,6 +395,7 @@ const CodeTreeEditor: Component<CodeTreeEditorProps> = (props) => {
           isExpandedForCode={props.isExpanded}
           onToggleExpandedForCode={props.onToggleExpanded}
           onViewSelections={props.onViewSelections}
+          getSelectionCount={props.getSelectionCount}
         />
       )}
     </Index>
@@ -440,6 +447,22 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
     if (!cb) return [];
     return flattenCodes(cb.codes);
   });
+
+  const selectionCountByCode = createMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const source of Object.values(store.sources)) {
+      for (const sel of source.selections) {
+        if (sel.code.codebookGuid === props.codebookGuid) {
+          counts[sel.code.codeGuid] = (counts[sel.code.codeGuid] || 0) + 1;
+        }
+      }
+    }
+    return counts;
+  });
+
+  const getSelectionCount = (codeGuid: string): number => {
+    return selectionCountByCode()[codeGuid] || 0;
+  };
 
   const updateName = (newName: string) => {
     const cb = codebook();
@@ -592,6 +615,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                   onViewSelections={(codeGuid) => setViewingSelectionsForCode(codeGuid)}
                   onMerge={handleMerge}
                   onMove={handleMove}
+                  getSelectionCount={getSelectionCount}
                 />
               </Show>
             </div>
