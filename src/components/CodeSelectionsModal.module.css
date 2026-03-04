@@ -114,3 +114,27 @@
     resize: vertical;
     font-family: var(--font-system);
 }
+
+.modalOptions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 0.85em;
+}
+
+.totalCount {
+    opacity: 0.6;
+}
+
+.showOnlyMatchingLabel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.showOnlyMatchingLabel:hover {
+    opacity: 1;
+}

@@ -443,18 +443,27 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
   );
 };
 
+export interface BuildMatchGroupsResult {
+  matchCount: number;
+  groups: MatchGroup[];
+}
+
 /**
  * Build match groups for selections that match the given code GUIDs.
  * Performs transitive expansion: overlapping non-matching selections widen
  * the group range so the expanded view shows full context.
- * Returns grouped selections with content slices and matchingGuids.
+ * When showOnlyMatching is true, skips transitive expansion and only includes
+ * the directly matching selections.
+ * Returns grouped selections with content slices, matchingGuids, and total match count.
  */
 export function buildMatchGroups(
   codeGuids: Set<string>,
   sources: Record<string, Source>,
   fileContents: Record<string, FileContent>,
-): MatchGroup[] {
+  showOnlyMatching?: boolean,
+): BuildMatchGroupsResult {
   const groups: MatchGroup[] = [];
+  let matchCount = 0;
 
   for (const [sourcePath, source] of Object.entries(sources)) {
     const fc = fileContents[sourcePath];
@@ -467,6 +476,8 @@ export function buildMatchGroups(
     // Find all selections matching any of the target code GUIDs
     const matchingSelections = allSorted.filter(s => codeGuids.has(s.code.codeGuid));
     if (matchingSelections.length === 0) continue;
+
+    matchCount += matchingSelections.length;
 
     // Collect matching GUIDs
     const matchingGuidSet = new Set(matchingSelections.map(s => s.guid));
@@ -482,34 +493,38 @@ export function buildMatchGroups(
       }
     }
 
-    // Transitively expand ranges with overlapping non-matching selections
-    const seen = new Set(matchingGuidSet);
     let allSelections = [...matchingSelections];
-    let changed = true;
-    while (changed) {
-      changed = false;
-      const newRanges: { start: number; end: number }[] = [];
-      for (const range of ranges) {
-        const overlapping = findOverlapping(allSorted, range.start, range.end);
-        let rStart = range.start, rEnd = range.end;
-        for (const s of overlapping) {
-          if (!seen.has(s.guid)) {
-            seen.add(s.guid);
-            allSelections.push(s);
-            changed = true;
+
+    if (!showOnlyMatching) {
+      // Transitively expand ranges with overlapping non-matching selections
+      const seen = new Set(matchingGuidSet);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        const newRanges: { start: number; end: number }[] = [];
+        for (const range of ranges) {
+          const overlapping = findOverlapping(allSorted, range.start, range.end);
+          let rStart = range.start, rEnd = range.end;
+          for (const s of overlapping) {
+            if (!seen.has(s.guid)) {
+              seen.add(s.guid);
+              allSelections.push(s);
+              changed = true;
+            }
+            rStart = Math.min(rStart, s.start);
+            rEnd = Math.max(rEnd, s.end);
           }
-          rStart = Math.min(rStart, s.start);
-          rEnd = Math.max(rEnd, s.end);
+          const prev = newRanges[newRanges.length - 1];
+          if (prev && rStart <= prev.end) {
+            prev.end = Math.max(prev.end, rEnd);
+          } else {
+            newRanges.push({ start: rStart, end: rEnd });
+          }
         }
-        const prev = newRanges[newRanges.length - 1];
-        if (prev && rStart <= prev.end) {
-          prev.end = Math.max(prev.end, rEnd);
-        } else {
-          newRanges.push({ start: rStart, end: rEnd });
-        }
+        ranges = newRanges;
       }
-      ranges = newRanges;
     }
+
     allSelections.sort((a, b) => a.start - b.start || b.end - a.end);
 
     // Build MatchGroups from the final expanded ranges
@@ -537,5 +552,5 @@ export function buildMatchGroups(
     return a.start - b.start;
   });
 
-  return groups;
+  return { matchCount, groups };
 }

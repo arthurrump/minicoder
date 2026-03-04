@@ -27,6 +27,7 @@ function updateCodeInTree(codes: Code[], guid: string, updates: Partial<Code>): 
 const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
   const { store, actions, indices } = useStore();
   const [editing, setEditing] = createSignal(false);
+  const [showOnlyMatching, setShowOnlyMatching] = createSignal(false);
 
   // Find the code and codebook
   const codeInfo = createMemo(() => indices.codeByGuid()[props.codeGuid] ?? null);
@@ -39,9 +40,12 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
   });
 
   // Build all match groups for this code
-  const allGroups = createMemo(() =>
-    buildMatchGroups(targetGuids(), store.sources, store.fileContents)
+  const allMatchResult = createMemo(() =>
+    buildMatchGroups(targetGuids(), store.sources, store.fileContents, showOnlyMatching())
   );
+
+  const allGroups = createMemo(() => allMatchResult().groups);
+  const totalMatchCount = createMemo(() => allMatchResult().matchCount);
 
   // Build a set of example selection GUIDs for quick lookup
   const exampleSelectionGuids = createMemo(() => {
@@ -74,6 +78,13 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
     );
   });
 
+  // Count matching selections in example groups
+  const exampleSelectionCount = createMemo(() => {
+    const guids = targetGuids();
+    return exampleGroups().reduce((sum, g) =>
+      sum + g.selections.filter(s => guids.has(s.code.codeGuid)).length, 0);
+  });
+
   // Groups from the current file (excluding examples)
   const currentFileGroups = createMemo(() => {
     const exGuids = exampleSelectionGuids();
@@ -85,6 +96,13 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
     );
   });
 
+  // Count matching selections in current file groups
+  const currentFileSelectionCount = createMemo(() => {
+    const guids = targetGuids();
+    return currentFileGroups().reduce((sum, g) =>
+      sum + g.selections.filter(s => guids.has(s.code.codeGuid)).length, 0);
+  });
+
   // All other groups (excluding examples and current file)
   const otherGroups = createMemo(() => {
     const exGuids = exampleSelectionGuids();
@@ -93,6 +111,13 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
       !g.selections.some(s => exGuids.has(s.guid)) &&
       !(currentPath && g.sourcePath === currentPath)
     );
+  });
+
+  // Count matching selections in other groups
+  const otherSelectionCount = createMemo(() => {
+    const guids = targetGuids();
+    return otherGroups().reduce((sum, g) =>
+      sum + g.selections.filter(s => guids.has(s.code.codeGuid)).length, 0);
   });
 
   // Close on Escape key
@@ -182,10 +207,22 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
             <p class={styles.codeDescription}>{codeInfo()!.code.description}</p>
           </Show>
 
+          <div class={styles.modalOptions}>
+            <span class={styles.totalCount}>{totalMatchCount()} selections total</span>
+            <label class={styles.showOnlyMatchingLabel}>
+              <input
+                type="checkbox"
+                checked={showOnlyMatching()}
+                onChange={(e) => setShowOnlyMatching(e.target.checked)}
+              />
+              Show only matching
+            </label>
+          </div>
+
           <Show when={exampleGroups().length > 0}>
             <MatchingSelectionsList
               matchGroups={exampleGroups()}
-              title={`Examples (${exampleGroups().length})`}
+              title={`Examples (${exampleSelectionCount()})`}
               onOpenSource={(sourcePath, charOffset) => { props.onClose(); props.onOpenSource?.(sourcePath, charOffset); }}
             />
           </Show>
@@ -193,14 +230,14 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
           <Show when={currentFileGroups().length > 0}>
             <MatchingSelectionsList
               matchGroups={currentFileGroups()}
-              title={`In Current File (${currentFileGroups().length})`}
+              title={`In Current File (${currentFileSelectionCount()})`}
               onOpenSource={(sourcePath, charOffset) => { props.onClose(); props.onOpenSource?.(sourcePath, charOffset); }}
             />
           </Show>
 
           <MatchingSelectionsList
             matchGroups={otherGroups()}
-            title={`Selections (${otherGroups().length})`}
+            title={`Selections (${otherSelectionCount()})`}
             onOpenSource={(sourcePath, charOffset) => { props.onClose(); props.onOpenSource?.(sourcePath, charOffset); }}
           />
         </div>
