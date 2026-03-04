@@ -9,11 +9,9 @@ import { buildSegments, type Segment } from '../helpers';
 interface TextViewProps {
     content: string;
     selections: TextSelection[];
+    sourcePath: string;
     onSelectionCreate?: (start: number, end: number) => void;
-    onSelectionRemove?: (selectionGuid: string) => void;
-    onSelectionUpdate?: (selectionGuid: string, start: number, end: number, note?: string) => void;
-    onToggleExample?: (selectionGuid: string) => void;
-    onChangeCode?: (selectionGuid: string, newCode: CodeReference) => void;
+    onSelectionUpdate?: (selectionGuid: string, start: number, end: number) => void;
     onSelectionClear?: () => void;
     selectedCode?: { code: Code; codebook: Codebook } | null;
     /** GUIDs of selections that should not show resize handles (e.g. clipped or boundary selections) */
@@ -589,8 +587,9 @@ const TextView: Component<TextViewProps> = (props) => {
         }
     }
     
-    function handleRemoveCode(selectionGuid: string) {
-        props.onSelectionRemove?.(selectionGuid);
+    function handleRemoveCode() {
+        // The popover handles removal through the store directly.
+        // The createEffect watching props.selections will reactively close the popover.
         setPopover(null);
         setActiveSelectionGuid(null);
     }
@@ -646,22 +645,13 @@ const TextView: Component<TextViewProps> = (props) => {
         
         if (newStart !== sel.start || newEnd !== sel.end) {
             lastValidDragPosition = handle === 'start' ? newStart : newEnd;
-            props.onSelectionUpdate?.(sel.guid, newStart, newEnd, sel.note);
+            props.onSelectionUpdate?.(sel.guid, newStart, newEnd);
         }
     }
     
     function handleDragEnd() {
         setDraggingHandle(null);
         lastValidDragPosition = null;
-    }
-    
-    function handleNoteChange(selectionGuid: string, note: string) {
-        const sel = activeSelection();
-        if (!sel) return;
-        
-        // Convert empty string to undefined
-        const noteValue = note.trim() === '' ? undefined : note;
-        props.onSelectionUpdate?.(selectionGuid, sel.start, sel.end, noteValue);
     }
     
     return (
@@ -725,21 +715,12 @@ const TextView: Component<TextViewProps> = (props) => {
                     const liveSelection = createMemo(() =>
                         props.selections.find(s => s.guid === p().selection.guid) ?? p().selection
                     );
-                    const isExample = createMemo(() => {
-                        const sel = liveSelection();
-                        const info = codeIndex()[sel.code.codeGuid];
-                        return info?.code.examples?.some(ex => ex.textSelectionGuid === sel.guid) ?? false;
-                    });
                     return (
                         <HighlightPopover
                             x={p().x}
                             y={p().y}
+                            sourcePath={props.sourcePath}
                             selection={liveSelection()}
-                            isExample={isExample()}
-                            onRemoveCode={handleRemoveCode}
-                            onToggleExample={(selectionGuid) => props.onToggleExample?.(selectionGuid)}
-                            onNoteChange={handleNoteChange}
-                            onChangeCode={(selectionGuid, newCode) => props.onChangeCode?.(selectionGuid, newCode)}
                             onClick={(e: MouseEvent) => e.stopPropagation()}
                         />
                     );

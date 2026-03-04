@@ -7,17 +7,13 @@ import { useStore } from '../store';
 interface HighlightPopoverProps {
     x: number;
     y: number;
+    sourcePath: string;
     selection: TextSelection;
-    isExample: boolean;
-    onRemoveCode: (selectionGuid: string) => void;
-    onToggleExample: (selectionGuid: string) => void;
-    onNoteChange: (selectionGuid: string, note: string) => void;
-    onChangeCode: (selectionGuid: string, newCode: CodeReference) => void;
     onClick: (e: MouseEvent) => void;
 }
 
 const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
-    const { store, indices } = useStore();
+    const { store, actions, indices } = useStore();
     const [showCodePicker, setShowCodePicker] = createSignal(false);
 
     const codeInfo = createMemo(() => {
@@ -25,24 +21,48 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
         return info ? { code: info.code, codebook: info.codebook } : { code: null, codebook: undefined };
     });
 
+    const isExample = createMemo(() => {
+        const info = codeInfo();
+        return info.code?.examples?.some(ex => ex.textSelectionGuid === props.selection.guid) ?? false;
+    });
+
     const handleRemoveCode = () => {
-        props.onRemoveCode(props.selection.guid);
+        const source = store.sources[props.sourcePath];
+        if (!source) return;
+        const sel = source.selections.find(s => s.guid === props.selection.guid);
+        if (sel) {
+            actions.removeExample(props.sourcePath, sel.guid, sel.code.codebookGuid, sel.code.codeGuid);
+        }
+        actions.updateSourceSelections(props.sourcePath, source.selections.filter(s => s.guid !== props.selection.guid));
     };
 
     const handleToggleExample = () => {
-        props.onToggleExample(props.selection.guid);
+        const source = store.sources[props.sourcePath];
+        if (!source) return;
+        const sel = source.selections.find(s => s.guid === props.selection.guid);
+        if (!sel) return;
+        actions.toggleExample(props.sourcePath, sel.guid, sel.code.codebookGuid, sel.code.codeGuid);
     };
 
     const handleNoteChange = (e: Event) => {
         const target = e.currentTarget as HTMLTextAreaElement;
-        props.onNoteChange(props.selection.guid, target.value);
+        const note = target.value.trim() === '' ? undefined : target.value;
+        const source = store.sources[props.sourcePath];
+        if (!source) return;
+        actions.updateSourceSelections(
+            props.sourcePath,
+            source.selections.map(s => s.guid === props.selection.guid ? { ...s, note } : s)
+        );
     };
 
     const handleChangeCode = (code: Code, codebook: Codebook) => {
-        props.onChangeCode(props.selection.guid, {
-            codebookGuid: codebook.guid,
-            codeGuid: code.guid,
-        });
+        const newCode: CodeReference = { codebookGuid: codebook.guid, codeGuid: code.guid };
+        const source = store.sources[props.sourcePath];
+        if (!source) return;
+        actions.updateSourceSelections(
+            props.sourcePath,
+            source.selections.map(s => s.guid === props.selection.guid ? { ...s, code: newCode } : s)
+        );
         setShowCodePicker(false);
     };
 
@@ -85,8 +105,8 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
                     <button
                         class={styles.popoverActionBtn}
                         onClick={handleToggleExample}
-                        title={props.isExample ? 'Remove as example' : 'Mark as example'}
-                        innerHTML={props.isExample ? octicons['star-fill'].toSVG() : octicons.star.toSVG()}
+                        title={isExample() ? 'Remove as example' : 'Mark as example'}
+                        innerHTML={isExample() ? octicons['star-fill'].toSVG() : octicons.star.toSVG()}
                     />
                     <button
                         class={styles.popoverActionBtn}

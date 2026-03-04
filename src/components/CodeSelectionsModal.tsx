@@ -118,27 +118,6 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
     actions.updateCodebook(updatedCodebook);
   };
 
-  // Handle removing a selection
-  const handleSelectionRemove = (sourcePath: string, selectionGuid: string) => {
-    const source = store.sources[sourcePath];
-    if (!source) return;
-    const sel = source.selections.find(s => s.guid === selectionGuid);
-    if (sel) {
-      // Remove from examples if it was marked as one
-      actions.removeExample(sourcePath, selectionGuid, sel.code.codebookGuid, sel.code.codeGuid);
-    }
-    actions.updateSourceSelections(sourcePath, source.selections.filter(s => s.guid !== selectionGuid));
-  };
-
-  // Handle toggling example status for a selection
-  const handleToggleExample = (sourcePath: string, selectionGuid: string) => {
-    const source = store.sources[sourcePath];
-    if (!source) return;
-    const sel = source.selections.find(s => s.guid === selectionGuid);
-    if (!sel) return;
-    actions.toggleExample(sourcePath, selectionGuid, sel.code.codebookGuid, sel.code.codeGuid);
-  };
-
   return (
     <div class={styles.modalBackdrop} onClick={handleBackdropClick}>
       <div class={styles.modalContent}>
@@ -208,8 +187,6 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
               matchGroups={exampleGroups()}
               title={`Examples (${exampleGroups().length})`}
               onOpenSource={(sourcePath, charOffset) => { props.onClose(); props.onOpenSource?.(sourcePath, charOffset); }}
-              onSelectionRemove={handleSelectionRemove}
-              onToggleExample={handleToggleExample}
             />
           </Show>
 
@@ -218,8 +195,6 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
               matchGroups={currentFileGroups()}
               title={`In Current File (${currentFileGroups().length})`}
               onOpenSource={(sourcePath, charOffset) => { props.onClose(); props.onOpenSource?.(sourcePath, charOffset); }}
-              onSelectionRemove={handleSelectionRemove}
-              onToggleExample={handleToggleExample}
             />
           </Show>
 
@@ -227,8 +202,6 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
             matchGroups={otherGroups()}
             title={`Selections (${otherGroups().length})`}
             onOpenSource={(sourcePath, charOffset) => { props.onClose(); props.onOpenSource?.(sourcePath, charOffset); }}
-            onSelectionRemove={handleSelectionRemove}
-            onToggleExample={handleToggleExample}
           />
         </div>
       </div>

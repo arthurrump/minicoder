@@ -315,78 +315,27 @@ const CodingView: Component = () => {
     }
   }
 
-  function handleSelectionRemoveForSource(sourcePath: string, selectionGuid: string) {
-    const currentSelections = store.sources[sourcePath]?.selections || [];
-    const sel = currentSelections.find(s => s.guid === selectionGuid);
-    if (sel) {
-      // Remove from examples if it was marked as one
-      actions.removeExample(sourcePath, selectionGuid, sel.code.codebookGuid, sel.code.codeGuid);
-    }
-    actions.updateSourceSelections(sourcePath, currentSelections.filter(s => s.guid !== selectionGuid));
-  }
-
-  function handleSelectionRemove(selectionGuid: string) {
-    const path = selectedFilePath();
-    if (path) {
-      handleSelectionRemoveForSource(path, selectionGuid);
-    }
-  }
-
-  function handleSelectionUpdateForSource(sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) {
+  function handleSelectionUpdateForSource(sourcePath: string, selectionGuid: string, start: number, end: number) {
     const currentSelections = store.sources[sourcePath]?.selections || [];
     actions.updateSourceSelections(
       sourcePath,
       currentSelections.map(s => 
         s.guid === selectionGuid 
-          ? { ...s, start, end, note }
+          ? { ...s, start, end }
           : s
       )
     );
   }
 
-  function handleSelectionUpdate(selectionGuid: string, start: number, end: number, note?: string) {
+  function handleSelectionUpdate(selectionGuid: string, start: number, end: number) {
     const path = selectedFilePath();
     if (path) {
-      handleSelectionUpdateForSource(path, selectionGuid, start, end, note);
+      handleSelectionUpdateForSource(path, selectionGuid, start, end);
     }
   }
 
   function handleSelectionClear() {
     setPendingSelection(null);
-  }
-
-  function handleToggleExampleForSource(sourcePath: string, selectionGuid: string) {
-    const source = store.sources[sourcePath];
-    if (!source) return;
-    const sel = source.selections.find(s => s.guid === selectionGuid);
-    if (!sel) return;
-    actions.toggleExample(sourcePath, selectionGuid, sel.code.codebookGuid, sel.code.codeGuid);
-  }
-
-  function handleToggleExample(selectionGuid: string) {
-    const path = selectedFilePath();
-    if (path) {
-      handleToggleExampleForSource(path, selectionGuid);
-    }
-  }
-
-  function handleChangeCodeForSource(sourcePath: string, selectionGuid: string, newCode: CodeReference) {
-    const currentSelections = store.sources[sourcePath]?.selections || [];
-    actions.updateSourceSelections(
-      sourcePath,
-      currentSelections.map(s =>
-        s.guid === selectionGuid
-          ? { ...s, code: newCode }
-          : s
-      )
-    );
-  }
-
-  function handleChangeCode(selectionGuid: string, newCode: CodeReference) {
-    const path = selectedFilePath();
-    if (path) {
-      handleChangeCodeForSource(path, selectionGuid, newCode);
-    }
   }
 
   function handleFileSelect(info: { file: FileSystemFileHandle; directory: FileSystemDirectoryHandle; relativePath: string }) {
@@ -575,12 +524,7 @@ const CodingView: Component = () => {
                           queryGuid={guid()!}
                           onOpenSource={handleOpenSource}
                           onSelectionCreate={handleSelectionCreateForSource}
-                          onSelectionRemove={handleSelectionRemoveForSource}
-                          onSelectionUpdate={(sourcePath, selectionGuid, start, end, note) =>
-                            handleSelectionUpdateForSource(sourcePath, selectionGuid, start, end, note)
-                          }
-                          onToggleExample={handleToggleExampleForSource}
-                          onChangeCode={handleChangeCodeForSource}
+                          onSelectionUpdate={handleSelectionUpdateForSource}
                           onSelectionClear={handleSelectionClear}
                           selectedCode={selectedCode()}
                         />
@@ -610,11 +554,9 @@ const CodingView: Component = () => {
                         <TextView
                           content={content()}
                           selections={selections()}
+                          sourcePath={selectedFilePath()!}
                           onSelectionCreate={handleSelectionCreate}
-                          onSelectionRemove={handleSelectionRemove}
                           onSelectionUpdate={handleSelectionUpdate}
-                          onToggleExample={handleToggleExample}
-                          onChangeCode={handleChangeCode}
                           onSelectionClear={handleSelectionClear}
                           selectedCode={selectedCode()}
                         />

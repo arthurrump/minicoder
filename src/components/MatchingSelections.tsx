@@ -154,10 +154,7 @@ export interface MatchItemProps {
   onEnsureExpanded: () => void;
   onOpenSource?: (sourcePath: string, charOffset: number) => void;
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
-  onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
-  onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
-  onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
-  onChangeCode?: (sourcePath: string, selectionGuid: string, newCode: CodeReference) => void;
+  onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number) => void;
   onSelectionClear?: () => void;
   selectedCode?: { code: Code; codebook: Codebook } | null;
 }
@@ -246,22 +243,14 @@ export const MatchItem: Component<MatchItemProps> = (props) => {
                 <TextView
                   content={region().content}
                   selections={region().selections}
+                  sourcePath={props.group.sourcePath}
                   nonResizableGuids={region().clippedGuids.size > 0 ? region().clippedGuids : undefined}
                   onSelectionCreate={(start, end) => {
                     props.onEnsureExpanded();
                     props.onSelectionCreate?.(props.group.sourcePath, props.group.start + region().offsetInGroup + start, props.group.start + region().offsetInGroup + end);
                   }}
-                  onSelectionRemove={(selectionGuid) =>
-                    props.onSelectionRemove?.(props.group.sourcePath, selectionGuid)
-                  }
-                  onSelectionUpdate={(selectionGuid, start, end, note) =>
-                    props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + region().offsetInGroup + start, props.group.start + region().offsetInGroup + end, note)
-                  }
-                  onToggleExample={(selectionGuid) =>
-                    props.onToggleExample?.(props.group.sourcePath, selectionGuid)
-                  }
-                  onChangeCode={(selectionGuid, newCode) =>
-                    props.onChangeCode?.(props.group.sourcePath, selectionGuid, newCode)
+                  onSelectionUpdate={(selectionGuid, start, end) =>
+                    props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + region().offsetInGroup + start, props.group.start + region().offsetInGroup + end)
                   }
                   onSelectionClear={props.onSelectionClear}
                   selectedCode={props.selectedCode}
@@ -274,22 +263,14 @@ export const MatchItem: Component<MatchItemProps> = (props) => {
           <TextView
             content={props.group.content}
             selections={props.group.selections}
+            sourcePath={props.group.sourcePath}
             nonResizableGuids={boundaryGuids().size > 0 ? boundaryGuids() : undefined}
             onSelectionCreate={(start, end) => {
               props.onEnsureExpanded();
               props.onSelectionCreate?.(props.group.sourcePath, props.group.start + start, props.group.start + end);
             }}
-            onSelectionRemove={(selectionGuid) =>
-              props.onSelectionRemove?.(props.group.sourcePath, selectionGuid)
-            }
-            onSelectionUpdate={(selectionGuid, start, end, note) =>
-              props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + start, props.group.start + end, note)
-            }
-            onToggleExample={(selectionGuid) =>
-              props.onToggleExample?.(props.group.sourcePath, selectionGuid)
-            }
-            onChangeCode={(selectionGuid, newCode) =>
-              props.onChangeCode?.(props.group.sourcePath, selectionGuid, newCode)
+            onSelectionUpdate={(selectionGuid, start, end) =>
+              props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + start, props.group.start + end)
             }
             onSelectionClear={props.onSelectionClear}
             selectedCode={props.selectedCode}
@@ -357,10 +338,7 @@ const LazyMatchItem: Component<MatchItemProps> = (props) => {
           onEnsureExpanded={props.onEnsureExpanded}
           onOpenSource={props.onOpenSource}
           onSelectionCreate={props.onSelectionCreate}
-          onSelectionRemove={props.onSelectionRemove}
           onSelectionUpdate={props.onSelectionUpdate}
-          onToggleExample={props.onToggleExample}
-          onChangeCode={props.onChangeCode}
           onSelectionClear={props.onSelectionClear}
           selectedCode={props.selectedCode}
         />
@@ -376,10 +354,7 @@ export interface MatchingSelectionsListProps {
   onExpandedKeysChange?: (keys: Set<string>) => void;
   onOpenSource?: (sourcePath: string, charOffset: number) => void;
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
-  onSelectionRemove?: (sourcePath: string, selectionGuid: string) => void;
-  onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number, note?: string) => void;
-  onToggleExample?: (sourcePath: string, selectionGuid: string) => void;
-  onChangeCode?: (sourcePath: string, selectionGuid: string, newCode: CodeReference) => void;
+  onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number) => void;
   onSelectionClear?: () => void;
   selectedCode?: { code: Code; codebook: Codebook } | null;
 }
@@ -456,10 +431,7 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
                 onEnsureExpanded={() => ensureExpanded(group())}
                 onOpenSource={props.onOpenSource}
                 onSelectionCreate={props.onSelectionCreate}
-                onSelectionRemove={props.onSelectionRemove}
                 onSelectionUpdate={props.onSelectionUpdate}
-                onToggleExample={props.onToggleExample}
-                onChangeCode={props.onChangeCode}
                 onSelectionClear={props.onSelectionClear}
                 selectedCode={props.selectedCode}
               />
