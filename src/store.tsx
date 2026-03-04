@@ -38,6 +38,7 @@ export interface StoreActions {
   updateSourceSelections: (path: string, selections: TextSelection[]) => void;
 
   mergeCode: (codebookGuid: string, sourceCodeGuid: string, targetCodeGuid: string) => void;
+  moveCode: (sourceCodebookGuid: string, codeGuid: string, targetCodebookGuid: string) => void;
   mergeCodebook: (sourceCodebookGuid: string, targetCodebookGuid: string) => Promise<void>;
 
   toggleExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => void;
@@ -515,6 +516,57 @@ export const StoreProvider: ParentComponent = (props) => {
       const updatedCodebook = { ...codebook, codes: removeAndMerge(codebook.codes) };
       setStore('codebooks', codebookGuid, updatedCodebook);
       scheduleSave(`codebook:${codebookGuid}`, () => saveCodebook(codebookGuid), 500);
+    },
+
+    moveCode(sourceCodebookGuid: string, codeGuid: string, targetCodebookGuid: string) {
+      const sourceCodebook = store.codebooks[sourceCodebookGuid];
+      const targetCodebook = store.codebooks[targetCodebookGuid];
+      if (!sourceCodebook || !targetCodebook) return;
+
+      // Collect all guids being moved: the code itself + all nested subcodes
+      const movedGuids = indices.subcodesByGuid()[codeGuid];
+      if (!movedGuids || movedGuids.size === 0) return;
+
+      // Extract the code from the source codebook tree
+      let movedCode: Code | null = null;
+      function extractCode(codes: Code[]): Code[] {
+        return codes.filter(c => {
+          if (c.guid === codeGuid) {
+            movedCode = c;
+            return false;
+          }
+          return true;
+        }).map(c => c.subcodes ? { ...c, subcodes: extractCode(c.subcodes) } : c);
+      }
+      const updatedSourceCodes = extractCode(sourceCodebook.codes);
+
+      if (!movedCode) return;
+
+      // Update source codebook (remove the code)
+      const updatedSource = { ...sourceCodebook, codes: updatedSourceCodes };
+      setStore('codebooks', sourceCodebookGuid, updatedSource);
+      scheduleSave(`codebook:${sourceCodebookGuid}`, () => saveCodebook(sourceCodebookGuid), 500);
+
+      // Update target codebook (add code as top-level)
+      const updatedTarget = { ...targetCodebook, codes: [...targetCodebook.codes, movedCode] };
+      setStore('codebooks', targetCodebookGuid, updatedTarget);
+      scheduleSave(`codebook:${targetCodebookGuid}`, () => saveCodebook(targetCodebookGuid), 500);
+
+      // Update all selections referencing any of the moved codes to point to the target codebook
+      for (const [path, source] of Object.entries(store.sources)) {
+        let changed = false;
+        const updatedSelections = source.selections.map(sel => {
+          if (sel.code.codebookGuid === sourceCodebookGuid && movedGuids.has(sel.code.codeGuid)) {
+            changed = true;
+            return { ...sel, code: { ...sel.code, codebookGuid: targetCodebookGuid } };
+          }
+          return sel;
+        });
+        if (changed) {
+          setStore('sources', path, 'selections', updatedSelections);
+          scheduleSave(`source:${path}`, () => saveSource(path), 500);
+        }
+      }
     },
 
     toggleExample(sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) {
