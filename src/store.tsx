@@ -31,7 +31,7 @@ export interface StoreActions {
   ensureFileLoaded: (path: string) => void;
 
   updateCodebook: (codebook: Codebook) => void;
-  createCodebook: (name: string) => Promise<Codebook | null>;
+  createCodebook: (name: string, dirPath?: string) => Promise<Codebook | null>;
   deleteCodebook: (codebookGuid: string) => Promise<void>;
   deleteCode: (codebookGuid: string, codeGuid: string) => void;
 
@@ -45,7 +45,7 @@ export interface StoreActions {
   removeExample: (sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) => void;
 
   updateQuery: (query: Query) => void;
-  createQuery: (name: string) => Promise<Query | null>;
+  createQuery: (name: string, dirPath?: string) => Promise<Query | null>;
   deleteQuery: (queryGuid: string) => Promise<void>;
 
   /** Re-scan the directory and reload all codebooks, sources, queries, and file contents from disk. */
@@ -357,7 +357,7 @@ export const StoreProvider: ParentComponent = (props) => {
       scheduleSave(`codebook:${codebook.guid}`, () => saveCodebook(codebook.guid), 500);
     },
 
-    async createCodebook(name: string): Promise<Codebook | null> {
+    async createCodebook(name: string, dirPath?: string): Promise<Codebook | null> {
       const dir = store.dirHandle;
       const trimmed = name.trim();
       if (!dir || !trimmed) return null;
@@ -369,7 +369,8 @@ export const StoreProvider: ParentComponent = (props) => {
       };
 
       // Register file location before saving
-      const fileName = `${trimmed.toLowerCase()}.mcc`;
+      const baseName = `${trimmed.toLowerCase()}.mcc`;
+      const fileName = dirPath ? `${dirPath}/${baseName}` : baseName;
       const loc = await ensureFileLocation(fileName, newCodebook.guid);
       registerFileLocation(newCodebook.guid, loc);
 
@@ -677,7 +678,7 @@ export const StoreProvider: ParentComponent = (props) => {
       scheduleSave(`query:${query.guid}`, () => saveQuery(query.guid), 500);
     },
 
-    async createQuery(name: string): Promise<Query | null> {
+    async createQuery(name: string, dirPath?: string): Promise<Query | null> {
       const dir = store.dirHandle;
       const trimmed = name.trim();
       if (!dir || !trimmed) return null;
@@ -691,7 +692,8 @@ export const StoreProvider: ParentComponent = (props) => {
       };
 
       // Register file location before saving
-      const fileName = `${trimmed.toLowerCase()}.mcq`;
+      const baseName = `${trimmed.toLowerCase()}.mcq`;
+      const fileName = dirPath ? `${dirPath}/${baseName}` : baseName;
       const loc = await ensureFileLocation(fileName, newQuery.guid);
       registerFileLocation(newQuery.guid, loc);
 

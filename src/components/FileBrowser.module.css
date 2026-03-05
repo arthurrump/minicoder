@@ -93,3 +93,108 @@
     align-items: center;
     justify-content: center;
 }
+
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    min-width: 300px;
+    max-width: 400px;
+}
+
+.modal h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.modalField {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.modalField label {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.modalField input,
+.modalField select {
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-secondary);
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.dirTree {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-secondary);
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 0.85rem;
+}
+
+.dirNode {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px;
+    white-space: nowrap;
+}
+
+.dirNode:hover {
+    background: var(--code-hover);
+}
+
+.dirNodeSelected {
+    background: var(--accent-color) !important;
+    color: white;
+}
+
+.dirToggle {
+    font-size: 0.6em;
+    width: 1em;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.modalActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.primaryBtn {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 14px;
+    cursor: pointer;
+}
+
+.primaryBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

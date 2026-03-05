@@ -31,10 +31,123 @@ interface FileNode {
   relativePath: string;
 }
 
+type CreateModalType = 'codebook' | 'query';
+
+interface DirNode {
+  name: string;
+  relativePath: string;
+  handle: FileSystemDirectoryHandle;
+}
+
+/** Lazy-loading tree view for picking a directory */
+function DirTreePicker(pickerProps: {
+  dirHandle: FileSystemDirectoryHandle;
+  selectedDir: string;
+  onSelect: (dir: string) => void;
+}) {
+  const [rootChildren, setRootChildren] = createSignal<DirNode[]>([]);
+
+  createEffect(async () => {
+    const dirs: DirNode[] = [];
+    for await (const entry of pickerProps.dirHandle.values()) {
+      if (entry.kind === 'directory') {
+        dirs.push({ name: entry.name, relativePath: entry.name, handle: entry as FileSystemDirectoryHandle });
+      }
+    }
+    setRootChildren(dirs.sort((a, b) => a.name.localeCompare(b.name)));
+  });
+
+  return (
+    <div>
+      <div
+        class={styles.dirNode}
+        classList={{ [styles.dirNodeSelected]: pickerProps.selectedDir === '' }}
+        onClick={() => pickerProps.onSelect('')}
+      >
+        <span class={styles.dirToggle} />
+        <span>/</span>
+      </div>
+      <For each={rootChildren()}>
+        {(node) => (
+          <DirTreeNode
+            node={node}
+            depth={1}
+            selectedDir={pickerProps.selectedDir}
+            onSelect={pickerProps.onSelect}
+          />
+        )}
+      </For>
+    </div>
+  );
+}
+
+/** A single node in the directory tree picker */
+function DirTreeNode(nodeProps: {
+  node: DirNode;
+  depth: number;
+  selectedDir: string;
+  onSelect: (dir: string) => void;
+}) {
+  const [expanded, setExpanded] = createSignal(false);
+  const [children, setChildren] = createSignal<DirNode[]>([]);
+  const [loaded, setLoaded] = createSignal(false);
+
+  async function toggle(e: MouseEvent) {
+    e.stopPropagation();
+    if (!loaded()) {
+      const dirs: DirNode[] = [];
+      for await (const entry of nodeProps.node.handle.values()) {
+        if (entry.kind === 'directory') {
+          const relativePath = `${nodeProps.node.relativePath}/${entry.name}`;
+          dirs.push({ name: entry.name, relativePath, handle: entry as FileSystemDirectoryHandle });
+        }
+      }
+      setChildren(dirs.sort((a, b) => a.name.localeCompare(b.name)));
+      setLoaded(true);
+    }
+    setExpanded(!expanded());
+  }
+
+  function select() {
+    nodeProps.onSelect(nodeProps.node.relativePath);
+  }
+
+  return (
+    <div>
+      <div
+        class={styles.dirNode}
+        classList={{ [styles.dirNodeSelected]: nodeProps.selectedDir === nodeProps.node.relativePath }}
+        style={{ "padding-left": `${nodeProps.depth * 16 + 6}px` }}
+        onClick={select}
+      >
+        <span class={styles.dirToggle} onClick={toggle}>
+          {expanded() ? '▼' : '▶'}
+        </span>
+        <span>{nodeProps.node.name}</span>
+      </div>
+      <Show when={expanded()}>
+        <For each={children()}>
+          {(child) => (
+            <DirTreeNode
+              node={child}
+              depth={nodeProps.depth + 1}
+              selectedDir={nodeProps.selectedDir}
+              onSelect={nodeProps.onSelect}
+            />
+          )}
+        </For>
+      </Show>
+    </div>
+  );
+}
+
 export function FileBrowser(props: FileBrowserProps) {
   const { store, actions } = useStore();
   const [rootNodes, setRootNodes] = createSignal<FileNode[]>([]);
   const [expandedDirs, setExpandedDirs] = createSignal<Set<string>>(new Set());
+  const [createModal, setCreateModal] = createSignal<CreateModalType | null>(null);
+  const [createName, setCreateName] = createSignal('');
+  const [createDir, setCreateDir] = createSignal('');
 
   // Load directory contents
   async function refreshDirectory() {
@@ -48,27 +161,54 @@ export function FileBrowser(props: FileBrowserProps) {
     await refreshDirectory();
   });
 
-  async function handleCreateCodebook() {
-    const name = prompt('Enter codebook name:');
-    if (!name?.trim()) return;
-    
-    const codebook = await actions.createCodebook(name.trim());
-    if (codebook) {
-      await refreshDirectory();
-      const relativePath = `${codebook.name.toLowerCase()}.mcc`;
-      props.onFileCreated?.(relativePath);
+  /** Load immediate subdirectories of a directory handle */
+  async function loadSubdirectories(dirHandle: FileSystemDirectoryHandle, pathPrefix: string): Promise<DirNode[]> {
+    const dirs: DirNode[] = [];
+    for await (const entry of dirHandle.values()) {
+      if (entry.kind === 'directory') {
+        const relativePath = pathPrefix ? `${pathPrefix}/${entry.name}` : entry.name;
+        dirs.push({ name: entry.name, relativePath, handle: entry as FileSystemDirectoryHandle });
+      }
     }
+    return dirs.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async function handleCreateQuery() {
-    const name = prompt('Enter query name:');
-    if (!name?.trim()) return;
-    
-    const query = await actions.createQuery(name.trim());
-    if (query) {
-      await refreshDirectory();
-      const relativePath = `${query.name.toLowerCase()}.mcq`;
-      props.onFileCreated?.(relativePath);
+  function openCreateModal(type: CreateModalType) {
+    setCreateName('');
+    setCreateDir('');
+    setCreateModal(type);
+  }
+
+  function closeCreateModal() {
+    setCreateModal(null);
+    setCreateName('');
+    setCreateDir('');
+  }
+
+  async function handleCreateConfirm() {
+    const type = createModal();
+    const name = createName().trim();
+    const dirPath = createDir() || undefined;
+    if (!name || !type) return;
+
+    closeCreateModal();
+
+    if (type === 'codebook') {
+      const codebook = await actions.createCodebook(name, dirPath);
+      if (codebook) {
+        await refreshDirectory();
+        const baseName = `${codebook.name.toLowerCase()}.mcc`;
+        const relativePath = dirPath ? `${dirPath}/${baseName}` : baseName;
+        props.onFileCreated?.(relativePath);
+      }
+    } else {
+      const query = await actions.createQuery(name, dirPath);
+      if (query) {
+        await refreshDirectory();
+        const baseName = `${query.name.toLowerCase()}.mcq`;
+        const relativePath = dirPath ? `${dirPath}/${baseName}` : baseName;
+        props.onFileCreated?.(relativePath);
+      }
     }
   }
 
@@ -224,11 +364,11 @@ export function FileBrowser(props: FileBrowserProps) {
   return (
     <div class={styles.fileBrowser}>
       <div class={styles.fileBrowserHeader}>
-        <button class={styles.createBtn} onClick={handleCreateCodebook} title="New Codebook">
+        <button class={styles.createBtn} onClick={() => openCreateModal('codebook')} title="New Codebook">
           <span innerHTML={octicons.repo.toSVG({ width: 14 })} />
           <span>+</span>
         </button>
-        <button class={styles.createBtn} onClick={handleCreateQuery} title="New Query">
+        <button class={styles.createBtn} onClick={() => openCreateModal('query')} title="New Query">
           <span innerHTML={octicons.search.toSVG({ width: 14 })} />
           <span>+</span>
         </button>
@@ -254,6 +394,44 @@ export function FileBrowser(props: FileBrowserProps) {
           {(node) => <FileTreeNode node={node} />}
         </For>
       </div>
+      <Show when={createModal()}>
+        <div class={styles.modalOverlay} onClick={closeCreateModal}>
+          <div class={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3>New {createModal() === 'codebook' ? 'Codebook' : 'Query'}</h3>
+            <div class={styles.modalField}>
+              <label for="create-name">Name</label>
+              <input
+                id="create-name"
+                type="text"
+                autocomplete="off"
+                placeholder={`Enter ${createModal()} name`}
+                value={createName()}
+                onInput={(e) => setCreateName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && createName().trim()) handleCreateConfirm(); }}
+                ref={(el) => setTimeout(() => el.focus(), 0)}
+              />
+            </div>
+            <div class={styles.modalField}>
+              <label>Directory</label>
+              <div class={styles.dirTree}>
+                <DirTreePicker
+                  dirHandle={props.directoryHandle}
+                  selectedDir={createDir()}
+                  onSelect={setCreateDir}
+                />
+              </div>
+            </div>
+            <div class={styles.modalActions}>
+              <button onClick={closeCreateModal}>Cancel</button>
+              <button
+                class={styles.primaryBtn}
+                onClick={handleCreateConfirm}
+                disabled={!createName().trim()}
+              >Create</button>
+            </div>
+          </div>
+        </div>
+      </Show>
     </div>
   );
 }
