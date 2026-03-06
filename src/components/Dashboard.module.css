@@ -168,6 +168,19 @@
     writing-mode: vertical-lr;
 }
 
+/* Data cell with bar */
+.dataCell {
+    position: relative;
+    padding: 4px 8px;
+}
+
+.cellBar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+}
+
 .noData {
     color: #888;
     font-style: italic;

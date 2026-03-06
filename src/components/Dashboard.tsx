@@ -138,6 +138,28 @@ const CodebookTable: Component<CodebookTableProps> = (props) => {
 
   const displayNames = createMemo(() => getSourceDisplayNames(props.sourcePaths));
 
+  // Compute max count across all visible cells in this codebook's table.
+  // "Visible" means: for expanded codes, use selfCount; for collapsed, use aggregatedCount.
+  const maxCount = createMemo(() => {
+    let max = 0;
+    function walk(codes: Code[]) {
+      for (const code of codes) {
+        for (const sp of props.sourcePaths) {
+          const isExp = expanded().has(code.guid);
+          const count = isExp
+            ? props.selfCount(code.guid, sp)
+            : props.aggregatedCount(code.guid, sp);
+          if (count > max) max = count;
+        }
+        if (code.subcodes && expanded().has(code.guid)) {
+          walk(code.subcodes);
+        }
+      }
+    }
+    walk(props.codebook.codes);
+    return max;
+  });
+
   function handleResizeStart(e: MouseEvent) {
     e.preventDefault();
     const startX = e.clientX;
@@ -193,6 +215,7 @@ const CodebookTable: Component<CodebookTableProps> = (props) => {
                     onToggle={toggleExpanded}
                     aggregatedCount={props.aggregatedCount}
                     selfCount={props.selfCount}
+                    maxCount={maxCount()}
                   />
                 )}
               </For>
@@ -212,6 +235,7 @@ interface CodeRowProps {
   onToggle: (codeGuid: string) => void;
   aggregatedCount: (codeGuid: string, sourcePath: string) => number;
   selfCount: (codeGuid: string, sourcePath: string) => number;
+  maxCount: number;
 }
 
 const CodeRow: Component<CodeRowProps> = (props) => {
@@ -248,7 +272,18 @@ const CodeRow: Component<CodeRowProps> = (props) => {
         <For each={props.sourcePaths}>
           {(sourcePath) => {
             const count = () => cellCount(sourcePath);
-            return <td>{count() > 0 ? count() : ''}</td>;
+            const barPct = () => props.maxCount > 0 ? (count() / props.maxCount) * 100 : 0;
+            return (
+              <td class={styles.dataCell}>
+                {count() > 0 ? count() : ''}
+                <Show when={count() > 0}>
+                  <div
+                    class={styles.cellBar}
+                    style={{ width: `${barPct()}%`, "background-color": props.code.color }}
+                  />
+                </Show>
+              </td>
+            );
           }}
         </For>
       </tr>
@@ -263,6 +298,7 @@ const CodeRow: Component<CodeRowProps> = (props) => {
               onToggle={props.onToggle}
               aggregatedCount={props.aggregatedCount}
               selfCount={props.selfCount}
+              maxCount={props.maxCount}
             />
           )}
         </For>
