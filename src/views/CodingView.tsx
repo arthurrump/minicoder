@@ -8,6 +8,7 @@ import ColorChip from '../components/ColorChip';
 import CodebookEditor from '../components/CodebookEditor';
 import QueryEditor from '../components/QueryEditor';
 import CodeSelectionsModal from '../components/CodeSelectionsModal';
+import Dashboard from '../components/Dashboard';
 import { useStore } from '../store';
 import { useSettings } from '../settings';
 import styles from './CodingView.module.css';
@@ -455,9 +456,15 @@ const CodingView: Component = () => {
         <Resizable.Panel initialSize={0.6} minSize={0.1} maxSize={0.9}>
           <div class={styles.editorPane} data-editor-pane>
             {/* Tab bar */}
-            <Show when={openTabs().length > 0}>
               <div class={styles.tabBar}>
                 <div class={styles.tabs}>
+                  <div
+                    class={`${styles.tab} ${!selectedFilePath() ? styles.activeTab : ''}`}
+                    onClick={() => { saveCurrentScrollPosition(); navigate('/'); }}
+                    title="Dashboard"
+                  >
+                    <span class={styles.tabName}>Dashboard</span>
+                  </div>
                   <For each={openTabs()}>
                     {(path) => (
                       <div
@@ -477,11 +484,12 @@ const CodingView: Component = () => {
                     )}
                   </For>
                 </div>
-                <button class={styles.closeAllButton} onClick={handleCloseAllTabs} title="Close all tabs">
-                  Close All
-                </button>
+                <Show when={openTabs().length > 0}>
+                  <button class={styles.closeAllButton} onClick={handleCloseAllTabs} title="Close all tabs">
+                    Close All
+                  </button>
+                </Show>
               </div>
-            </Show>
             
             {/* File path bar */}
             <Show when={selectedFilePath()}>
@@ -496,7 +504,7 @@ const CodingView: Component = () => {
                 Text views are conditional since their scroll restore works reliably. */}
             <div class={styles.contentArea}>
               <Show when={!selectedFilePath()}>
-                <p style={{ padding: '10px' }}>Select a file to view its contents</p>
+                <Dashboard />
               </Show>
 
               {/* Per-tab codebook editors */}

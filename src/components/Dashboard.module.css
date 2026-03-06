@@ -1,0 +1,177 @@
+.dashboard {
+    padding: 20px;
+    overflow: auto;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.dashboard h2 {
+    margin: 0 0 20px 0;
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.codebookSection {
+    margin-bottom: 32px;
+}
+
+.codebookSection h3 {
+    margin: 0 0 8px 0;
+    font-size: 1em;
+    font-weight: 600;
+}
+
+.emptyMessage {
+    color: #888;
+    font-style: italic;
+    font-size: 0.85em;
+    margin: 4px 0;
+}
+
+.tableWrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.85em;
+}
+
+.table th,
+.table td {
+    border: 1px solid var(--border-color);
+    padding: 4px 8px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.table th {
+    background-color: var(--bg-secondary);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+/* First column (code name) */
+.table th:first-child,
+.table td:first-child {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    background-color: var(--bg-color);
+    z-index: 1;
+    width: var(--code-col-width);
+    min-width: var(--code-col-width);
+    max-width: var(--code-col-width);
+    overflow: hidden;
+}
+
+.table th:first-child {
+    background-color: var(--bg-secondary);
+    z-index: 2;
+    position: sticky;
+    left: 0;
+    vertical-align: bottom;
+}
+
+.headerFirstCell {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    margin: -4px -8px;
+}
+
+.headerFirstCell span {
+    padding: 4px 8px;
+}
+
+.resizeHandle {
+    width: 4px;
+    cursor: col-resize;
+    flex-shrink: 0;
+    display: flex;
+    align-items: stretch;
+    padding: 0px 2px 2px;
+}
+
+.resizeHandle:hover > .resizeHandleBar,
+.resizeHandle:active > .resizeHandleBar {
+    background-color: var(--accent-color, #007acc);
+}
+
+.resizeHandleBar {
+    width: 100%;
+    background-color: var(--border-color);
+    transition: background-color 0.1s;
+}
+
+.codeCell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.toggleButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-color);
+    opacity: 0.6;
+    font-size: 10px;
+    flex-shrink: 0;
+    border-radius: 2px;
+}
+
+.toggleButton:hover {
+    opacity: 1;
+    background-color: rgba(128, 128, 128, 0.15);
+}
+
+.togglePlaceholder {
+    display: inline-block;
+    width: 16px;
+    flex-shrink: 0;
+}
+
+.codeName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.table tr:hover td {
+    background-color: rgba(128, 128, 128, 0.06);
+}
+
+.table tr:hover td:first-child {
+    background-color: rgba(128, 128, 128, 0.06);
+}
+
+/* Source column header — rotated for compact display */
+.sourceHeader {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.85em;
+    writing-mode: vertical-lr;
+}
+
+.noData {
+    color: #888;
+    font-style: italic;
+    font-size: 0.9em;
+    padding: 40px 0;
+    text-align: center;
+}
