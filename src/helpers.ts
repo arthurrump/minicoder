@@ -139,3 +139,28 @@ export function isPlainText(content: string): boolean {
     const nonPrintableRatio = nonPrintableCount / sampleSize;
     return nonPrintableRatio < 0.3;
 }
+
+/**
+ * Compare two file paths for file-tree ordering where files in a directory
+ * are listed before subdirectories. Within each group, items are sorted
+ * alphabetically (case-insensitive).
+ */
+export function fileTreeCompare(pathA: string, pathB: string): number {
+    const partsA = pathA.split('/');
+    const partsB = pathB.split('/');
+    const minLen = Math.min(partsA.length, partsB.length);
+
+    for (let i = 0; i < minLen; i++) {
+        const isLastA = i === partsA.length - 1;
+        const isLastB = i === partsB.length - 1;
+
+        // A file at this level comes before a subdirectory
+        if (isLastA && !isLastB) return -1;
+        if (!isLastA && isLastB) return 1;
+
+        const cmp = partsA[i].localeCompare(partsB[i], undefined, { sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+    }
+
+    return partsA.length - partsB.length;
+}

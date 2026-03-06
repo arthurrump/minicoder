@@ -1,6 +1,6 @@
 import { createContext, createMemo, useContext, type Accessor, type ParentComponent } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { hashBytes, debounce, isPlainText, type Debounced } from './helpers';
+import { hashBytes, debounce, isPlainText, fileTreeCompare, type Debounced } from './helpers';
 
 /** File location — cached directory handle to avoid tree walks on save */
 export interface FileLocation {
@@ -57,6 +57,8 @@ export interface StoreIndices {
   subcodesByGuid: Accessor<Record<string, Set<string>>>;
   codesByCodebook: Accessor<Record<string, Set<string>>>;
   pathToGuid: Accessor<Record<string, string>>;
+  /** Codebooks sorted in file-tree order (files before folders, alphabetical). */
+  sortedCodebooks: Accessor<Codebook[]>;
 }
 
 interface StoreContextValue {
@@ -786,6 +788,13 @@ export const StoreProvider: ParentComponent = (props) => {
         }
       }
       return index;
+    }),
+    sortedCodebooks: createMemo(() => {
+      return Object.values(store.codebooks).sort((a, b) => {
+        const pathA = store.fileLocations[a.guid]?.path ?? a.name;
+        const pathB = store.fileLocations[b.guid]?.path ?? b.name;
+        return fileTreeCompare(pathA, pathB);
+      });
     }),
   };
 

@@ -123,9 +123,7 @@ const CodingView: Component = () => {
   });
   
   // Sorted codebooks list for components that expect Codebook[]
-  const codebooksList = createMemo(() =>
-    Object.values(store.codebooks).sort((a, b) => a.name.localeCompare(b.name))
-  );
+  const codebooksList = indices.sortedCodebooks;
 
   
   // Tab management

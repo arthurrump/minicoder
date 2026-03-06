@@ -52,9 +52,7 @@ const Dashboard: Component = () => {
 
   const [codeColWidth, setCodeColWidth] = createSignal(200);
 
-  const codebooksList = createMemo(() =>
-    Object.values(store.codebooks).sort((a, b) => a.name.localeCompare(b.name))
-  );
+  const codebooksList = indices.sortedCodebooks;
 
   // Build direct count map: for each selection, increment count for its codeGuid + sourcePath
   const directCounts = createMemo(() => {

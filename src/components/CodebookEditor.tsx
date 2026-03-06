@@ -410,7 +410,7 @@ interface CodebookEditorProps {
 }
 
 const CodebookEditor: Component<CodebookEditorProps> = (props) => {
-  const { store, actions } = useStore();
+  const { store, actions, indices } = useStore();
   const [editingName, setEditingName] = createSignal(false);
   const [localExpandedGuids, setLocalExpandedGuids] = createSignal<Set<string>>(new Set());
   const [viewingSelectionsForCode, setViewingSelectionsForCode] = createSignal<string | null>(null);
@@ -434,9 +434,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
     setExpandedGuids(next);
   };
 
-  const codebooksList = createMemo(() =>
-    Object.values(store.codebooks).sort((a, b) => a.name.localeCompare(b.name))
-  );
+  const codebooksList = indices.sortedCodebooks;
 
   const codebook = createMemo(() => {
     return store.codebooks[props.codebookGuid] || null;

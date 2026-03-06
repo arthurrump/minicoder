@@ -165,7 +165,7 @@ interface QueryNodeEditorProps {
 const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
   const { store, indices } = useStore();
   const [showCodePicker, setShowCodePicker] = createSignal(false);
-  const allCodes = createMemo(() => flattenCodes(Object.values(store.codebooks)));
+  const allCodes = createMemo(() => flattenCodes(indices.sortedCodebooks()));
   
   const isCodeLike = () => props.node.type === 'code' || props.node.type === 'codebook';
 
@@ -343,7 +343,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
             <button onClick={() => setShowCodePicker(false)}>×</button>
           </div>
           <div class={styles.codePickerList}>
-            <For each={Object.values(store.codebooks)}>
+            <For each={indices.sortedCodebooks()}>
               {(codebook) => (
                 <>
                   <div

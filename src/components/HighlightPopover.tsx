@@ -77,7 +77,7 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
                 if (code.subcodes) walk(code.subcodes, depth + 1, list);
             }
         }
-        for (const cb of Object.values(store.codebooks)) {
+        for (const cb of indices.sortedCodebooks()) {
             const codes: { code: Code; depth: number }[] = [];
             walk(cb.codes, 0, codes);
             if (codes.length > 0) {
