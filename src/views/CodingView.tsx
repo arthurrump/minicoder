@@ -173,6 +173,17 @@ const CodingView: Component = () => {
     window.getSelection()?.removeAllRanges();
   }, { defer: true }));
 
+  // Escape key deselects the active code
+  createEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedCode()) {
+        setSelectedCode(null);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  });
+
   // Sync tabs with URL - if URL has a file that's not in tabs, add it
   createEffect(on(selectedFilePath, (path) => {
     if (path && !openTabs().includes(path)) {
