@@ -151,6 +151,32 @@
     text-overflow: ellipsis;
 }
 
+.clickableCode {
+    cursor: pointer;
+    border-radius: 2px;
+}
+
+.clickableCode:hover {
+    text-decoration: underline;
+}
+
+.clickableCount {
+    cursor: pointer;
+    border-radius: 2px;
+}
+
+.clickableCount:hover {
+    text-decoration: underline;
+}
+
+.clickableHeader {
+    cursor: pointer;
+}
+
+.clickableHeader:hover {
+    background-color: rgba(128, 128, 128, 0.1) !important;
+}
+
 .table tr:hover td {
     background-color: rgba(128, 128, 128, 0.06);
 }

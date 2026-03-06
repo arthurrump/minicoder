@@ -156,7 +156,7 @@ const CodingView: Component = () => {
   }
   
   const [selectedCode, setSelectedCode] = createSignal<{ code: Code, codebook: Codebook } | null>(null);
-  const [infoModal, setInfoModal] = createSignal<{ codeGuid: string; codebookGuid: string } | null>(null);
+  const [infoModal, setInfoModal] = createSignal<{ codeGuid: string; codebookGuid: string; sourceFilter?: string; includeSubcodes?: boolean } | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ sourcePath: string; start: number; end: number } | null>(null);
   const [pendingScrollOffset, setPendingScrollOffset] = createSignal<number | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
@@ -502,7 +502,17 @@ const CodingView: Component = () => {
                 Text views are conditional since their scroll restore works reliably. */}
             <div class={styles.contentArea}>
               <Show when={!selectedFilePath()}>
-                <Dashboard />
+                <Dashboard
+                  onCodeClick={(codeGuid, codebookGuid) => setInfoModal({ codeGuid, codebookGuid })}
+                  onCellClick={(codeGuid, codebookGuid, sourcePath, includeSubcodes) => setInfoModal({ codeGuid, codebookGuid, sourceFilter: sourcePath, includeSubcodes })}
+                  onSourceClick={(sourcePath) => {
+                    saveCurrentScrollPosition();
+                    if (!openTabs().includes(sourcePath)) {
+                      setOpenTabs([...openTabs(), sourcePath]);
+                    }
+                    navigate(`/${encodeURIComponent(sourcePath)}`);
+                  }}
+                />
               </Show>
 
               {/* Per-tab codebook editors */}
@@ -622,6 +632,8 @@ const CodingView: Component = () => {
            codeGuid={modal().codeGuid}
            codebookGuid={modal().codebookGuid}
            currentFilePath={!isSpecialFile() ? selectedFilePath() : undefined}
+           sourceFilter={modal().sourceFilter}
+           includeSubcodes={modal().includeSubcodes}
            onClose={() => setInfoModal(null)}
            onOpenSource={handleOpenSource}
          />

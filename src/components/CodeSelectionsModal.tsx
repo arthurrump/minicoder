@@ -10,6 +10,10 @@ interface CodeSelectionsModalProps {
   codeGuid: string;
   codebookGuid: string;
   currentFilePath?: string;
+  /** When set, only show selections from this source file */
+  sourceFilter?: string;
+  /** When true, include selections for all subcodes of the given code */
+  includeSubcodes?: boolean;
   onClose: () => void;
   onOpenSource?: (sourcePath: string, charOffset: number) => void;
 }
@@ -32,16 +36,26 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
   // Find the code and codebook
   const codeInfo = createMemo(() => indices.codeByGuid()[props.codeGuid] ?? null);
 
-  // Collect this code + all subcodes
+  // Collect target code GUIDs: just this code, or include all subcodes
   const targetGuids = createMemo(() => {
     const info = codeInfo();
     if (!info) return new Set<string>();
+    if (props.includeSubcodes) {
+      return indices.subcodesByGuid()[props.codeGuid] ?? new Set([info.code.guid]);
+    }
     return new Set([info.code.guid]);
   });
 
-  // Build all match groups for this code
+  // Build all match groups for this code, optionally filtered to a single source
+  const filteredSources = createMemo(() => {
+    if (!props.sourceFilter) return store.sources;
+    const source = store.sources[props.sourceFilter];
+    if (!source) return {} as Record<string, Source>;
+    return { [props.sourceFilter]: source } as Record<string, Source>;
+  });
+
   const allMatchResult = createMemo(() =>
-    buildMatchGroups(targetGuids(), store.sources, store.fileContents, showOnlyMatching())
+    buildMatchGroups(targetGuids(), filteredSources(), store.fileContents, showOnlyMatching())
   );
 
   const allGroups = createMemo(() => allMatchResult().groups);
@@ -153,7 +167,7 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
                 <Show when={editing()} fallback={
                   <>
                     <ColorChip color={info().code.color} class={styles.codeChip} />
-                    <h2 class={styles.modalTitle}>{info().code.name}</h2>
+                    <h2 class={styles.modalTitle}>{info().code.name}{props.includeSubcodes ? ' + subcodes' : ''}</h2>
                     <span class={styles.codebookName}>({info().codebook.name})</span>
                   </>
                 }>

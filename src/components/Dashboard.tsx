@@ -47,7 +47,13 @@ interface CountMap {
   [codeGuid: string]: Record<string, number>;
 }
 
-const Dashboard: Component = () => {
+interface DashboardProps {
+  onCodeClick?: (codeGuid: string, codebookGuid: string) => void;
+  onCellClick?: (codeGuid: string, codebookGuid: string, sourcePath: string, includeSubcodes: boolean) => void;
+  onSourceClick?: (sourcePath: string) => void;
+}
+
+const Dashboard: Component<DashboardProps> = (props) => {
   const { store, indices } = useStore();
 
   const [codeColWidth, setCodeColWidth] = createSignal(200);
@@ -104,6 +110,9 @@ const Dashboard: Component = () => {
               selfCount={selfCount}
               codeColWidth={codeColWidth}
               onResizeCodeCol={setCodeColWidth}
+              onCodeClick={props.onCodeClick}
+              onCellClick={props.onCellClick}
+              onSourceClick={props.onSourceClick}
             />
           )}
         </For>
@@ -119,6 +128,9 @@ interface CodebookTableProps {
   selfCount: (codeGuid: string, sourcePath: string) => number;
   codeColWidth: () => number;
   onResizeCodeCol: (width: number) => void;
+  onCodeClick?: (codeGuid: string, codebookGuid: string) => void;
+  onCellClick?: (codeGuid: string, codebookGuid: string, sourcePath: string, includeSubcodes: boolean) => void;
+  onSourceClick?: (sourcePath: string) => void;
 }
 
 const CodebookTable: Component<CodebookTableProps> = (props) => {
@@ -197,7 +209,11 @@ const CodebookTable: Component<CodebookTableProps> = (props) => {
                 </th>
                 <For each={props.sourcePaths}>
                   {(sourcePath) => (
-                    <th title={sourcePath}>
+                    <th
+                      title={sourcePath}
+                      class={props.onSourceClick ? styles.clickableHeader : ''}
+                      onClick={() => props.onSourceClick?.(sourcePath)}
+                    >
                       <span class={styles.sourceHeader}>{displayNames().get(sourcePath)}</span>
                     </th>
                   )}
@@ -209,6 +225,7 @@ const CodebookTable: Component<CodebookTableProps> = (props) => {
                 {(code) => (
                   <CodeRow
                     code={code}
+                    codebookGuid={props.codebook.guid}
                     depth={0}
                     sourcePaths={props.sourcePaths}
                     expanded={expanded()}
@@ -216,6 +233,8 @@ const CodebookTable: Component<CodebookTableProps> = (props) => {
                     aggregatedCount={props.aggregatedCount}
                     selfCount={props.selfCount}
                     maxCount={maxCount()}
+                    onCodeClick={props.onCodeClick}
+                    onCellClick={props.onCellClick}
                   />
                 )}
               </For>
@@ -229,6 +248,7 @@ const CodebookTable: Component<CodebookTableProps> = (props) => {
 
 interface CodeRowProps {
   code: Code;
+  codebookGuid: string;
   depth: number;
   sourcePaths: string[];
   expanded: Set<string>;
@@ -236,6 +256,8 @@ interface CodeRowProps {
   aggregatedCount: (codeGuid: string, sourcePath: string) => number;
   selfCount: (codeGuid: string, sourcePath: string) => number;
   maxCount: number;
+  onCodeClick?: (codeGuid: string, codebookGuid: string) => void;
+  onCellClick?: (codeGuid: string, codebookGuid: string, sourcePath: string, includeSubcodes: boolean) => void;
 }
 
 const CodeRow: Component<CodeRowProps> = (props) => {
@@ -266,17 +288,24 @@ const CodeRow: Component<CodeRowProps> = (props) => {
               </button>
             </Show>
             <ColorChip color={props.code.color} />
-            <span class={styles.codeName}>{props.code.name}</span>
+            <span
+              class={`${styles.codeName} ${props.onCodeClick ? styles.clickableCode : ''}`}
+              onClick={() => props.onCodeClick?.(props.code.guid, props.codebookGuid)}
+            >{props.code.name}</span>
           </div>
         </td>
         <For each={props.sourcePaths}>
           {(sourcePath) => {
             const count = () => cellCount(sourcePath);
             const barPct = () => props.maxCount > 0 ? (count() / props.maxCount) * 100 : 0;
+            const includesSubcodes = () => !isExpanded() && hasSubcodes();
             return (
               <td class={styles.dataCell}>
-                {count() > 0 ? count() : ''}
                 <Show when={count() > 0}>
+                  <span
+                    class={props.onCellClick ? styles.clickableCount : ''}
+                    onClick={() => props.onCellClick?.(props.code.guid, props.codebookGuid, sourcePath, includesSubcodes())}
+                  >{count()}</span>
                   <div
                     class={styles.cellBar}
                     style={{ width: `${barPct()}%`, "background-color": props.code.color }}
@@ -292,6 +321,7 @@ const CodeRow: Component<CodeRowProps> = (props) => {
           {(subcode) => (
             <CodeRow
               code={subcode}
+              codebookGuid={props.codebookGuid}
               depth={props.depth + 1}
               sourcePaths={props.sourcePaths}
               expanded={props.expanded}
@@ -299,6 +329,8 @@ const CodeRow: Component<CodeRowProps> = (props) => {
               aggregatedCount={props.aggregatedCount}
               selfCount={props.selfCount}
               maxCount={props.maxCount}
+              onCodeClick={props.onCodeClick}
+              onCellClick={props.onCellClick}
             />
           )}
         </For>
