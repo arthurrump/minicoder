@@ -284,6 +284,41 @@ export const StoreProvider: ParentComponent = (props) => {
     setStore(produce(s => { delete s.fileLocations[key]; }));
   }
 
+  /**
+   * Remove references to a deleted codebook's codes from a query tree.
+   * Returns the original node if unchanged, or a cleaned version.
+   * Code leaf nodes referencing the codebook are removed; codebook leaf
+   * nodes referencing the codebook are removed; operator nodes that lose all
+   * children become null.
+   */
+  function removeCodebookFromQuery(node: QueryNode, codebookGuid: string, codeGuids?: Set<string>): QueryNode | null {
+    if (node.type === 'code') {
+      if (node.codebookGuid === codebookGuid || (codeGuids && codeGuids.has(node.codeGuid))) {
+        return null;
+      }
+      return node;
+    }
+    if (node.type === 'codebook') {
+      if (node.codebookGuid === codebookGuid) {
+        return null;
+      }
+      return node;
+    }
+    if (node.type === 'operator') {
+      const cleaned = node.children
+        .map(child => removeCodebookFromQuery(child, codebookGuid, codeGuids))
+        .filter((child): child is QueryNode => child !== null);
+      if (cleaned.length === node.children.length) {
+        // Check if any child actually changed
+        const anyChanged = cleaned.some((c, i) => c !== node.children[i]);
+        return anyChanged ? { ...node, children: cleaned } : node;
+      }
+      if (cleaned.length === 0) return null;
+      return { ...node, children: cleaned };
+    }
+    return node;
+  }
+
   // ---- Actions ----
 
   const actions: StoreActions = {
@@ -399,9 +434,36 @@ export const StoreProvider: ParentComponent = (props) => {
     async deleteCodebook(codebookGuid: string) {
       const loc = store.fileLocations[codebookGuid];
 
+      // Collect all code GUIDs belonging to this codebook before removing it
+      const codeGuids = indices.codesByCodebook()[codebookGuid];
+
       setStore(produce(s => {
         delete s.codebooks[codebookGuid];
       }));
+
+      // Remove all selections referencing codes from the deleted codebook
+      if (codeGuids && codeGuids.size > 0) {
+        for (const [path, source] of Object.entries(store.sources)) {
+          const filtered = source.selections.filter(
+            sel => sel.code.codebookGuid !== codebookGuid && !codeGuids.has(sel.code.codeGuid)
+          );
+          if (filtered.length !== source.selections.length) {
+            setStore('sources', path, 'selections', filtered);
+            scheduleSave(`source:${path}`, () => saveSource(path), 500);
+          }
+        }
+      }
+
+      // Clean up query nodes that reference codes from this codebook
+      for (const [guid, query] of Object.entries(store.queries)) {
+        if (query.query) {
+          const cleaned = removeCodebookFromQuery(query.query, codebookGuid, codeGuids);
+          if (cleaned !== query.query) {
+            setStore('queries', guid, 'query', cleaned);
+            scheduleSave(`query:${guid}`, () => saveQuery(guid), 500);
+          }
+        }
+      }
 
       if (loc) {
         await deleteFile(loc);
