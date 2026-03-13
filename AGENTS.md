@@ -94,6 +94,21 @@ Single-page application with file-based routing:
 - Recursive `findAllFiles()` to discover all files
 - `createWritable()` for atomic writes to `.mcc` / `.mcs` files
 
+### Utility Modules (`src/utils/`)
+
+Pure functions extracted from components for reuse and testability:
+
+- **`colors.ts`** — HSL↔Hex conversion, color generation for codes/subcodes, `lightenColor`
+- **`codeTree.ts`** — `flattenCodesWithDepth`, `flattenCodesWithPath`, `updateCodeInTree` for recursive code tree operations
+- **`paths.ts`** — `disambiguatePaths` for showing unique file suffixes in tabs/headers
+- **`query.ts`** — `evaluateQueryOnSource`, glob matching utilities (`parseFilterList`, `compileGlobs`, `matchesAnyGlob`)
+- **`selections.ts`** — `findOverlapping`, `computeSelectionLayers`, `computeCollapsedRegions`, `buildMatchGroups` plus associated types (`MatchGroup`, `CollapsedRegion`, `BuildMatchGroupsResult`)
+- **`textLayout.ts`** — `getUnderlineStyle`, `getHoveredLayer`, `getSelectionAtLayer`, `getHandlePositions`, `getCharIndexFromPoint`, `getTextOffset`, `scrollToCharOffset` plus constants (`UNDERLINE_HEIGHT`, `UNDERLINE_GAP`)
+
+### Shared Styles (`src/styles/`)
+
+- **`shared.module.css`** — Common CSS classes used via `composes` in component CSS modules: `.overlay` (modal backdrop), `.btnSmall`/`.btnPrimary`/`.btnDanger` (button styles), `.editorHeader`/`.editorTitle`/`.editorTitleInput`/`.headerActions` (editor header pattern), `.codeChip`, `.codebookNameLabel`
+
 ## Developer Workflows
 
 ### Start Development
@@ -134,15 +149,16 @@ pnpm test:watch    # Run tests in watch mode (development)
 | File | What is tested |
 |---|---|
 | `src/test/helpers.test.ts` | `hashBytes`, `debounce` (with flush/cancel), `buildSegments`, `isPlainText`, `fileTreeCompare` |
-| `src/test/queryEvaluation.test.ts` | `evaluateQueryOnSource` — null query, code/codebook leaf nodes, AND/OR/NOT operators, user filtering |
-| `src/test/matchingSelections.test.ts` | `findOverlapping`, `flattenCodes`, `computeCollapsedRegions`, `buildMatchGroups` |
+| `src/test/queryEvaluation.test.ts` | `evaluateQueryOnSource` (from `src/utils/query.ts`) — null query, code/codebook leaf nodes, AND/OR/NOT operators, user filtering |
+| `src/test/matchingSelections.test.ts` | `findOverlapping`, `computeCollapsedRegions`, `buildMatchGroups` (from `src/utils/selections.ts`), `flattenCodesWithPath` (from `src/utils/codeTree.ts`) |
 | `src/test/components/ColorChip.test.tsx` | `ColorChip` (render, styles, class prop) |
 | `src/test/components/CodePicker.test.tsx` | `CodePicker` (expand/collapse, code click, edit button) |
 
 #### What to Test When Adding Features
-- **New pure utility functions** in `src/helpers.ts` → add unit tests in `src/test/helpers.test.ts`
-- **New query logic** in `src/components/QueryEditor.tsx` → add unit tests in `src/test/queryEvaluation.test.ts`; export any function you want to test
-- **New data-processing utilities** exported from components → add unit tests in the relevant `src/test/*.test.ts` file
+- **New pure utility functions** in `src/utils/` → add unit tests in the relevant `src/test/*.test.ts` file (or create a new one)
+- **New helpers** in `src/helpers.ts` → add unit tests in `src/test/helpers.test.ts`
+- **New query logic** in `src/utils/query.ts` → add unit tests in `src/test/queryEvaluation.test.ts`
+- **New selection/matching logic** in `src/utils/selections.ts` → add unit tests in `src/test/matchingSelections.test.ts`
 - **New Solid.js components** → add component tests in a new `src/test/components/ComponentName.test.tsx` file using `@solidjs/testing-library`
 
 #### Writing Component Tests
@@ -179,6 +195,8 @@ Some features require manual testing in a Chromium browser, as they depend on th
 
 ### Component Structure
 - Most components co-locate styles as `.module.css` files
+- Shared CSS patterns live in `src/styles/shared.module.css` and are composed into component modules via `composes: ... from`
+- Pure utility functions live in `src/utils/` (not in component files)
 - Props are typed interfaces (e.g., `CodePickerProps`)
 - Recursive rendering for nested codes (e.g., CodeList in [src/components/CodePicker.tsx](src/components/CodePicker.tsx))
 
@@ -206,6 +224,8 @@ Some features require manual testing in a Chromium browser, as they depend on th
 4. **Component state**: Prefer `createMemo` for derived state over extra signals
 5. **Solid.js**: Write idiomatic Solid.js code
 6. **New testable logic**: Add unit tests in `src/test/` (see [Testing](#testing) section above)
+7. **New pure functions**: Add to `src/utils/` (not inside component files)
+8. **New shared CSS patterns**: Add to `src/styles/shared.module.css` and compose into component modules
 
 ## External Dependencies
 - `@solidjs/router` - hash-based client routing

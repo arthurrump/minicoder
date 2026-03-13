@@ -1,46 +1,8 @@
 import { createMemo, createSignal, For, Show, type Component } from 'solid-js';
 import { useStore } from '../store';
 import ColorChip from './ColorChip';
+import { disambiguatePaths } from '../utils/paths';
 import styles from './Dashboard.module.css';
-
-// Disambiguate source paths for column headers — show minimal unique suffix
-function getSourceDisplayNames(paths: string[]): Map<string, string> {
-  const result = new Map<string, string>();
-  const fileNameGroups = new Map<string, string[]>();
-
-  for (const path of paths) {
-    const fileName = path.split('/').pop() || path;
-    if (!fileNameGroups.has(fileName)) {
-      fileNameGroups.set(fileName, []);
-    }
-    fileNameGroups.get(fileName)!.push(path);
-  }
-
-  for (const [fileName, group] of fileNameGroups) {
-    if (group.length === 1) {
-      result.set(group[0], fileName);
-    } else {
-      const pathParts = group.map(p => p.split('/').reverse());
-      for (let i = 0; i < group.length; i++) {
-        let segmentsNeeded = 1;
-        const currentParts = pathParts[i];
-        for (let j = 0; j < group.length; j++) {
-          if (i === j) continue;
-          const otherParts = pathParts[j];
-          let k = 0;
-          while (k < currentParts.length && k < otherParts.length && currentParts[k] === otherParts[k]) {
-            k++;
-          }
-          segmentsNeeded = Math.max(segmentsNeeded, k + 1);
-        }
-        const displayParts = currentParts.slice(0, Math.min(segmentsNeeded, currentParts.length)).reverse();
-        result.set(group[i], displayParts.join('/'));
-      }
-    }
-  }
-
-  return result;
-}
 
 interface CountMap {
   // codeGuid -> sourcePath -> count
@@ -148,7 +110,7 @@ const CodebookTable: Component<CodebookTableProps> = (props) => {
     });
   }
 
-  const displayNames = createMemo(() => getSourceDisplayNames(props.sourcePaths));
+  const displayNames = createMemo(() => disambiguatePaths(props.sourcePaths));
 
   // Compute max count across all visible cells in this codebook's table.
   // "Visible" means: for expanded codes, use selfCount; for collapsed, use aggregatedCount.

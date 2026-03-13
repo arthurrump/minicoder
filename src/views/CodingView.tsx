@@ -11,90 +11,9 @@ import CodeSelectionsModal from '../components/CodeSelectionsModal';
 import Dashboard from '../components/Dashboard';
 import { useStore } from '../store';
 import { useSettings } from '../settings';
+import { disambiguatePaths } from '../utils/paths';
+import { scrollToCharOffset } from '../utils/textLayout';
 import styles from './CodingView.module.css';
-
-// Helper to compute disambiguated tab names
-function getTabDisplayNames(openTabs: string[]): Map<string, string> {
-  const result = new Map<string, string>();
-  
-  // Group tabs by their filename
-  const fileNameGroups = new Map<string, string[]>();
-  for (const path of openTabs) {
-    const fileName = path.split('/').pop() || path;
-    if (!fileNameGroups.has(fileName)) {
-      fileNameGroups.set(fileName, []);
-    }
-    fileNameGroups.get(fileName)!.push(path);
-  }
-  
-  // For each group, determine the minimum path segments needed to disambiguate
-  for (const [fileName, paths] of fileNameGroups) {
-    if (paths.length === 1) {
-      // No disambiguation needed
-      result.set(paths[0], fileName);
-    } else {
-      // Need to find unique prefixes
-      const pathParts = paths.map(p => p.split('/').reverse());
-      
-      for (let i = 0; i < paths.length; i++) {
-        let segmentsNeeded = 1;
-        const currentParts = pathParts[i];
-        
-        // Compare with all other paths to find minimum segments needed
-        for (let j = 0; j < paths.length; j++) {
-          if (i === j) continue;
-          const otherParts = pathParts[j];
-          
-          // Find how many segments from the end we need to differentiate
-          let k = 0;
-          while (k < currentParts.length && k < otherParts.length && currentParts[k] === otherParts[k]) {
-            k++;
-          }
-          segmentsNeeded = Math.max(segmentsNeeded, k + 1);
-        }
-        
-        // Build the display name with required segments
-        const displayParts = currentParts.slice(0, Math.min(segmentsNeeded, currentParts.length)).reverse();
-        result.set(paths[i], displayParts.join('/'));
-      }
-    }
-  }
-  
-  return result;
-}
-
-/**
- * Scroll a container so that the text at `charOffset` is visible.
- * Finds the segment span whose range contains the offset using the
- * data-segment-start/end attributes already on each span, then
- * scrolls it into view near the top of the container.
- */
-function scrollToCharOffset(container: HTMLElement, _content: string, charOffset: number) {
-  // Find the segment span that contains this character offset
-  const spans = container.querySelectorAll<HTMLSpanElement>('[data-segment-start]');
-  let target: HTMLSpanElement | null = null;
-  for (const span of spans) {
-    const start = Number(span.dataset.segmentStart);
-    const end = Number(span.dataset.segmentEnd);
-    if (charOffset >= start && charOffset < end) {
-      target = span;
-      break;
-    }
-  }
-  // Fall back to the nearest span before the offset
-  if (!target && spans.length > 0) {
-    for (const span of spans) {
-      const start = Number(span.dataset.segmentStart);
-      if (start <= charOffset) target = span;
-      else break;
-    }
-  }
-  if (target) {
-    target.scrollIntoView({ block: 'start' });
-    // Nudge up so the target isn't pinned to the very top edge
-    container.scrollTop = Math.max(0, container.scrollTop - container.clientHeight / 4);
-  }
-}
 
 const CodingView: Component = () => {
   const { store, actions, indices } = useStore();
@@ -130,7 +49,7 @@ const CodingView: Component = () => {
   const [openTabs, setOpenTabs] = createSignal<string[]>([]);
   
   // Compute display names for tabs with disambiguation
-  const tabDisplayNames = createMemo(() => getTabDisplayNames(openTabs()));
+  const tabDisplayNames = createMemo(() => disambiguatePaths(openTabs()));
   
   // Store scroll positions for text file tabs (query/codebook tabs preserve scroll via per-tab instances)
   const scrollPositions = new Map<string, number>();

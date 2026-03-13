@@ -1,8 +1,8 @@
 import { createSignal, createMemo, Show, type Component, onMount, onCleanup } from 'solid-js';
 import octicons from '@primer/octicons';
 import { useStore } from '../store';
+import { updateCodeInTree } from '../utils/codeTree';
 import styles from './CodeSelectionsModal.module.css';
-import editorStyles from './CodebookEditor.module.css';
 import ColorChip from './ColorChip';
 import { MatchingSelectionsList, buildMatchGroups } from './MatchingSelections';
 
@@ -16,16 +16,6 @@ interface CodeSelectionsModalProps {
   includeSubcodes?: boolean;
   onClose: () => void;
   onOpenSource?: (sourcePath: string, charOffset: number) => void;
-}
-
-function updateCodeInTree(codes: Code[], guid: string, updates: Partial<Code>): Code[] {
-  return codes.map(code => {
-    if (code.guid === guid) return { ...code, ...updates };
-    if (code.subcodes?.length) {
-      return { ...code, subcodes: updateCodeInTree(code.subcodes, guid, updates) };
-    }
-    return code;
-  });
 }
 
 const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
@@ -173,14 +163,14 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
                 }>
                   <input
                     type="color"
-                    class={editorStyles.codeColorPicker}
+                    class={styles.codeColorPicker}
                     value={info().code.color}
                     onChange={(e) => handleUpdateCode({ color: e.target.value })}
                     title="Code color"
                   />
                   <input
                     type="text"
-                    class={editorStyles.codeNameInput}
+                    class={styles.codeNameInput}
                     value={info().code.name}
                     onInput={(e) => handleUpdateCode({ name: e.target.value })}
                     placeholder="Code name..."

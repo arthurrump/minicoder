@@ -5,6 +5,19 @@ import HighlightPopover from './HighlightPopover';
 import ColorChip from './ColorChip';
 import { useStore } from '../store';
 import { buildSegments, type Segment } from '../helpers';
+import { computeSelectionLayers } from '../utils/selections';
+import { lightenColor } from '../utils/colors';
+import {
+    UNDERLINE_HEIGHT,
+    UNDERLINE_GAP,
+    type HandlePosition,
+    getHoveredLayer,
+    getSelectionAtLayer,
+    getUnderlineStyle,
+    getHandlePositions,
+    getCharIndexFromPoint,
+    getTextOffset,
+} from '../utils/textLayout';
 
 interface TextViewProps {
     content: string;
@@ -16,180 +29,6 @@ interface TextViewProps {
     selectedCode?: { code: Code; codebook: Codebook } | null;
     /** GUIDs of selections that should not show resize handles (e.g. clipped or boundary selections) */
     nonResizableGuids?: Set<string>;
-}
-
-interface HandlePosition {
-    x: number;
-    y: number;
-    height: number;
-}
-
-const UNDERLINE_HEIGHT = 4;
-const UNDERLINE_GAP = 1;
-
-/**
- * Compute a global layer index for each selection using greedy interval coloring.
- * Each selection gets the lowest layer index that doesn't conflict with overlapping selections.
- * This minimizes the total number of layers needed.
- */
-function computeSelectionLayers(selections: TextSelection[]): { layers: Map<string, number>; maxLayer: number } {
-    if (selections.length === 0) {
-        return { layers: new Map(), maxLayer: 0 };
-    }
-    
-    // Selections are kept sorted by start position in the store
-    const sorted = selections;
-    
-    const layers = new Map<string, number>();
-    // Track which selections are assigned to each layer (for overlap checking)
-    const layerAssignments: TextSelection[][] = [];
-    
-    for (const sel of sorted) {
-        // Find the lowest layer where this selection doesn't overlap with existing assignments
-        let assignedLayer = 0;
-        
-        while (true) {
-            // Ensure layer array exists
-            if (!layerAssignments[assignedLayer]) {
-                layerAssignments[assignedLayer] = [];
-            }
-            
-            // Check if this selection overlaps with any selection already in this layer
-            const hasConflict = layerAssignments[assignedLayer].some(
-                existing => sel.start < existing.end && sel.end > existing.start
-            );
-            
-            if (!hasConflict) {
-                // Found a free layer
-                break;
-            }
-            
-            // Try next layer
-            assignedLayer++;
-        }
-        
-        layers.set(sel.guid, assignedLayer);
-        layerAssignments[assignedLayer].push(sel);
-    }
-    
-    return { 
-        layers, 
-        maxLayer: layerAssignments.length 
-    };
-}
-
-/**
- * Lighten a color by mixing it with white.
- */
-function lightenColor(color: string, amount: number = 0.3): string {
-    // Handle hex colors
-    if (color.startsWith('#')) {
-        const hex = color.slice(1);
-        const r = parseInt(hex.slice(0, 2), 16);
-        const g = parseInt(hex.slice(2, 4), 16);
-        const b = parseInt(hex.slice(4, 6), 16);
-        
-        const lightenChannel = (c: number) => Math.round(c + (255 - c) * amount);
-        
-        const lr = lightenChannel(r).toString(16).padStart(2, '0');
-        const lg = lightenChannel(g).toString(16).padStart(2, '0');
-        const lb = lightenChannel(b).toString(16).padStart(2, '0');
-        
-        return `#${lr}${lg}${lb}`;
-    }
-    return color;
-}
-
-/**
- * Given mouse Y position relative to element bottom, determine which layer is being hovered.
- * Returns the layer index, or -1 if not over any underline.
- */
-function getHoveredLayer(yFromBottom: number, totalLayers: number): number {
-    if (yFromBottom < 0) return -1;
-    
-    const layerHeight = UNDERLINE_HEIGHT + UNDERLINE_GAP;
-    const totalHeight = totalLayers * layerHeight;
-    
-    if (yFromBottom > totalHeight) return -1;
-    
-    // Layer 0 is at the top (furthest from text), higher layers are closer to text
-    const layerFromBottom = Math.floor(yFromBottom / layerHeight);
-    // Convert to layer index (0 = furthest from text)
-    return totalLayers - 1 - layerFromBottom;
-}
-
-/**
- * Find which selection is at the given layer within a segment's selections.
- */
-function getSelectionAtLayer(
-    segmentSelections: TextSelection[],
-    selectionLayers: Map<string, number>,
-    targetLayer: number
-): TextSelection | null {
-    for (const sel of segmentSelections) {
-        if (selectionLayers.get(sel.guid) === targetLayer) {
-            return sel;
-        }
-    }
-    return null;
-}
-
-/**
- * Generate stacked underline styles using background layers.
- * Each underline is a discrete band of fixed height at a specific offset.
- * Applies hover lightening to the hovered selection.
- */
-function getUnderlineStyle(
-    segmentSelections: TextSelection[],
-    selectionLayers: Map<string, number>,
-    codeIndex: Record<string, { code: Code; codebook: Codebook }>,
-    totalLayers: number,
-    hoveredSelectionGuid: string | null
-): Record<string, string> {
-    if (segmentSelections.length === 0) {
-        return {
-            'padding-bottom': `${totalLayers * (UNDERLINE_HEIGHT + UNDERLINE_GAP)}px`,
-        };
-    }
-    
-    // Build background layers for each selection, sorted by layer for consistent ordering
-    const layerData: { layer: number; sel: TextSelection }[] = [];
-    for (const sel of segmentSelections) {
-        const layer = selectionLayers.get(sel.guid) ?? 0;
-        layerData.push({ layer, sel });
-    }
-    // Sort by layer ascending
-    layerData.sort((a, b) => a.layer - b.layer);
-    
-    const images: string[] = [];
-    const sizes: string[] = [];
-    const positions: string[] = [];
-    
-    for (const { layer, sel } of layerData) {
-        const info = codeIndex[sel.code.codeGuid];
-        let color = info?.code.color || '#888';
-        
-        // Apply hover effect
-        if (sel.guid === hoveredSelectionGuid) {
-            color = lightenColor(color);
-        }
-        
-        // Offset from bottom: layer 0 gets largest offset (furthest from text)
-        const offsetFromBottom = (totalLayers - layer - 1) * (UNDERLINE_HEIGHT + UNDERLINE_GAP);
-        
-        images.push(`linear-gradient(${color}, ${color})`);
-        sizes.push(`100% ${UNDERLINE_HEIGHT}px`);
-        positions.push(`bottom ${offsetFromBottom}px left`);
-    }
-    
-    return {
-        'background-image': images.join(', '),
-        'background-size': sizes.join(', '),
-        'background-position': positions.join(', '),
-        'background-repeat': 'no-repeat',
-        'padding-bottom': `${totalLayers * (UNDERLINE_HEIGHT + UNDERLINE_GAP)}px`,
-        'line-height': `calc(1.2em + ${layerData.length * (UNDERLINE_HEIGHT + UNDERLINE_GAP)}px)`
-    };
 }
 
 interface TextSegmentProps {
@@ -235,58 +74,6 @@ interface SelectionHandlesProps {
     onDragMove: (charIndex: number) => void;
     onDragEnd: () => void;
     draggingHandle: 'start' | 'end' | null;
-}
-
-/**
- * Calculate positions for start and end handles of a selection.
- */
-function getHandlePositions(
-    selection: TextSelection,
-    segments: Segment[],
-    segmentElements: Map<number, HTMLSpanElement>,
-    containerRef: HTMLElement | null
-): { start: HandlePosition | null; end: HandlePosition | null } {
-    if (!containerRef) return { start: null, end: null };
-    
-    const containerRect = containerRef.getBoundingClientRect();
-    
-    let startPos: HandlePosition | null = null;
-    let endPos: HandlePosition | null = null;
-    
-    // Find segments containing this selection
-    for (let i = 0; i < segments.length; i++) {
-        const segment = segments[i];
-        const el = segmentElements.get(i);
-        if (!el) continue;
-        
-        const containsSelection = segment.selections.some(s => s.guid === selection.guid);
-        if (!containsSelection) continue;
-        
-        const rects = el.getClientRects();
-        if (rects.length === 0) continue;
-        
-        // Check if this segment contains the start of the selection
-        if (segment.start === selection.start) {
-            const firstRect = rects[0];
-            startPos = {
-                x: firstRect.left - containerRect.left,
-                y: firstRect.top - containerRect.top,
-                height: firstRect.height
-            };
-        }
-        
-        // Check if this segment contains the end of the selection
-        if (segment.end === selection.end) {
-            const lastRect = rects[rects.length - 1];
-            endPos = {
-                x: lastRect.right - containerRect.left,
-                y: lastRect.top - containerRect.top,
-                height: lastRect.height
-            };
-        }
-    }
-    
-    return { start: startPos, end: endPos };
 }
 
 /**
@@ -387,67 +174,6 @@ const SelectionHandles: Component<SelectionHandlesProps> = (props) => {
         </>
     );
 };
-
-/**
- * Get the character index at a given screen position.
- * Tries multiple Y positions to handle cases where the cursor is in padding/margins.
- */
-function getCharIndexFromPoint(clientX: number, clientY: number, container: HTMLElement | null): number | null {
-    if (!container) return null;
-    
-    const containerRect = container.getBoundingClientRect();
-    
-    // Clamp X to container bounds
-    const clampedX = Math.max(containerRect.left + 1, Math.min(containerRect.right - 1, clientX));
-    
-    // Try multiple Y positions - the cursor might be in padding/underline area
-    const yPositionsToTry = [
-        clientY,
-        clientY - 10,  // Try a bit higher (in case we're in underline area)
-        clientY - 20,
-        clientY + 10,  // Try a bit lower
-    ];
-    
-    for (const tryY of yPositionsToTry) {
-        // Clamp Y to container bounds
-        const clampedY = Math.max(containerRect.top + 1, Math.min(containerRect.bottom - 1, tryY));
-        
-        const result = getCaretPositionAt(clampedX, clampedY, container);
-        if (result !== null) {
-            return result;
-        }
-    }
-    
-    return null;
-}
-
-/**
- * Get caret position at exact coordinates.
- */
-function getCaretPositionAt(clientX: number, clientY: number, container: HTMLElement): number | null {
-    // Use caretPositionFromPoint (standard) or caretRangeFromPoint (WebKit)
-    let range: Range | null = null;
-    
-    if (document.caretPositionFromPoint) {
-        const pos = document.caretPositionFromPoint(clientX, clientY);
-        if (pos && container.contains(pos.offsetNode)) {
-            range = document.createRange();
-            range.setStart(pos.offsetNode, pos.offset);
-            range.collapse(true);
-        }
-    } else if (document.caretRangeFromPoint) {
-        range = document.caretRangeFromPoint(clientX, clientY);
-        // Verify the range is within our container
-        if (range && !container.contains(range.startContainer)) {
-            range = null;
-        }
-    }
-    
-    if (!range) return null;
-    
-    // Calculate offset from container start
-    return getTextOffset(container, range.startContainer, range.startOffset);
-}
 
 const TextView: Component<TextViewProps> = (props) => {
     const { indices } = useStore();
@@ -755,36 +481,5 @@ const TextView: Component<TextViewProps> = (props) => {
         </div>
     );
 };
-
-/**
- * Calculate the character offset from the start of the container to the given node/offset
- */
-function getTextOffset(container: Node, targetNode: Node, targetOffset: number): number | null {
-    let offset = 0;
-    
-    function walk(node: Node): boolean {
-        if (node === targetNode) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                offset += targetOffset;
-            }
-            return true;
-        }
-        
-        if (node.nodeType === Node.TEXT_NODE) {
-            offset += node.textContent?.length || 0;
-        } else {
-            for (const child of Array.from(node.childNodes)) {
-                if (walk(child)) return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    if (walk(container)) {
-        return offset;
-    }
-    return null;
-}
 
 export default TextView;
