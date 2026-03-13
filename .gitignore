@@ -1,4 +1,9 @@
 dist
+
+# CSS module types
+*.css.d.ts
+
+# Typical js tools
 .wrangler
 .output
 .vercel
