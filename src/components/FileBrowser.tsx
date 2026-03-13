@@ -261,14 +261,13 @@ export function FileBrowser(props: FileBrowserProps) {
     });
   }
 
-  function toggleDirectory(dirHandle: FileSystemDirectoryHandle) {
-    const key = dirHandle.name;
+  function toggleDirectory(relativePath: string) {
     setExpandedDirs(prev => {
       const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
+      if (next.has(relativePath)) {
+        next.delete(relativePath);
       } else {
-        next.add(key);
+        next.add(relativePath);
       }
       return next;
     });
@@ -288,7 +287,7 @@ export function FileBrowser(props: FileBrowserProps) {
 
     const isExpanded = () => {
       if (nodeProps.node.handle.kind === 'directory') {
-        return expandedDirs().has(nodeProps.node.name);
+        return expandedDirs().has(nodeProps.node.relativePath);
       }
       return false;
     };
@@ -316,7 +315,7 @@ export function FileBrowser(props: FileBrowserProps) {
           }}
           onClick={() => {
             if (nodeProps.node.handle.kind === 'directory') {
-              toggleDirectory(nodeProps.node.handle as FileSystemDirectoryHandle);
+              toggleDirectory(nodeProps.node.relativePath);
             } else {
               handleFileClick(nodeProps.node);
             }
