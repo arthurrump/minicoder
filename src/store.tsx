@@ -1,4 +1,4 @@
-import { createContext, createMemo, useContext, type Accessor, type ParentComponent } from 'solid-js';
+import { createContext, createMemo, onCleanup, useContext, type Accessor, type ParentComponent } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
 import { hashBytes, debounce, isPlainText, fileTreeCompare, type Debounced } from './helpers';
 
@@ -797,6 +797,19 @@ export const StoreProvider: ParentComponent = (props) => {
       });
     }),
   };
+
+  // ---- Warn on unsaved changes when closing/navigating away ----
+
+  function beforeUnloadHandler(e: BeforeUnloadEvent) {
+    if (pendingKeys.size > 0) {
+      e.preventDefault();
+      // Attempt to flush all pending debounced saves synchronously
+      for (const saver of debouncedSavers.values()) saver.flush();
+    }
+  }
+
+  window.addEventListener('beforeunload', beforeUnloadHandler);
+  onCleanup(() => window.removeEventListener('beforeunload', beforeUnloadHandler));
 
   return (
     <StoreContext.Provider value={{ store, actions, indices }}>
