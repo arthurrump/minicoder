@@ -610,9 +610,9 @@ const CodingView: Component = () => {
                 <span class={styles.noCodeSelected}>No code selected</span>
               }>
                 <span class={styles.selectedCodeInfo}>
-                  <ColorChip color={selectedCode()!.code.color} class={styles.selectedCodeColor} />
+                  <ColorChip color={selectedCode()!.code.color} />
                   <span>{selectedCode()!.code.name}</span>
-                  <span class={styles.selectedCodeCodebook}>({selectedCode()!.codebook.name})</span>
+                  <span>({selectedCode()!.codebook.name})</span>
                 </span>
                 <button onClick={() => setSelectedCode(null)}>×</button>
               </Show>

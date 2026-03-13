@@ -114,7 +114,7 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
         >
             <div class={styles.popoverHeader}>
                 <div class={styles.popoverCodeItem}>
-                    <ColorChip color={codeInfo().code?.color || '#888'} class={styles.popoverCodeColor} />
+                    <ColorChip color={codeInfo().code?.color || '#888'} />
                     <span class={styles.popoverCodeName}>{codeInfo().code?.name || 'Unknown'}</span>
                     <Show when={codeInfo().codebook}>
                         <span class={styles.popoverCodeCodebook}>({codeInfo().codebook!.name})</span>

@@ -371,7 +371,7 @@ const SelectionHandles: Component<SelectionHandlesProps> = (props) => {
             <Show when={positions().end}>
                 {(pos) => (
                     <div
-                        class={`${styles.selectionHandle} ${props.draggingHandle === 'end' ? styles.dragging : ''} ${styles.selectionHandleEnd}`}
+                        class={`${styles.selectionHandle} ${props.draggingHandle === 'end' ? styles.dragging : ''}`}
                         style={{
                             left: `${pos().x}px`,
                             top: `${pos().y}px`,

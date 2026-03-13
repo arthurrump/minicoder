@@ -108,6 +108,13 @@ pnpm build     # Output to `dist/`
 pnpm serve     # Preview production build
 ```
 
+### Type checking
+`pnpm build` runs type checks, but they can also be run separately:
+
+```bash
+pnpm check     # Runs tsc to typecheck
+```
+
 ### Testing
 
 #### Running Tests

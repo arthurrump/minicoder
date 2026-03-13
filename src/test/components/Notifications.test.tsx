@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@solidjs/testing-library';
 import { NotificationsProvider, useNotifications } from '../../notifications';
 

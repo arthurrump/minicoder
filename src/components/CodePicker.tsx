@@ -34,7 +34,7 @@ const CodeList = (props: CodeListProps) => (
                     }}
                 >
                     <ColorChip class={styles.colorChip} color={code.color} />
-                    <span class={styles.codeName}>{code.name}</span>
+                    <span>{code.name}</span>
                     <Show when={props.onInfoClick}>
                         <button
                             class={styles.infoBtn}

@@ -296,7 +296,7 @@ export const StoreProvider: ParentComponent = (props) => {
    */
   function removeCodebookFromQuery(node: QueryNode, codebookGuid: string, codeGuids?: Set<string>): QueryNode | null {
     if (node.type === 'code') {
-      if (node.codebookGuid === codebookGuid || (codeGuids && codeGuids.has(node.codeGuid))) {
+      if (codeGuids && codeGuids.has(node.codeGuid)) {
         return null;
       }
       return node;
