@@ -129,14 +129,14 @@ describe('buildSegments', () => {
     expect(buildSegments([])).toEqual([]);
   });
 
-  it('returns empty array when no selections (with content)', () => {
+  it('returns one segment covering the whole content when no selections given', () => {
     const segs = buildSegments([], 'hello');
     // One segment covering the whole text, no covering selections
     expect(segs).toHaveLength(1);
     expect(segs[0]).toMatchObject({ start: 0, end: 5, text: 'hello', selections: [] });
   });
 
-  it('covers the full content with a single selection', () => {
+  it('splits content into three segments around a partial selection', () => {
     const sel = mkSel('s1', 1, 4);
     const segs = buildSegments([sel], 'hello');
     // Expected segments: [0,1), [1,4), [4,5)

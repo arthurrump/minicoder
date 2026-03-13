@@ -129,13 +129,14 @@ pnpm test:watch    # Run tests in watch mode (development)
 | `src/test/helpers.test.ts` | `hashBytes`, `debounce` (with flush/cancel), `buildSegments`, `isPlainText`, `fileTreeCompare` |
 | `src/test/queryEvaluation.test.ts` | `evaluateQueryOnSource` — null query, code/codebook leaf nodes, AND/OR/NOT operators, user filtering |
 | `src/test/matchingSelections.test.ts` | `findOverlapping`, `flattenCodes`, `computeCollapsedRegions`, `buildMatchGroups` |
-| `src/test/components.test.tsx` | `ColorChip` (render, styles, class prop), `CodePicker` (expand/collapse, code click, edit button) |
+| `src/test/components/ColorChip.test.tsx` | `ColorChip` (render, styles, class prop) |
+| `src/test/components/CodePicker.test.tsx` | `CodePicker` (expand/collapse, code click, edit button) |
 
 #### What to Test When Adding Features
 - **New pure utility functions** in `src/helpers.ts` → add unit tests in `src/test/helpers.test.ts`
 - **New query logic** in `src/components/QueryEditor.tsx` → add unit tests in `src/test/queryEvaluation.test.ts`; export any function you want to test
 - **New data-processing utilities** exported from components → add unit tests in the relevant `src/test/*.test.ts` file
-- **New Solid.js components** → add component tests in `src/test/components.test.tsx` (or a new `ComponentName.test.tsx` file) using `@solidjs/testing-library`
+- **New Solid.js components** → add component tests in a new `src/test/components/ComponentName.test.tsx` file using `@solidjs/testing-library`
 
 #### Writing Component Tests
 Component tests use `@solidjs/testing-library` which wraps `@testing-library/dom`. Key APIs:
