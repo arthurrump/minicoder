@@ -1,6 +1,6 @@
 import { createContext, createMemo, onCleanup, useContext, type Accessor, type ParentComponent } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { hashBytes, debounce, isPlainText, fileTreeCompare, type Debounced } from './helpers';
+import { hashBytes, debounce, isPlainText, fileTreeCompare, sanitizeFileName, type Debounced } from './helpers';
 
 /** File location — cached directory handle to avoid tree walks on save */
 export interface FileLocation {
@@ -413,6 +413,9 @@ export const StoreProvider: ParentComponent = (props) => {
       const trimmed = name.trim();
       if (!dir || !trimmed) return null;
 
+      const sanitized = sanitizeFileName(trimmed);
+      if (!sanitized) return null;
+
       const newCodebook: Codebook = {
         guid: crypto.randomUUID(),
         name: trimmed,
@@ -420,7 +423,7 @@ export const StoreProvider: ParentComponent = (props) => {
       };
 
       // Register file location before saving
-      const baseName = `${trimmed.toLowerCase()}.mcc`;
+      const baseName = `${sanitized}.mcc`;
       const fileName = dirPath ? `${dirPath}/${baseName}` : baseName;
       const loc = await ensureFileLocation(fileName, newCodebook.guid);
       registerFileLocation(newCodebook.guid, loc);
@@ -761,6 +764,9 @@ export const StoreProvider: ParentComponent = (props) => {
       const trimmed = name.trim();
       if (!dir || !trimmed) return null;
 
+      const sanitized = sanitizeFileName(trimmed);
+      if (!sanitized) return null;
+
       const newQuery: Query = {
         guid: crypto.randomUUID(),
         name: trimmed,
@@ -770,7 +776,7 @@ export const StoreProvider: ParentComponent = (props) => {
       };
 
       // Register file location before saving
-      const baseName = `${trimmed.toLowerCase()}.mcq`;
+      const baseName = `${sanitized}.mcq`;
       const fileName = dirPath ? `${dirPath}/${baseName}` : baseName;
       const loc = await ensureFileLocation(fileName, newQuery.guid);
       registerFileLocation(newQuery.guid, loc);

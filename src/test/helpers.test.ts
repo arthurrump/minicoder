@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { hashBytes, debounce, buildSegments, isPlainText, fileTreeCompare } from '../helpers';
+import { hashBytes, debounce, buildSegments, isPlainText, fileTreeCompare, sanitizeFileName } from '../helpers';
 
 // ── hashBytes ──────────────────────────────────────────────────────────────
 
@@ -246,5 +246,45 @@ describe('fileTreeCompare', () => {
       'z/top.txt',
       'z/nested/deep.txt',
     ]);
+  });
+});
+
+// ── sanitizeFileName ───────────────────────────────────────────────────────
+
+describe('sanitizeFileName', () => {
+  it('lowercases the name', () => {
+    expect(sanitizeFileName('My Codebook')).toBe('my codebook');
+  });
+
+  it('replaces filesystem-invalid characters with underscores', () => {
+    expect(sanitizeFileName('file<>:"/\\|?*name')).toBe('file_name');
+  });
+
+  it('replaces control characters', () => {
+    expect(sanitizeFileName('hello\x00world')).toBe('hello_world');
+  });
+
+  it('collapses repeated underscores', () => {
+    expect(sanitizeFileName('a***b')).toBe('a_b');
+  });
+
+  it('removes leading/trailing dots and underscores', () => {
+    expect(sanitizeFileName('.hidden.')).toBe('hidden');
+    expect(sanitizeFileName('__name__')).toBe('name');
+  });
+
+  it('returns null for empty-after-sanitization names', () => {
+    expect(sanitizeFileName('***')).toBe(null);
+    expect(sanitizeFileName('...')).toBe(null);
+    expect(sanitizeFileName('')).toBe(null);
+  });
+
+  it('normalizes whitespace', () => {
+    expect(sanitizeFileName('hello   world')).toBe('hello world');
+  });
+
+  it('handles typical codebook names', () => {
+    expect(sanitizeFileName('Themes & Topics')).toBe('themes & topics');
+    expect(sanitizeFileName("User's Notes")).toBe("user's notes");
   });
 });

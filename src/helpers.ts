@@ -142,6 +142,30 @@ export function isPlainText(content: string): boolean {
 }
 
 /**
+ * Sanitize a string for use as a filename. Removes or replaces characters
+ * that are invalid on common filesystems (Windows, macOS, Linux).
+ * Returns a lowercase string safe for use as a filename base.
+ * Returns null if the name would be empty after sanitization.
+ */
+export function sanitizeFileName(name: string): string | null {
+    // Remove characters invalid on Windows/macOS/Linux filesystems
+    let sanitized = name
+        .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')  // Replace invalid chars with underscore
+        .replace(/\s+/g, ' ')                       // Normalize whitespace
+        .trim()
+        .toLowerCase();
+
+    // Collapse repeated underscores
+    sanitized = sanitized.replace(/_+/g, '_');
+
+    // Remove leading/trailing dots and underscores (problematic on some systems)
+    sanitized = sanitized.replace(/^[._]+|[._]+$/g, '');
+
+    if (!sanitized) return null;
+    return sanitized;
+}
+
+/**
  * Compare two file paths for file-tree ordering where files in a directory
  * are listed before subdirectories. Within each group, items are sorted
  * alphabetically (case-insensitive).
