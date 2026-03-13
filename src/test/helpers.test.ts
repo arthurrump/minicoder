@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { hashBytes, debounce, buildSegments, isPlainText, fileTreeCompare, sanitizeFileName } from '../helpers';
+import { hashBytes, debounce, buildSegments, isPlainText, fileTreeCompare, sanitizeFileName, validateCodebook, validateSource, validateQuery } from '../helpers';
 
 // ── hashBytes ──────────────────────────────────────────────────────────────
 
@@ -286,5 +286,84 @@ describe('sanitizeFileName', () => {
   it('handles typical codebook names', () => {
     expect(sanitizeFileName('Themes & Topics')).toBe('themes & topics');
     expect(sanitizeFileName("User's Notes")).toBe("user's notes");
+  });
+});
+
+// ── validateCodebook ───────────────────────────────────────────────────────
+
+describe('validateCodebook', () => {
+  it('returns a valid codebook object', () => {
+    const obj = { guid: 'abc-123', name: 'Test', codes: [] };
+    expect(validateCodebook(obj)).toEqual(obj);
+  });
+
+  it('returns null for missing guid', () => {
+    expect(validateCodebook({ name: 'Test', codes: [] })).toBeNull();
+  });
+
+  it('returns null for empty guid', () => {
+    expect(validateCodebook({ guid: '', name: 'Test', codes: [] })).toBeNull();
+  });
+
+  it('returns null for missing codes array', () => {
+    expect(validateCodebook({ guid: 'abc', name: 'Test' })).toBeNull();
+  });
+
+  it('returns null for non-object input', () => {
+    expect(validateCodebook(null)).toBeNull();
+    expect(validateCodebook('string')).toBeNull();
+    expect(validateCodebook(42)).toBeNull();
+  });
+});
+
+// ── validateSource ─────────────────────────────────────────────────────────
+
+describe('validateSource', () => {
+  it('returns a valid source object', () => {
+    const obj = { guid: 'src-1', fileHash: 'abc', selections: [] };
+    expect(validateSource(obj)).toEqual(obj);
+  });
+
+  it('returns null for missing guid', () => {
+    expect(validateSource({ fileHash: 'abc', selections: [] })).toBeNull();
+  });
+
+  it('returns null for missing selections', () => {
+    expect(validateSource({ guid: 'src-1', fileHash: 'abc' })).toBeNull();
+  });
+
+  it('returns null for non-object input', () => {
+    expect(validateSource(null)).toBeNull();
+    expect(validateSource(undefined)).toBeNull();
+  });
+});
+
+// ── validateQuery ──────────────────────────────────────────────────────────
+
+describe('validateQuery', () => {
+  it('returns a valid query with null query node', () => {
+    const obj = { guid: 'q-1', name: 'Test', query: null };
+    expect(validateQuery(obj)).toEqual(obj);
+  });
+
+  it('returns a valid query with a query node', () => {
+    const obj = { guid: 'q-1', name: 'Test', query: { type: 'code', codeGuid: 'c1' } };
+    expect(validateQuery(obj)).toEqual(obj);
+  });
+
+  it('returns null for missing guid', () => {
+    expect(validateQuery({ name: 'Test', query: null })).toBeNull();
+  });
+
+  it('returns null for missing name', () => {
+    expect(validateQuery({ guid: 'q-1', query: null })).toBeNull();
+  });
+
+  it('returns null for query being a non-object non-null value', () => {
+    expect(validateQuery({ guid: 'q-1', name: 'Test', query: 'invalid' })).toBeNull();
+  });
+
+  it('returns null for non-object input', () => {
+    expect(validateQuery(null)).toBeNull();
   });
 });

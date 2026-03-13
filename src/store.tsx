@@ -1,6 +1,6 @@
 import { createContext, createMemo, onCleanup, useContext, type Accessor, type ParentComponent } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { hashBytes, debounce, isPlainText, fileTreeCompare, sanitizeFileName, type Debounced } from './helpers';
+import { hashBytes, debounce, isPlainText, fileTreeCompare, sanitizeFileName, validateCodebook, validateSource, validateQuery, type Debounced } from './helpers';
 
 /** File location — cached directory handle to avoid tree walks on save */
 export interface FileLocation {
@@ -353,7 +353,12 @@ export const StoreProvider: ParentComponent = (props) => {
         try {
           const fileData = await entry.file.getFile();
           const text = await fileData.text();
-          const codebook = JSON.parse(text) as Codebook;
+          const codebook = validateCodebook(JSON.parse(text));
+          if (!codebook) {
+            console.warn(`Invalid codebook file ${entry.fileName}: missing required fields`);
+            reportError(`Skipped invalid codebook file "${entry.fileName}".`);
+            continue;
+          }
           newCodebooks[codebook.guid] = codebook;
           registerFileLocation(codebook.guid, { path: entry.path, dirHandle: entry.dirHandle, fileName: entry.fileName });
         } catch (err) {
@@ -368,7 +373,12 @@ export const StoreProvider: ParentComponent = (props) => {
         try {
           const fileData = await entry.file.getFile();
           const text = await fileData.text();
-          const query = JSON.parse(text) as Query;
+          const query = validateQuery(JSON.parse(text));
+          if (!query) {
+            console.warn(`Invalid query file ${entry.fileName}: missing required fields`);
+            reportError(`Skipped invalid query file "${entry.fileName}".`);
+            continue;
+          }
           newQueries[query.guid] = query;
           registerFileLocation(query.guid, { path: entry.path, dirHandle: entry.dirHandle, fileName: entry.fileName });
         } catch (err) {
@@ -383,7 +393,12 @@ export const StoreProvider: ParentComponent = (props) => {
         try {
           const fileData = await entry.file.getFile();
           const text = await fileData.text();
-          const source = JSON.parse(text) as Source;
+          const source = validateSource(JSON.parse(text));
+          if (!source) {
+            console.warn(`Invalid source file ${entry.path}: missing required fields`);
+            reportError(`Skipped invalid source file "${entry.path}".`);
+            continue;
+          }
           source.selections.sort((a, b) => a.start - b.start || b.end - a.end);
           const sourcePath = entry.path.slice(0, -4); // remove .mcs
           newSources[sourcePath] = source;

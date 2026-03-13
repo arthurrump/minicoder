@@ -189,3 +189,45 @@ export function fileTreeCompare(pathA: string, pathB: string): number {
 
     return partsA.length - partsB.length;
 }
+
+// ── JSON Validation ────────────────────────────────────────────────────────
+
+/**
+ * Validate that a parsed JSON object has the required shape of a Codebook.
+ * Returns the object typed as Codebook if valid, or null if invalid.
+ */
+export function validateCodebook(obj: unknown): Codebook | null {
+    if (!obj || typeof obj !== 'object') return null;
+    const o = obj as Record<string, unknown>;
+    if (typeof o.guid !== 'string' || !o.guid) return null;
+    if (typeof o.name !== 'string') return null;
+    if (!Array.isArray(o.codes)) return null;
+    return obj as Codebook;
+}
+
+/**
+ * Validate that a parsed JSON object has the required shape of a Source.
+ * Returns the object typed as Source if valid, or null if invalid.
+ */
+export function validateSource(obj: unknown): Source | null {
+    if (!obj || typeof obj !== 'object') return null;
+    const o = obj as Record<string, unknown>;
+    if (typeof o.guid !== 'string' || !o.guid) return null;
+    if (typeof o.fileHash !== 'string') return null;
+    if (!Array.isArray(o.selections)) return null;
+    return obj as Source;
+}
+
+/**
+ * Validate that a parsed JSON object has the required shape of a Query.
+ * Returns the object typed as Query if valid, or null if invalid.
+ */
+export function validateQuery(obj: unknown): Query | null {
+    if (!obj || typeof obj !== 'object') return null;
+    const o = obj as Record<string, unknown>;
+    if (typeof o.guid !== 'string' || !o.guid) return null;
+    if (typeof o.name !== 'string') return null;
+    // query can be null or an object
+    if (o.query !== null && typeof o.query !== 'object') return null;
+    return obj as Query;
+}
