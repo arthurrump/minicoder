@@ -509,6 +509,15 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
   const handleDeleteCode = (codeGuid: string) => {
     const cb = codebook();
     if (!cb) return;
+    const findName = (codes: Code[]): string | undefined => {
+      for (const c of codes) {
+        if (c.guid === codeGuid) return c.name;
+        const sub = findName(c.subcodes || []);
+        if (sub) return sub;
+      }
+    };
+    const name = findName(cb.codes) ?? 'this code';
+    if (!confirm(`Delete "${name}" and all its subcodes? This cannot be undone.`)) return;
     actions.deleteCode(cb.guid, codeGuid);
   };
 
