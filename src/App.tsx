@@ -46,6 +46,12 @@ const Layout: ParentComponent = (props) => {
         currentDir={currentDir()} 
         onChangeDir={pickFolder} 
       />
+      <Show when={store.isLoading}>
+        <div class="loading-overlay">
+          <div class="loading-spinner" />
+          <p>Loading directory...</p>
+        </div>
+      </Show>
       <Show when={store.dirHandle} fallback={<p style="text-align: center">Open a folder to get started.</p>}>
         {props.children}
       </Show>

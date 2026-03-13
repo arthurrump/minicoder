@@ -22,6 +22,8 @@ export interface AppStore {
   fileContents: Record<string, FileContent>;    // source file path -> FileContent
   /** Whether any saves are currently pending (debounced or in-flight). */
   isSaving: boolean;
+  /** Whether the directory is being loaded/scanned. */
+  isLoading: boolean;
 }
 
 export interface StoreActions {
@@ -81,6 +83,7 @@ export const StoreProvider: ParentComponent = (props) => {
     sources: {},
     fileContents: {},
     isSaving: false,
+    isLoading: false,
   });
 
   // Track in-progress file content loads to avoid duplicate requests
@@ -323,6 +326,7 @@ export const StoreProvider: ParentComponent = (props) => {
 
   const actions: StoreActions = {
     async setDirectory(dirHandle: FileSystemDirectoryHandle) {
+      setStore('isLoading', true);
       setStore('dirHandle', dirHandle);
       setStore('codebooks', {});
       setStore('queries', {});
@@ -394,6 +398,8 @@ export const StoreProvider: ParentComponent = (props) => {
       await Promise.all(
         Object.keys(newSources).map(path => loadFileContentFromDisk(path))
       );
+
+      setStore('isLoading', false);
     },
 
     ensureFileLoaded(path: string) {

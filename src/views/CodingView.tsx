@@ -576,7 +576,12 @@ const CodingView: Component = () => {
                         <button onClick={() => setHashMismatchWarning(false)}>Dismiss</button>
                       </div>
                     </Show>
-                    <Show when={fileContent()}>
+                    <Show when={fileContent()} fallback={
+                      <div class="view-placeholder">
+                        <div class="loading-spinner" />
+                        <p>Loading file...</p>
+                      </div>
+                    }>
                       {(content) => (
                         <TextView
                           content={content()}
