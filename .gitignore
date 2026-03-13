@@ -1,5 +1,8 @@
 dist
 
+# TypeScript output
+*.tsbuildinfo
+
 # CSS module types
 *.css.d.ts
 
