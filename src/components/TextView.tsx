@@ -476,6 +476,19 @@ const TextView: Component<TextViewProps> = (props) => {
         }
     });
 
+    // Close popover on scroll (since it uses fixed positioning)
+    createEffect(() => {
+        if (popover()) {
+            const handler = () => {
+                setPopover(null);
+                setActiveSelectionGuid(null);
+            };
+            // Listen on window with capture to catch scrolling in any parent container
+            window.addEventListener('scroll', handler, { capture: true, passive: true });
+            onCleanup(() => window.removeEventListener('scroll', handler, { capture: true }));
+        }
+    });
+
     // Compute global layer assignments for consistent underline offsets
     const layerInfo = createMemo(() => computeSelectionLayers(props.selections));
     const selectionLayers = createMemo(() => layerInfo().layers);

@@ -1,5 +1,5 @@
 import octicons from '@primer/octicons';
-import { type Component, Show, createMemo, createSignal, For } from 'solid-js';
+import { type Component, Show, createMemo, createSignal, For, onMount } from 'solid-js';
 import styles from './HighlightPopover.module.css';
 import ColorChip from './ColorChip';
 import { useStore } from '../store';
@@ -89,6 +89,25 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
 
     return (
         <div
+            ref={(el) => {
+                // After mounting, check if the popover overflows the viewport and adjust
+                requestAnimationFrame(() => {
+                    const rect = el.getBoundingClientRect();
+                    const margin = 8;
+
+                    // Horizontal: flip left if overflowing right
+                    if (rect.right > window.innerWidth - margin) {
+                        const newLeft = Math.max(margin, props.x - rect.width);
+                        el.style.left = `${newLeft}px`;
+                    }
+
+                    // Vertical: flip above if overflowing bottom
+                    if (rect.bottom > window.innerHeight - margin) {
+                        const newTop = Math.max(margin, props.y - rect.height);
+                        el.style.top = `${newTop}px`;
+                    }
+                });
+            }}
             class={styles.highlightPopover}
             style={{ left: `${props.x}px`, top: `${props.y}px` }}
             onClick={props.onClick}
