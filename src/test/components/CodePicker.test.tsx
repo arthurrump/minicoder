@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@solidjs/testing-library';
+import { createSignal } from 'solid-js';
 import { CodePicker } from '../../components/CodePicker';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -142,5 +143,58 @@ describe('CodePicker', () => {
     ));
     const editBtn = container.querySelector('button[title="Edit codebook"]');
     expect(editBtn).toBeNull();
+  });
+
+  it('preserves expanded state when codebook content changes', () => {
+    const [codebooks, setCodebooks] = createSignal([
+      mkCodebook('cb1', 'Book One', [mkCode('c1', 'Code One')]),
+      mkCodebook('cb2', 'Book Two', [mkCode('c2', 'Code Two')]),
+    ]);
+    render(() => (
+      <CodePicker
+        codebooks={codebooks()}
+        onCodeClick={vi.fn()}
+      />
+    ));
+
+    // Expand Book One
+    fireEvent.click(screen.getByText('Book One'));
+    expect(screen.getByText('Code One')).toBeTruthy();
+
+    // Update Book One content (e.g. rename a code)
+    setCodebooks([
+      mkCodebook('cb1', 'Book One', [mkCode('c1', 'Code One Renamed')]),
+      mkCodebook('cb2', 'Book Two', [mkCode('c2', 'Code Two')]),
+    ]);
+
+    // Book One should still be expanded, showing the updated code
+    expect(screen.getByText('Code One Renamed')).toBeTruthy();
+    // Book Two should still be collapsed
+    expect(screen.queryByText('Code Two')).toBeNull();
+  });
+
+  it('expands newly added codebook', () => {
+    const [codebooks, setCodebooks] = createSignal([
+      mkCodebook('cb1', 'Book One', [mkCode('c1', 'Code One')]),
+    ]);
+    render(() => (
+      <CodePicker
+        codebooks={codebooks()}
+        onCodeClick={vi.fn()}
+      />
+    ));
+
+    // Single codebook is auto-expanded
+    expect(screen.getByText('Code One')).toBeTruthy();
+
+    // Add a second codebook
+    setCodebooks([
+      mkCodebook('cb1', 'Book One', [mkCode('c1', 'Code One')]),
+      mkCodebook('cb2', 'Book Two', [mkCode('c2', 'Code Two')]),
+    ]);
+
+    // Book One should remain expanded, Book Two should auto-expand (new)
+    expect(screen.getByText('Code One')).toBeTruthy();
+    expect(screen.getByText('Code Two')).toBeTruthy();
   });
 });

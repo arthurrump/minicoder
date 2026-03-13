@@ -1,4 +1,4 @@
-import { createEffect, createSignal, For, Show, on } from "solid-js";
+import { createEffect, createSignal, For, Show, on, createMemo } from "solid-js";
 import styles from "./CodePicker.module.css";
 import codebookStyles from "./CodebookList.module.css";
 import ColorChip from "./ColorChip";
@@ -67,17 +67,35 @@ const CodeList = (props: CodeListProps) => (
 );
 
 export const CodePicker = (props: CodePickerProps) => {
-    // Track expanded state for each codebook by filename
+    // Track expanded state for each codebook by guid
     const [expandedCodebooks, setExpandedCodebooks] = createSignal<Set<string>>(new Set());
 
-    // Update expanded state when codebooks change
-    createEffect(on(() => props.codebooks, (codebooks) => {
-        // If only one codebook, expand it by default
+    // Track the set of codebook guids to detect additions/removals (not content changes)
+    const codebookGuids = createMemo(() =>
+        props.codebooks.map(cb => cb.guid).sort().join(',')
+    );
+
+    // Only reset expanded state when codebooks are added/removed, not on content changes
+    createEffect(on(codebookGuids, () => {
+        const codebooks = props.codebooks;
         if (codebooks.length === 1) {
+            // Single codebook: expand it by default
             setExpandedCodebooks(new Set([codebooks[0].guid]));
         } else {
-            // Multiple codebooks: collapse all
-            setExpandedCodebooks(new Set<string>());
+            // Multiple codebooks: keep existing expanded state, expand any newly added ones
+            setExpandedCodebooks(prev => {
+                const currentGuids = new Set(codebooks.map(cb => cb.guid));
+                const newSet = new Set<string>();
+                // Retain expansion for codebooks that still exist
+                for (const guid of prev) {
+                    if (currentGuids.has(guid)) newSet.add(guid);
+                }
+                // Expand newly added codebooks
+                for (const cb of codebooks) {
+                    if (!prev.has(cb.guid) && prev.size > 0) newSet.add(cb.guid);
+                }
+                return newSet;
+            });
         }
     }));
 
