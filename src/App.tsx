@@ -4,6 +4,7 @@ import { TopBar } from './components/TopBar';
 import CodingView from './views/CodingView';
 import { StoreProvider, useStore } from './store';
 import { SettingsProvider } from './settings';
+import { NotificationsProvider, useNotifications } from './notifications';
 
 function isFileSystemAccessSupported(): boolean {
   return 'showDirectoryPicker' in window;
@@ -11,6 +12,10 @@ function isFileSystemAccessSupported(): boolean {
 
 const Layout: ParentComponent = (props) => {
   const { store, actions } = useStore();
+  const { notify } = useNotifications();
+
+  // Wire store errors to the notification system
+  actions.setErrorHandler((message) => notify('error', message));
 
   const currentDir = createMemo(() => store.dirHandle?.name || "");
   createEffect(() => {
@@ -27,8 +32,10 @@ const Layout: ParentComponent = (props) => {
       // showDirectoryPicker is only available in Chromium-based browsers
       const handle = await (window as any).showDirectoryPicker();
       await actions.setDirectory(handle);
-    } catch (err) {
-      // User cancelled or error occurred
+    } catch (err: any) {
+      // User cancelled — not an error
+      if (err?.name === 'AbortError') return;
+      notify('error', `Failed to open folder: ${err?.message || err}`);
       console.error("Failed to pick directory:", err);
     }
   }
@@ -65,9 +72,11 @@ const App: Component = () => {
   return (
     <SettingsProvider>
       <StoreProvider>
-        <HashRouter root={Layout}>
-          <Route path="/*filePath" component={CodingView} />
-        </HashRouter>
+        <NotificationsProvider>
+          <HashRouter root={Layout}>
+            <Route path="/*filePath" component={CodingView} />
+          </HashRouter>
+        </NotificationsProvider>
       </StoreProvider>
     </SettingsProvider>
   );

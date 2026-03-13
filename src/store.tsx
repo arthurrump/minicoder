@@ -50,6 +50,9 @@ export interface StoreActions {
 
   /** Re-scan the directory and reload all codebooks, sources, queries, and file contents from disk. */
   refresh: () => Promise<void>;
+
+  /** Register an error callback for user-facing error notifications. */
+  setErrorHandler: (handler: (message: string) => void) => void;
 }
 
 export interface StoreIndices {
@@ -88,6 +91,13 @@ export const StoreProvider: ParentComponent = (props) => {
 
   // Track pending saves for the saving indicator
   const pendingKeys = new Set<string>();
+
+  // User-facing error handler (set via actions.setErrorHandler)
+  let errorHandler: ((message: string) => void) | null = null;
+
+  function reportError(message: string) {
+    if (errorHandler) errorHandler(message);
+  }
 
   // ---- File system helpers ----
 
@@ -186,6 +196,7 @@ export const StoreProvider: ParentComponent = (props) => {
       await writeFile(loc, JSON.stringify(codebook, null, 2));
     } catch (err) {
       console.error(`Failed to save codebook ${guid}:`, err);
+      reportError(`Failed to save codebook "${codebook.name}". Changes may be lost.`);
     }
   }
 
@@ -204,6 +215,7 @@ export const StoreProvider: ParentComponent = (props) => {
       await writeFile(loc, JSON.stringify(store.sources[sourcePath], null, 2));
     } catch (err) {
       console.error(`Failed to save source ${sourcePath}:`, err);
+      reportError(`Failed to save annotations for "${sourcePath}". Changes may be lost.`);
     }
   }
 
@@ -221,6 +233,7 @@ export const StoreProvider: ParentComponent = (props) => {
       await writeFile(loc, JSON.stringify(query, null, 2));
     } catch (err) {
       console.error(`Failed to save query ${guid}:`, err);
+      reportError(`Failed to save query "${query.name}". Changes may be lost.`);
     }
   }
 
@@ -239,6 +252,7 @@ export const StoreProvider: ParentComponent = (props) => {
       }
     } catch (err) {
       console.warn(`Failed to load file content for ${path}:`, err);
+      reportError(`Failed to load file "${path}".`);
     } finally {
       loadingFiles.delete(path);
     }
@@ -729,6 +743,10 @@ export const StoreProvider: ParentComponent = (props) => {
       await Promise.all(flushPromises);
 
       await actions.setDirectory(dirHandle);
+    },
+
+    setErrorHandler(handler: (message: string) => void) {
+      errorHandler = handler;
     },
   };
 
