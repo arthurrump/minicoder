@@ -167,9 +167,9 @@ const CodingView: Component = () => {
     return fc?.type === 'binary';
   });
 
-  // Clear pending selection when switching tabs (but only clear the browser's
-  // DOM selection — keep the pendingSelection signal so it survives tab switches)
+  // Clear pending selection when switching tabs
   createEffect(on(selectedFilePath, () => {
+    setPendingSelection(null);
     window.getSelection()?.removeAllRanges();
   }, { defer: true }));
 
