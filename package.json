@@ -4,15 +4,21 @@
     "start": "vite",
     "dev": "vite",
     "build": "vite build",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "packageManager": "pnpm@10.24.0",
   "devDependencies": {
+    "@solidjs/testing-library": "^0.8.10",
+    "@testing-library/jest-dom": "^6.9.1",
     "@types/primer__octicons": "^19.11.1",
+    "jsdom": "^28.1.0",
     "solid-devtools": "^0.34.3",
     "typescript": "^5.7.2",
     "vite": "^7.1.4",
-    "vite-plugin-solid": "^2.11.8"
+    "vite-plugin-solid": "^2.11.8",
+    "vitest": "^4.1.0"
   },
   "dependencies": {
     "@corvu/resizable": "^0.2.5",

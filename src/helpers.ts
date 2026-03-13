@@ -136,6 +136,7 @@ export function isPlainText(content: string): boolean {
     }
     
     // If more than 30% are non-printable, consider it binary
+    if (sampleSize === 0) return true;
     const nonPrintableRatio = nonPrintableCount / sampleSize;
     return nonPrintableRatio < 0.3;
 }

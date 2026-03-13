@@ -108,6 +108,53 @@ pnpm build     # Output to `dist/`
 pnpm serve     # Preview production build
 ```
 
+### Testing
+
+#### Running Tests
+```bash
+pnpm test          # Run all tests once (CI mode)
+pnpm test:watch    # Run tests in watch mode (development)
+```
+
+#### Test Stack
+- **Test runner**: [Vitest](https://vitest.dev/) (configured in `vite.config.ts`)
+- **Component testing**: [@solidjs/testing-library](https://github.com/solidjs-community/solid-testing-library) with jsdom
+- **DOM matchers**: [@testing-library/jest-dom](https://github.com/testing-library/jest-dom)
+- **Test files**: `src/test/*.test.ts` and `src/test/*.test.tsx`
+
+#### What Is Tested
+
+| File | What is tested |
+|---|---|
+| `src/test/helpers.test.ts` | `hashBytes`, `debounce` (with flush/cancel), `buildSegments`, `isPlainText`, `fileTreeCompare` |
+| `src/test/queryEvaluation.test.ts` | `evaluateQueryOnSource` — null query, code/codebook leaf nodes, AND/OR/NOT operators, user filtering |
+| `src/test/matchingSelections.test.ts` | `findOverlapping`, `flattenCodes`, `computeCollapsedRegions`, `buildMatchGroups` |
+| `src/test/components.test.tsx` | `ColorChip` (render, styles, class prop), `CodePicker` (expand/collapse, code click, edit button) |
+
+#### What to Test When Adding Features
+- **New pure utility functions** in `src/helpers.ts` → add unit tests in `src/test/helpers.test.ts`
+- **New query logic** in `src/components/QueryEditor.tsx` → add unit tests in `src/test/queryEvaluation.test.ts`; export any function you want to test
+- **New data-processing utilities** exported from components → add unit tests in the relevant `src/test/*.test.ts` file
+- **New Solid.js components** → add component tests in `src/test/components.test.tsx` (or a new `ComponentName.test.tsx` file) using `@solidjs/testing-library`
+
+#### Writing Component Tests
+Component tests use `@solidjs/testing-library` which wraps `@testing-library/dom`. Key APIs:
+```tsx
+import { render, screen, fireEvent } from '@solidjs/testing-library';
+
+render(() => <MyComponent prop="value" />);
+screen.getByText('expected text');
+fireEvent.click(screen.getByRole('button'));
+```
+
+Global type declarations (e.g. `Codebook`, `Code`, `TextSelection`, `QueryNode`) are available in all test files without explicit imports — they come from `src/models/files/`.
+
+#### Testing Considerations (Manual / Browser)
+Some features require manual testing in a Chromium browser, as they depend on the File System Access API (`showDirectoryPicker`):
+- Test with multiple codebooks and nested code hierarchies
+- Verify hash mismatch warnings on file edits
+- Check debounced saves don't lose rapid selection updates
+
 ### Navigation
 - **File selection** uses hash routes with encoded file path (`/#/{encodedFilePath}`)
 - **Tabs** manage multiple open files with scroll position memory
@@ -150,12 +197,7 @@ pnpm serve     # Preview production build
 3. **New store state**: Update AppStore interface + initialization
 4. **Component state**: Prefer `createMemo` for derived state over extra signals
 5. **Solid.js**: Write idiomatic Solid.js code
-
-### Testing Considerations
-- Must use a Chromium browser with local folder picker support
-- Test with multiple codebooks and nested code hierarchies
-- Verify hash mismatch warnings on file edits
-- Check debounced saves don't lose rapid selection updates
+6. **New testable logic**: Add unit tests in `src/test/` (see [Testing](#testing) section above)
 
 ## External Dependencies
 - `@solidjs/router` - hash-based client routing
