@@ -6,6 +6,7 @@ import {
   buildMatchGroups,
   type MatchGroup,
 } from '../components/MatchingSelections';
+import { FileContent } from '../store';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
