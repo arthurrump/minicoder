@@ -208,6 +208,44 @@ describe('evaluateQueryOnSource — AND operator', () => {
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
     expect(result).toEqual([]);
   });
+
+  // Regression test for commit 5dbbf18 ("Fix AND queries").
+  // The old implementation evaluated each TextSelection independently:
+  //   evaluateQuery(node, selection)  →  AND checked every child against the SAME selection
+  // Since each selection has exactly ONE code, an AND(c1, c2) query would ALWAYS return
+  // empty — no single selection satisfies two different codes simultaneously.
+  //
+  // The fix rewrites query evaluation to use atomic text segments.  Each segment knows
+  // ALL selections covering it; AND passes when every child matches at least one
+  // covering selection.  Two overlapping selections with different codes now satisfy AND.
+  it('regression 5dbbf18: AND(c1,c2) matches where two differently-coded selections overlap', () => {
+    // The only way for AND(c1, c2) to produce results is via overlapping segments.
+    // Old code: each selection tested independently → AND always empty.
+    // New code: segment [0,5) is covered by both s1(c1) and s2(c2) → AND matches.
+    const sels = [
+      mkSel('s1', 0, 5, 'c1'),
+      mkSel('s2', 2, 8, 'c2'),
+    ];
+    const node: QueryNode = {
+      type: 'operator',
+      operator: 'AND',
+      children: [
+        { type: 'code', codeGuid: 'c1', includeSubcodes: false },
+        { type: 'code', codeGuid: 'c2', includeSubcodes: false },
+      ],
+    };
+    const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
+    // Both selections should be returned because the overlap region satisfies AND
+    expect(result.map(s => s.guid)).toContain('s1');
+    expect(result.map(s => s.guid)).toContain('s2');
+    // A third selection with no overlap must NOT be returned
+    const selsWithExtra = [
+      ...sels,
+      mkSel('s3', 20, 25, 'c1'), // isolated, no c2 overlap
+    ];
+    const resultWithExtra = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, selsWithExtra);
+    expect(resultWithExtra.map(s => s.guid)).not.toContain('s3');
+  });
 });
 
 // ── NOT operator ───────────────────────────────────────────────────────────
