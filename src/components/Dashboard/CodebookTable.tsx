@@ -2,6 +2,7 @@ import { createMemo, createSignal, For, Show, type Component } from 'solid-js';
 import { disambiguatePaths } from '../../utils/paths';
 import CodeRow from './CodeRow';
 import styles from './Dashboard.module.css';
+import type { Code, Codebook } from '../../models/files';
 
 interface CodebookTableProps {
   codebook: Codebook;

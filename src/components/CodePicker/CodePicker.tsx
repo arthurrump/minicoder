@@ -2,6 +2,7 @@ import { createEffect, createSignal, For, Show, on, createMemo } from "solid-js"
 import codebookStyles from "./CodebookList.module.css";
 import CodeList from "./CodeList";
 import octicons from "@primer/octicons";
+import type { Code, Codebook } from "../../models/files";
 
 interface CodePickerProps {
     codebooks: Codebook[];

@@ -2,6 +2,7 @@ import { createMemo, type Component } from 'solid-js';
 import { useStore } from '../../store';
 import { findOverlapping, MatchingSelectionsList, type MatchGroup } from '../MatchingSelections';
 import { evaluateQueryOnSource, parseFilterList, compileGlobs, matchesAnyGlob } from '../../utils/query';
+import type { Code, Codebook, Query } from '../../models/files';
 
 interface QueryMatchingSelectionsProps {
   query: Query;

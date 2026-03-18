@@ -2,6 +2,7 @@ import { For, Show } from "solid-js";
 import styles from "./CodePicker.module.css";
 import ColorChip from "../ColorChip";
 import octicons from "@primer/octicons";
+import type { Code, Codebook } from "../../models/files";
 
 export interface CodeListProps {
     codes: Code[];

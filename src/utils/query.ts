@@ -1,4 +1,5 @@
 import { buildSegments } from '../helpers';
+import type { QueryNode, TextSelection } from '../models/files';
 
 /**
  * Evaluate a query node against a single atomic segment (a region of text

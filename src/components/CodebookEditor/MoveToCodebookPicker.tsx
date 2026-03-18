@@ -1,5 +1,6 @@
 import { createMemo, For, type Component } from 'solid-js';
 import styles from './CodebookEditor.module.css';
+import type { Codebook } from '../../models/files';
 
 interface MoveToCodebookPickerProps {
   sourceCodebookGuid: string;

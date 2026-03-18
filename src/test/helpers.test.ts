@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { hashBytes, debounce, buildSegments, isPlainText, fileTreeCompare, sanitizeFileName, validateCodebook, validateSource, validateQuery } from '../helpers';
+import type { Codebook, TextSelection } from '../models/files';
 
 // ── hashBytes ──────────────────────────────────────────────────────────────
 

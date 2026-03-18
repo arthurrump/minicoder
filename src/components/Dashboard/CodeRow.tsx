@@ -1,6 +1,7 @@
 import { For, Show, type Component } from 'solid-js';
 import ColorChip from '../ColorChip';
 import styles from './Dashboard.module.css';
+import type { Code } from '../../models/files';
 
 export interface CodeRowProps {
   code: Code;

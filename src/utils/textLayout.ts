@@ -1,5 +1,6 @@
 import { lightenColor } from './colors';
 import type { Segment } from '../helpers';
+import type { Code, Codebook, TextSelection } from '../models/files';
 
 export const UNDERLINE_HEIGHT = 4;
 export const UNDERLINE_GAP = 1;

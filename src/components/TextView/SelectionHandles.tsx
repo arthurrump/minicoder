@@ -2,6 +2,7 @@ import { createMemo, createSignal, Show, type Component, onMount, onCleanup, cre
 import styles from './TextView.module.css';
 import { type Segment } from '../../helpers';
 import { type HandlePosition, getHandlePositions, getCharIndexFromPoint } from '../../utils/textLayout';
+import type { Code, Codebook, TextSelection } from '../../models/files';
 
 export interface SelectionHandlesProps {
     selection: TextSelection;

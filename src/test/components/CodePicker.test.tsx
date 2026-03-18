@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@solidjs/testing-library';
 import { createSignal } from 'solid-js';
 import { CodePicker } from '../../components/CodePicker';
+import type { Code, Codebook } from '../../models/files';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

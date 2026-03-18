@@ -1,6 +1,7 @@
 import { createContext, createMemo, onCleanup, useContext, type Accessor, type ParentComponent } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
 import { hashBytes, debounce, isPlainText, fileTreeCompare, sanitizeFileName, validateCodebook, validateSource, validateQuery, type Debounced } from './helpers';
+import type { Codebook, Code, TextSelectionReference, Source, TextSelection, Query, QueryNode } from './models/files';
 
 /** File location — cached directory handle to avoid tree walks on save */
 export interface FileLocation {

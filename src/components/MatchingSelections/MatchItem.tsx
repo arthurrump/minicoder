@@ -4,6 +4,7 @@ import styles from './MatchingSelections.module.css';
 import ColorChip from '../ColorChip';
 import TextView from '../TextView';
 import { computeCollapsedRegions, type MatchGroup } from '../../utils/selections';
+import type { Code, Codebook } from '../../models/files';
 
 export interface MatchItemProps {
   group: MatchGroup;

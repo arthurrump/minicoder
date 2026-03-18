@@ -2,6 +2,7 @@ import { type Component } from 'solid-js';
 import styles from './TextView.module.css';
 import { type Segment } from '../../helpers';
 import { getUnderlineStyle } from '../../utils/textLayout';
+import type { Code, Codebook } from '../../models/files';
 
 export interface TextSegmentProps {
     segment: Segment;

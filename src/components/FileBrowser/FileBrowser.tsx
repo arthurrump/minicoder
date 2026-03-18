@@ -5,6 +5,7 @@ import { useStore } from '../../store';
 import DirTreePicker from './DirTreePicker';
 import { type DirNode } from './DirTreeNode';
 import styles from "./FileBrowser.module.css";
+import type { Codebook, Query } from '../../models/files';
 
 interface ExtensionFilter {
   extensions: string[]; // e.g., ['.ts', '.tsx', '.js']

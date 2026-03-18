@@ -2,6 +2,7 @@ import { createSignal, createMemo, Show, type Component } from 'solid-js';
 import { useStore } from '../../store';
 import { generateTopLevelColor } from '../../utils/colors';
 import { flattenCodesWithDepth } from '../../utils/codeTree';
+import type { Code, Codebook } from '../../models/files';
 import styles from './CodebookEditor.module.css';
 import CodeSelectionsModal from '../CodeSelectionsModal';
 import MergeTargetPicker from './MergeTargetPicker';

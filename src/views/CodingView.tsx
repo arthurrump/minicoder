@@ -13,6 +13,7 @@ import { useStore } from '../store';
 import { useSettings } from '../settings';
 import { disambiguatePaths } from '../utils/paths';
 import { scrollToCharOffset } from '../utils/textLayout';
+import type { Code, Codebook, TextSelection } from '../models/files';
 import styles from './CodingView.module.css';
 
 const CodingView: Component = () => {

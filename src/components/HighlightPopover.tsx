@@ -3,6 +3,7 @@ import { type Component, Show, createMemo, createSignal, For, onMount } from 'so
 import styles from './HighlightPopover.module.css';
 import ColorChip from './ColorChip';
 import { useStore } from '../store';
+import type { Code, Codebook, CodeReference, TextSelection } from '../models/files';
 
 interface HighlightPopoverProps {
     x: number;

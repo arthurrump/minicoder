@@ -1,6 +1,7 @@
 import { createMemo, For, type Component } from 'solid-js';
 import styles from './CodebookEditor.module.css';
 import ColorChip from '../ColorChip';
+import type { Code } from '../../models/files';
 
 interface MergeTargetPickerProps {
   sourceCodeGuid: string;

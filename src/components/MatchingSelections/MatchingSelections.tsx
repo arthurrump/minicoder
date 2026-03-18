@@ -3,6 +3,7 @@ import { useStore } from '../../store';
 import styles from './MatchingSelections.module.css';
 import LazyMatchItem from './LazyMatchItem';
 import { type MatchGroup } from '../../utils/selections';
+import type { Code, Codebook } from '../../models/files';
 
 // Re-export functions and types that were extracted to utils for backward compatibility
 export { findOverlapping, computeCollapsedRegions, buildMatchGroups, type MatchGroup, type CollapsedRegion, type BuildMatchGroupsResult } from '../../utils/selections';

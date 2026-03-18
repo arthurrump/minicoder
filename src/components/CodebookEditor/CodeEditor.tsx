@@ -2,6 +2,7 @@ import { Show, type Component } from 'solid-js';
 import octicons from '@primer/octicons';
 import styles from './CodebookEditor.module.css';
 import CodeTreeEditor from './CodeTreeEditor';
+import type { Code } from '../../models/files';
 
 interface CodeEditorProps {
   code: Code;

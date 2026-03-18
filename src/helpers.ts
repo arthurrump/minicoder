@@ -1,3 +1,5 @@
+import type { Codebook, Source, TextSelection, Query } from './models/files';
+
 // Hash raw bytes (ArrayBuffer)
 export async function hashBytes(data: ArrayBuffer): Promise<string> {
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);

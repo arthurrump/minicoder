@@ -1,4 +1,5 @@
 // Utilities for traversing and manipulating hierarchical code trees
+import type { Code, Codebook } from '../models/files';
 
 /** Flatten all codes in a code tree into a list with depth info */
 export function flattenCodesWithDepth(codes: Code[], depth: number = 0): { code: Code; depth: number }[] {

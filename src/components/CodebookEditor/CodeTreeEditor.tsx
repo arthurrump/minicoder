@@ -1,6 +1,7 @@
 import { Index, type Component } from 'solid-js';
 import { generateSubcodeColor } from '../../utils/colors';
 import CodeEditor from './CodeEditor';
+import type { Code } from '../../models/files';
 
 interface CodeTreeEditorProps {
   codes: Code[];

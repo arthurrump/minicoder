@@ -15,6 +15,7 @@ import {
     getSelectionAtLayer,
     getTextOffset,
 } from '../../utils/textLayout';
+import type { Code, Codebook, TextSelection } from '../../models/files';
 
 interface TextViewProps {
     content: string;

@@ -1,4 +1,5 @@
 import type { FileContent } from '../store';
+import type { Source, TextSelection } from '../models/files';
 
 // A match group represents a contiguous region of text that matches the query
 export interface MatchGroup {

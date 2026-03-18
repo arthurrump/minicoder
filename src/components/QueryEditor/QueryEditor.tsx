@@ -3,6 +3,7 @@ import { useStore } from '../../store';
 import styles from './QueryEditor.module.css';
 import QueryNodeEditor from './QueryNodeEditor';
 import QueryMatchingSelections from './QueryMatchingSelections';
+import type { Code, Codebook, Query, QueryNode } from '../../models/files';
 
 interface QueryEditorProps {
   queryGuid: string;

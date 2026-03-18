@@ -5,6 +5,7 @@ import { updateCodeInTree } from '../utils/codeTree';
 import styles from './CodeSelectionsModal.module.css';
 import ColorChip from './ColorChip';
 import { MatchingSelectionsList, buildMatchGroups } from './MatchingSelections';
+import type { Code, Source } from '../models/files';
 
 interface CodeSelectionsModalProps {
   codeGuid: string;
