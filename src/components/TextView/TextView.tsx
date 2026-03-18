@@ -1,23 +1,20 @@
 import octicons from '@primer/octicons';
 import { createMemo, createSignal, For, Show, type Component, onMount, onCleanup, createEffect } from 'solid-js';
 import styles from './TextView.module.css';
-import HighlightPopover from './HighlightPopover';
-import ColorChip from './ColorChip';
-import { useStore } from '../store';
-import { buildSegments, type Segment } from '../helpers';
-import { computeSelectionLayers } from '../utils/selections';
-import { lightenColor } from '../utils/colors';
+import HighlightPopover from '../HighlightPopover';
+import ColorChip from '../ColorChip';
+import TextSegment from './TextSegment';
+import SelectionHandles from './SelectionHandles';
+import { useStore } from '../../store';
+import { buildSegments } from '../../helpers';
+import { computeSelectionLayers } from '../../utils/selections';
 import {
     UNDERLINE_HEIGHT,
     UNDERLINE_GAP,
-    type HandlePosition,
     getHoveredLayer,
     getSelectionAtLayer,
-    getUnderlineStyle,
-    getHandlePositions,
-    getCharIndexFromPoint,
     getTextOffset,
-} from '../utils/textLayout';
+} from '../../utils/textLayout';
 
 interface TextViewProps {
     content: string;
@@ -30,150 +27,6 @@ interface TextViewProps {
     /** GUIDs of selections that should not show resize handles (e.g. clipped or boundary selections) */
     nonResizableGuids?: Set<string>;
 }
-
-interface TextSegmentProps {
-    segment: Segment;
-    selectionLayers: Map<string, number>;
-    codeIndex: Record<string, { code: Code; codebook: Codebook }>;
-    totalLayers: number;
-    hoveredSelectionGuid: string | null;
-    segmentRef: (el: HTMLSpanElement) => void;
-}
-
-/**
- * A text segment with background-based underlines.
- * Hit detection is handled at the container level.
- */
-const TextSegment: Component<TextSegmentProps> = (props) => {
-    return (
-        <span
-            ref={props.segmentRef}
-            class={styles.textSegment}
-            data-segment-start={props.segment.start}
-            data-segment-end={props.segment.end}
-            style={getUnderlineStyle(
-                props.segment.selections,
-                props.selectionLayers,
-                props.codeIndex,
-                props.totalLayers,
-                props.hoveredSelectionGuid
-            )}
-        >
-            {props.segment.text}
-        </span>
-    );
-};
-
-interface SelectionHandlesProps {
-    selection: TextSelection;
-    segments: Segment[];
-    segmentElements: Map<number, HTMLSpanElement>;
-    containerRef: HTMLElement | null;
-    codeIndex: Record<string, { code: Code; codebook: Codebook }>;
-    onDragStart: (handle: 'start' | 'end') => void;
-    onDragMove: (charIndex: number) => void;
-    onDragEnd: () => void;
-    draggingHandle: 'start' | 'end' | null;
-}
-
-/**
- * Renders draggable handles at the start and end of an active selection.
- */
-const SelectionHandles: Component<SelectionHandlesProps> = (props) => {
-    const [positions, setPositions] = createSignal<{ start: HandlePosition | null; end: HandlePosition | null }>({ start: null, end: null });
-    
-    // Get the color for this selection's code
-    const codeColor = createMemo(() => {
-        const info = props.codeIndex[props.selection.code.codeGuid];
-        return info?.code.color ?? '#007acc';
-    });
-    
-    // Update handle positions when selection or layout changes
-    const updatePositions = () => {
-        const pos = getHandlePositions(
-            props.selection,
-            props.segments,
-            props.segmentElements,
-            props.containerRef
-        );
-        setPositions(pos);
-    };
-    
-    // Update on mount and when dependencies change
-    createEffect(() => {
-        // Track dependencies
-        props.selection;
-        props.segments;
-        updatePositions();
-    });
-    
-    // Also update on resize
-    onMount(() => {
-        window.addEventListener('resize', updatePositions);
-        onCleanup(() => window.removeEventListener('resize', updatePositions));
-    });
-    
-    const handlePointerDown = (handle: 'start' | 'end', e: PointerEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        (e.target as Element).setPointerCapture(e.pointerId);
-        props.onDragStart(handle);
-    };
-    
-    const handlePointerMove = (e: PointerEvent) => {
-        if (!props.draggingHandle) return;
-        
-        // Find character index at mouse position
-        const charIndex = getCharIndexFromPoint(e.clientX, e.clientY, props.containerRef);
-        if (charIndex !== null) {
-            props.onDragMove(charIndex);
-        }
-    };
-    
-    const handlePointerUp = (e: PointerEvent) => {
-        if (props.draggingHandle) {
-            (e.target as Element).releasePointerCapture(e.pointerId);
-            props.onDragEnd();
-        }
-    };
-    
-    return (
-        <>
-            <Show when={positions().start}>
-                {(pos) => (
-                    <div
-                        class={`${styles.selectionHandle} ${props.draggingHandle === 'start' ? styles.dragging : ''} ${styles.selectionHandleStart}`}
-                        style={{
-                            left: `${pos().x}px`,
-                            top: `${pos().y}px`,
-                            height: `${pos().height}px`,
-                            'background-color': codeColor()
-                        }}
-                        onPointerDown={(e) => handlePointerDown('start', e)}
-                        onPointerMove={handlePointerMove}
-                        onPointerUp={handlePointerUp}
-                    />
-                )}
-            </Show>
-            <Show when={positions().end}>
-                {(pos) => (
-                    <div
-                        class={`${styles.selectionHandle} ${props.draggingHandle === 'end' ? styles.dragging : ''}`}
-                        style={{
-                            left: `${pos().x}px`,
-                            top: `${pos().y}px`,
-                            height: `${pos().height}px`,
-                            'background-color': codeColor()
-                        }}
-                        onPointerDown={(e) => handlePointerDown('end', e)}
-                        onPointerMove={handlePointerMove}
-                        onPointerUp={handlePointerUp}
-                    />
-                )}
-            </Show>
-        </>
-    );
-};
 
 const TextView: Component<TextViewProps> = (props) => {
     const { indices } = useStore();

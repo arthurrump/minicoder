@@ -16,11 +16,11 @@
 }
 
 .codebookEditorHeader {
-    composes: editorHeader from '../styles/shared.module.css';
+    composes: editorHeader from '../../styles/shared.module.css';
 }
 
 .codebookTitle {
-    composes: editorTitle from '../styles/shared.module.css';
+    composes: editorTitle from '../../styles/shared.module.css';
 }
 
 .codebookTitle:hover {
@@ -28,11 +28,11 @@
 }
 
 .codebookTitleInput {
-    composes: editorTitleInput from '../styles/shared.module.css';
+    composes: editorTitleInput from '../../styles/shared.module.css';
 }
 
 .codebookHeaderActions {
-    composes: headerActions from '../styles/shared.module.css';
+    composes: headerActions from '../../styles/shared.module.css';
 }
 
 .codebookCodesEditor {
@@ -47,15 +47,15 @@
 }
 
 .btnSmall {
-    composes: btnSmall from '../styles/shared.module.css';
+    composes: btnSmall from '../../styles/shared.module.css';
 }
 
 .btnPrimary {
-    composes: btnPrimary from '../styles/shared.module.css';
+    composes: btnPrimary from '../../styles/shared.module.css';
 }
 
 .btnDanger {
-    composes: btnDanger from '../styles/shared.module.css';
+    composes: btnDanger from '../../styles/shared.module.css';
 }
 
 .codeEditorItem {
@@ -188,7 +188,7 @@
 }
 
 .mergeOverlay {
-    composes: overlay from '../styles/shared.module.css';
+    composes: overlay from '../../styles/shared.module.css';
     background: rgba(0, 0, 0, 0.4);
 }
 

@@ -96,7 +96,7 @@
 }
 
 .modalOverlay {
-    composes: overlay from '../styles/shared.module.css';
+    composes: overlay from '../../styles/shared.module.css';
 }
 
 .modal {

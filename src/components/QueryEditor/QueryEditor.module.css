@@ -16,11 +16,11 @@
 }
 
 .queryEditorHeader {
-    composes: editorHeader from '../styles/shared.module.css';
+    composes: editorHeader from '../../styles/shared.module.css';
 }
 
 .queryTitle {
-    composes: editorTitle from '../styles/shared.module.css';
+    composes: editorTitle from '../../styles/shared.module.css';
 }
 
 .queryTitle:hover {
@@ -28,11 +28,11 @@
 }
 
 .queryTitleInput {
-    composes: editorTitleInput from '../styles/shared.module.css';
+    composes: editorTitleInput from '../../styles/shared.module.css';
 }
 
 .queryHeaderActions {
-    composes: headerActions from '../styles/shared.module.css';
+    composes: headerActions from '../../styles/shared.module.css';
 }
 
 .queryBuilder {
@@ -78,15 +78,15 @@
 }
 
 .btnSmall {
-    composes: btnSmall from '../styles/shared.module.css';
+    composes: btnSmall from '../../styles/shared.module.css';
 }
 
 .btnPrimary {
-    composes: btnPrimary from '../styles/shared.module.css';
+    composes: btnPrimary from '../../styles/shared.module.css';
 }
 
 .btnDanger {
-    composes: btnDanger from '../styles/shared.module.css';
+    composes: btnDanger from '../../styles/shared.module.css';
 }
 
 /* Query Node Styles */
@@ -162,11 +162,11 @@
 }
 
 .codeChip {
-    composes: codeChip from '../styles/shared.module.css';
+    composes: codeChip from '../../styles/shared.module.css';
 }
 
 .codebookName {
-    composes: codebookNameLabel from '../styles/shared.module.css';
+    composes: codebookNameLabel from '../../styles/shared.module.css';
 }
 
 .nodeActions {

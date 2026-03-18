@@ -76,7 +76,7 @@ Single-page application with file-based routing:
   - Handles "pending selection" → "code application" workflow
   - Warns on file hash mismatch (file changed since last coding)
 
-- **CodebookEditor** - [src/components/CodebookEditor.tsx](src/components/CodebookEditor.tsx)
+- **CodebookEditor** - [src/components/CodebookEditor/](src/components/CodebookEditor/)
   - Embedded component for editing `.mcc` files
   - CRUD for codes (including nested subcodes)
   - Displayed in place of TextView when a codebook file is selected
@@ -194,14 +194,83 @@ Some features require manual testing in a Chromium browser, as they depend on th
 - **Store** (`createStore`) for global state with immutable updates
 
 ### Component Structure
-- Most components co-locate styles as `.module.css` files
-- Shared CSS patterns live in `src/styles/shared.module.css` and are composed into component modules via `composes: ... from`
+
+Components live in `src/components/`. Each component with sub-components is organized as a **directory** with an `index.ts` barrel export. Simple standalone components remain as flat files.
+
+**One component per file**: Each `.tsx` file should contain exactly one component. When a component is split into multiple pieces, each piece gets its own file within the component's directory.
+
+#### Directory-based components
+
+Multi-file components are structured as directories:
+
+```
+src/components/
+  CodebookEditor/
+    index.ts              # barrel: export { default } from './CodebookEditor'
+    CodebookEditor.tsx     # main component (default export)
+    CodebookEditor.module.css
+    CodeEditor.tsx         # sub-component
+    CodeTreeEditor.tsx     # sub-component
+    MergeTargetPicker.tsx  # sub-component
+    ...
+  CodePicker/
+    index.ts
+    CodePicker.tsx
+    CodePicker.module.css
+    CodebookList.module.css
+    CodeList.tsx
+  Dashboard/
+    index.ts
+    Dashboard.tsx
+    Dashboard.module.css
+    CodebookTable.tsx
+    CodeRow.tsx
+  FileBrowser/
+    index.ts
+    FileBrowser.tsx
+    FileBrowser.module.css
+    DirTreePicker.tsx
+    DirTreeNode.tsx
+  MatchingSelections/
+    index.ts
+    MatchingSelections.tsx
+    MatchingSelections.module.css
+    MatchItem.tsx
+    LazyMatchItem.tsx
+  QueryEditor/
+    index.ts
+    QueryEditor.tsx
+    QueryEditor.module.css
+    QueryNodeEditor.tsx
+    QueryMatchingSelections.tsx
+  TextView/
+    index.ts
+    TextView.tsx
+    TextView.module.css
+    TextSegment.tsx
+    SelectionHandles.tsx
+```
+
+#### Flat components
+
+Simple single-file components remain as flat files in `src/components/`:
+- `ColorChip.tsx` / `ColorChip.module.css`
+- `HighlightPopover.tsx` / `HighlightPopover.module.css`
+- `TopBar.tsx` / `TopBar.module.css`
+- `CodeSelectionsModal.tsx` / `CodeSelectionsModal.module.css`
+
+#### Conventions
+
+- **Barrel exports**: Each directory has an `index.ts` that re-exports the default export (and any named exports consumed by other modules). This preserves import paths like `../components/CodebookEditor`.
+- **Shared CSS module**: Sub-components within a directory import the parent's `.module.css` file (e.g., `import styles from './CodebookEditor.module.css'`).
+- **CSS `composes` paths**: Files one level deeper use `../../styles/shared.module.css`; flat files use `../styles/shared.module.css`.
 - Pure utility functions live in `src/utils/` (not in component files)
 - Props are typed interfaces (e.g., `CodePickerProps`)
-- Recursive rendering for nested codes (e.g., CodeList in [src/components/CodePicker.tsx](src/components/CodePicker.tsx))
+- Recursive rendering for nested codes (e.g., CodeList in [src/components/CodePicker/CodeList.tsx](src/components/CodePicker/CodeList.tsx))
 
 ### File Naming Conventions
 - Components: PascalCase (e.g., `FileBrowser.tsx`)
+- Component directories: PascalCase matching the main component (e.g., `FileBrowser/`)
 - Styles: `ComponentName.module.css`
 - Views: PascalCase in `views/` directory
 - Types: Defined inline or in [src/models.ts](src/models.ts)
@@ -219,13 +288,14 @@ Some features require manual testing in a Chromium browser, as they depend on th
 
 ### When Adding Features
 1. **File format changes**: Update both read/write paths in [src/store.tsx](src/store.tsx)
-2. **New components**: Add to `src/components/` with co-located `.module.css`
-3. **New store state**: Update AppStore interface + initialization
-4. **Component state**: Prefer `createMemo` for derived state over extra signals
-5. **Solid.js**: Write idiomatic Solid.js code
-6. **New testable logic**: Add unit tests in `src/test/` (see [Testing](#testing) section above)
-7. **New pure functions**: Add to `src/utils/` (not inside component files)
-8. **New shared CSS patterns**: Add to `src/styles/shared.module.css` and compose into component modules
+2. **New components**: Add to `src/components/` with co-located `.module.css`. If the component has sub-components, create a directory with an `index.ts` barrel export. Keep **one component per file**.
+3. **New sub-components**: Add a new `.tsx` file in the parent component's directory. Import the shared CSS module from the same directory.
+4. **New store state**: Update AppStore interface + initialization
+5. **Component state**: Prefer `createMemo` for derived state over extra signals
+6. **Solid.js**: Write idiomatic Solid.js code
+7. **New testable logic**: Add unit tests in `src/test/` (see [Testing](#testing) section above)
+8. **New pure functions**: Add to `src/utils/` (not inside component files)
+9. **New shared CSS patterns**: Add to `src/styles/shared.module.css` and compose into component modules
 
 ## External Dependencies
 - `@solidjs/router` - hash-based client routing

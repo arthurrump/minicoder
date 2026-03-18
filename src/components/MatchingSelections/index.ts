@@ -1,0 +1,1 @@
+export { default, MatchingSelectionsList, findOverlapping, computeCollapsedRegions, buildMatchGroups, flattenCodes, type MatchGroup, type CollapsedRegion, type BuildMatchGroupsResult, type MatchingSelectionsListProps } from './MatchingSelections';

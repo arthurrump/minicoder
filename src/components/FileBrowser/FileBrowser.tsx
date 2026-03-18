@@ -1,7 +1,9 @@
 import { createSignal, For, Show, createEffect, type JSX } from 'solid-js';
 import octicons from '@primer/octicons';
 
-import { useStore } from '../store';
+import { useStore } from '../../store';
+import DirTreePicker from './DirTreePicker';
+import { type DirNode } from './DirTreeNode';
 import styles from "./FileBrowser.module.css";
 
 interface ExtensionFilter {
@@ -32,114 +34,6 @@ interface FileNode {
 }
 
 type CreateModalType = 'codebook' | 'query';
-
-interface DirNode {
-  name: string;
-  relativePath: string;
-  handle: FileSystemDirectoryHandle;
-}
-
-/** Lazy-loading tree view for picking a directory */
-function DirTreePicker(pickerProps: {
-  dirHandle: FileSystemDirectoryHandle;
-  selectedDir: string;
-  onSelect: (dir: string) => void;
-}) {
-  const [rootChildren, setRootChildren] = createSignal<DirNode[]>([]);
-
-  createEffect(async () => {
-    const dirs: DirNode[] = [];
-    for await (const entry of pickerProps.dirHandle.values()) {
-      if (entry.kind === 'directory') {
-        dirs.push({ name: entry.name, relativePath: entry.name, handle: entry as FileSystemDirectoryHandle });
-      }
-    }
-    setRootChildren(dirs.sort((a, b) => a.name.localeCompare(b.name)));
-  });
-
-  return (
-    <div>
-      <div
-        class={styles.dirNode}
-        classList={{ [styles.dirNodeSelected]: pickerProps.selectedDir === '' }}
-        onClick={() => pickerProps.onSelect('')}
-      >
-        <span class={styles.dirToggle} />
-        <span>/</span>
-      </div>
-      <For each={rootChildren()}>
-        {(node) => (
-          <DirTreeNode
-            node={node}
-            depth={1}
-            selectedDir={pickerProps.selectedDir}
-            onSelect={pickerProps.onSelect}
-          />
-        )}
-      </For>
-    </div>
-  );
-}
-
-/** A single node in the directory tree picker */
-function DirTreeNode(nodeProps: {
-  node: DirNode;
-  depth: number;
-  selectedDir: string;
-  onSelect: (dir: string) => void;
-}) {
-  const [expanded, setExpanded] = createSignal(false);
-  const [children, setChildren] = createSignal<DirNode[]>([]);
-  const [loaded, setLoaded] = createSignal(false);
-
-  async function toggle(e: MouseEvent) {
-    e.stopPropagation();
-    if (!loaded()) {
-      const dirs: DirNode[] = [];
-      for await (const entry of nodeProps.node.handle.values()) {
-        if (entry.kind === 'directory') {
-          const relativePath = `${nodeProps.node.relativePath}/${entry.name}`;
-          dirs.push({ name: entry.name, relativePath, handle: entry as FileSystemDirectoryHandle });
-        }
-      }
-      setChildren(dirs.sort((a, b) => a.name.localeCompare(b.name)));
-      setLoaded(true);
-    }
-    setExpanded(!expanded());
-  }
-
-  function select() {
-    nodeProps.onSelect(nodeProps.node.relativePath);
-  }
-
-  return (
-    <div>
-      <div
-        class={styles.dirNode}
-        classList={{ [styles.dirNodeSelected]: nodeProps.selectedDir === nodeProps.node.relativePath }}
-        style={{ "padding-left": `${nodeProps.depth * 16 + 6}px` }}
-        onClick={select}
-      >
-        <span class={styles.dirToggle} onClick={toggle}>
-          {expanded() ? '▼' : '▶'}
-        </span>
-        <span>{nodeProps.node.name}</span>
-      </div>
-      <Show when={expanded()}>
-        <For each={children()}>
-          {(child) => (
-            <DirTreeNode
-              node={child}
-              depth={nodeProps.depth + 1}
-              selectedDir={nodeProps.selectedDir}
-              onSelect={nodeProps.onSelect}
-            />
-          )}
-        </For>
-      </Show>
-    </div>
-  );
-}
 
 export function FileBrowser(props: FileBrowserProps) {
   const { store, actions } = useStore();
