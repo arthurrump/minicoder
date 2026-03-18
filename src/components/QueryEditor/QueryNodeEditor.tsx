@@ -4,7 +4,7 @@ import { useStore } from '../../store';
 import styles from './QueryEditor.module.css';
 import ColorChip from '../ColorChip';
 import { flattenCodes } from '../MatchingSelections';
-import type { Code, QueryNode, QueryOperator } from '../../models/files';
+import type { QueryNode, QueryOperator } from '../../models/files';
 
 interface QueryNodeEditorProps {
   node: QueryNode;

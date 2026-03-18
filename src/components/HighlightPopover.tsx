@@ -1,5 +1,5 @@
 import octicons from '@primer/octicons';
-import { type Component, Show, createMemo, createSignal, For, onMount } from 'solid-js';
+import { type Component, Show, createMemo, createSignal, For } from 'solid-js';
 import styles from './HighlightPopover.module.css';
 import ColorChip from './ColorChip';
 import { useStore } from '../store';

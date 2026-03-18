@@ -1,4 +1,4 @@
-import { createMemo, createSignal, Show, type Component, onMount, onCleanup, createEffect } from 'solid-js';
+import { createMemo, createSignal, Show, type Component, onMount, onCleanup, createEffect, on } from 'solid-js';
 import styles from './TextView.module.css';
 import { type Segment } from '../../helpers';
 import { type HandlePosition, getHandlePositions, getCharIndexFromPoint } from '../../utils/textLayout';
@@ -40,12 +40,10 @@ const SelectionHandles: Component<SelectionHandlesProps> = (props) => {
     };
     
     // Update on mount and when dependencies change
-    createEffect(() => {
-        // Track dependencies
-        props.selection;
-        props.segments;
-        updatePositions();
-    });
+    createEffect(on(
+        () => [props.selection, props.segments] as const,
+        () => updatePositions(),
+    ));
     
     // Also update on resize
     onMount(() => {

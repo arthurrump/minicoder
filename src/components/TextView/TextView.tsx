@@ -1,5 +1,4 @@
-import octicons from '@primer/octicons';
-import { createMemo, createSignal, For, Show, type Component, onMount, onCleanup, createEffect } from 'solid-js';
+import { createMemo, createSignal, For, Show, type Component, onCleanup, createEffect } from 'solid-js';
 import styles from './TextView.module.css';
 import HighlightPopover from '../HighlightPopover';
 import ColorChip from '../ColorChip';
@@ -39,7 +38,6 @@ const TextView: Component<TextViewProps> = (props) => {
     const [mousePosition, setMousePosition] = createSignal<{ x: number; y: number } | null>(null);
     
     let containerRef: HTMLElement | null = null;
-    let lastValidDragPosition: number | null = null;
     
     // Store refs to all segment elements, keyed by segment index
     const segmentElements = new Map<number, HTMLSpanElement>();
@@ -180,13 +178,6 @@ const TextView: Component<TextViewProps> = (props) => {
         }
     }
     
-    function handleRemoveCode() {
-        // The popover handles removal through the store directly.
-        // The createEffect watching props.selections will reactively close the popover.
-        setPopover(null);
-        setActiveSelectionGuid(null);
-    }
-    
     // Get the active selection object
     const activeSelection = createMemo(() => {
         const guid = activeSelectionGuid();
@@ -198,12 +189,6 @@ const TextView: Component<TextViewProps> = (props) => {
     function handleDragStart(handle: 'start' | 'end') {
         setDraggingHandle(handle);
         setPopover(null); // Close popover while dragging
-        
-        // Initialize last valid position based on which handle we're dragging
-        const sel = activeSelection();
-        if (sel) {
-            lastValidDragPosition = handle === 'start' ? sel.start : sel.end;
-        }
     }
     
     function handleDragMove(charIndex: number) {
@@ -237,14 +222,12 @@ const TextView: Component<TextViewProps> = (props) => {
         }
         
         if (newStart !== sel.start || newEnd !== sel.end) {
-            lastValidDragPosition = handle === 'start' ? newStart : newEnd;
             props.onSelectionUpdate?.(sel.guid, newStart, newEnd);
         }
     }
     
     function handleDragEnd() {
         setDraggingHandle(null);
-        lastValidDragPosition = null;
     }
     
     return (

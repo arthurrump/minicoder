@@ -3,9 +3,7 @@ import octicons from '@primer/octicons';
 
 import { useStore } from '../../store';
 import DirTreePicker from './DirTreePicker';
-import { type DirNode } from './DirTreeNode';
 import styles from "./FileBrowser.module.css";
-import type { Codebook, Query } from '../../models/files';
 
 interface ExtensionFilter {
   extensions: string[]; // e.g., ['.ts', '.tsx', '.js']
@@ -55,18 +53,6 @@ export function FileBrowser(props: FileBrowserProps) {
   createEffect(async () => {
     await refreshDirectory();
   });
-
-  /** Load immediate subdirectories of a directory handle */
-  async function loadSubdirectories(dirHandle: FileSystemDirectoryHandle, pathPrefix: string): Promise<DirNode[]> {
-    const dirs: DirNode[] = [];
-    for await (const entry of dirHandle.values()) {
-      if (entry.kind === 'directory') {
-        const relativePath = pathPrefix ? `${pathPrefix}/${entry.name}` : entry.name;
-        dirs.push({ name: entry.name, relativePath, handle: entry as FileSystemDirectoryHandle });
-      }
-    }
-    return dirs.sort((a, b) => a.name.localeCompare(b.name));
-  }
 
   function openCreateModal(type: CreateModalType) {
     setCreateName('');

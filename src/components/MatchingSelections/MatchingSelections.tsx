@@ -1,5 +1,4 @@
 import { createSignal, Index, Show, type Component } from 'solid-js';
-import { useStore } from '../../store';
 import styles from './MatchingSelections.module.css';
 import LazyMatchItem from './LazyMatchItem';
 import { type MatchGroup } from '../../utils/selections';
@@ -22,14 +21,17 @@ export interface MatchingSelectionsListProps {
 }
 
 export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (props) => {
-  const { store } = useStore();
   const [localExpandedKeys, setLocalExpandedKeys] = createSignal<Set<string>>(new Set());
 
   const getGroupKey = (group: MatchGroup) => `${group.sourcePath}::${group.start}-${group.end}`;
 
   const getExpandedKeys = () => props.expandedKeys ?? localExpandedKeys();
   const setExpandedKeys = (next: Set<string>) => {
-    props.onExpandedKeysChange ? props.onExpandedKeysChange(next) : setLocalExpandedKeys(next);
+    if (props.onExpandedKeysChange) {
+      props.onExpandedKeysChange(next);
+    } else {
+      setLocalExpandedKeys(next);
+    }
   };
 
   const isExpanded = (group: MatchGroup) => getExpandedKeys().has(getGroupKey(group));

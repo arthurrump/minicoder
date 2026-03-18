@@ -2,7 +2,7 @@ import { createSignal, createMemo, Show, type Component } from 'solid-js';
 import { useStore } from '../../store';
 import { generateTopLevelColor } from '../../utils/colors';
 import { flattenCodesWithDepth } from '../../utils/codeTree';
-import type { Code, Codebook } from '../../models/files';
+import type { Code } from '../../models/files';
 import styles from './CodebookEditor.module.css';
 import CodeSelectionsModal from '../CodeSelectionsModal';
 import MergeTargetPicker from './MergeTargetPicker';
@@ -28,7 +28,11 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
 
   const getExpandedGuids = () => props.expandedCodeGuids ?? localExpandedGuids();
   const setExpandedGuids = (next: Set<string>) => {
-    props.onExpandedCodeGuidsChange ? props.onExpandedCodeGuidsChange(next) : setLocalExpandedGuids(next);
+    if (props.onExpandedCodeGuidsChange) {
+      props.onExpandedCodeGuidsChange(next);
+    } else {
+      setLocalExpandedGuids(next);
+    }
   };
 
   const isExpanded = (guid: string) => getExpandedGuids().has(guid);
@@ -257,7 +261,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
             </Show>
 
             <Show when={movingCodeGuid()}>
-              {(codeGuid) => (
+              {() => (
                 <MoveToCodebookPicker
                   sourceCodebookGuid={cb().guid}
                   codebooks={codebooksList()}
