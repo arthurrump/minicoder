@@ -14,7 +14,7 @@ describe('NotificationsProvider', () => {
     );
   }
 
-  it('renders error toast when notify is called', async () => {
+  it('renders error toast when notify is called', () => {
     render(() => (
       <NotificationsProvider>
         <TestNotifier />
@@ -26,7 +26,7 @@ describe('NotificationsProvider', () => {
     expect(screen.getByText('Something went wrong').closest('.toast')).toHaveClass('toast-error');
   });
 
-  it('renders warning toast', async () => {
+  it('renders warning toast', () => {
     render(() => (
       <NotificationsProvider>
         <TestNotifier />
@@ -38,7 +38,7 @@ describe('NotificationsProvider', () => {
     expect(screen.getByText('Watch out').closest('.toast')).toHaveClass('toast-warning');
   });
 
-  it('renders info toast', async () => {
+  it('renders info toast', () => {
     render(() => (
       <NotificationsProvider>
         <TestNotifier />
@@ -50,7 +50,7 @@ describe('NotificationsProvider', () => {
     expect(screen.getByText('FYI').closest('.toast')).toHaveClass('toast-info');
   });
 
-  it('dismisses toast on click', async () => {
+  it('dismisses toast on click', () => {
     render(() => (
       <NotificationsProvider>
         <TestNotifier />
@@ -65,7 +65,7 @@ describe('NotificationsProvider', () => {
     expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument();
   });
 
-  it('can show multiple toasts', async () => {
+  it('can show multiple toasts', () => {
     render(() => (
       <NotificationsProvider>
         <TestNotifier />
@@ -79,7 +79,7 @@ describe('NotificationsProvider', () => {
     expect(screen.getByText('Watch out')).toBeInTheDocument();
   });
 
-  it('has an aria-live region for accessibility', async () => {
+  it('has an aria-live region for accessibility', () => {
     render(() => (
       <NotificationsProvider>
         <TestNotifier />

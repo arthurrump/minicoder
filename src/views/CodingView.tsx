@@ -168,7 +168,7 @@ const CodingView: Component = () => {
   });
 
   // Check hash when file content or source changes
-  createEffect(on([selectedFilePath, () => fileContent()], async ([path, content]) => {
+  createEffect(on([selectedFilePath, () => fileContent()], ([path, content]) => {
     if (!path || !content) {
       setHashMismatchWarning(false);
       return;
