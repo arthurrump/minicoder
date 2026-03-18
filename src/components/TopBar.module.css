@@ -101,10 +101,10 @@
     background: var(--bg-secondary);
 }
 
-.primaryBtn {
-    background: var(--accent-color) !important;
+.settingsActions .primaryBtn {
+    background: var(--accent-color);
     color: white;
-    border-color: var(--accent-color) !important;
+    border-color: var(--accent-color);
 }
 
 .primaryBtn:hover {

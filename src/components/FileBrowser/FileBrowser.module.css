@@ -158,8 +158,9 @@
     background: var(--code-hover);
 }
 
-.dirNodeSelected {
-    background: var(--accent-color) !important;
+.dirNode.dirNodeSelected,
+.dirNode.dirNodeSelected:hover {
+    background: var(--accent-color);
     color: white;
 }
 

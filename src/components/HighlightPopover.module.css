@@ -60,8 +60,6 @@
     padding: 8px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    font-family: inherit;
-    font-size: inherit;
     resize: vertical;
     min-height: 60px;
     box-sizing: border-box;
