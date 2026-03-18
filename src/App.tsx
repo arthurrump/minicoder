@@ -44,7 +44,7 @@ const Layout: ParentComponent = (props) => {
     <>
       <TopBar 
         currentDir={currentDir()} 
-        onChangeDir={pickFolder} 
+        onChangeDir={() => { void pickFolder(); }} 
       />
       <Show when={store.isLoading}>
         <div class="loading-overlay">

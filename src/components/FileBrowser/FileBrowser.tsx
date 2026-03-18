@@ -262,7 +262,7 @@ export function FileBrowser(props: FileBrowserProps) {
         <button
           class={styles.createBtn}
           classList={{ [styles.spinning]: refreshing() }}
-          onClick={handleRefresh}
+          onClick={() => { void handleRefresh(); }}
           title="Refresh files"
           disabled={refreshing()}
         >
@@ -287,7 +287,7 @@ export function FileBrowser(props: FileBrowserProps) {
                 placeholder={`Enter ${createModal()} name`}
                 value={createName()}
                 onInput={(e) => setCreateName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && createName().trim()) handleCreateConfirm(); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && createName().trim()) void handleCreateConfirm(); }}
                 ref={(el) => setTimeout(() => el.focus(), 0)}
               />
             </div>
@@ -305,7 +305,7 @@ export function FileBrowser(props: FileBrowserProps) {
               <button onClick={closeCreateModal}>Cancel</button>
               <button
                 class={styles.primaryBtn}
-                onClick={handleCreateConfirm}
+                onClick={() => { void handleCreateConfirm(); }}
                 disabled={!createName().trim()}
               >Create</button>
             </div>

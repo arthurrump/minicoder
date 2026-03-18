@@ -127,7 +127,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                 </Show>
                 <button 
                   class={`${styles.btnSmall} ${styles.btnDanger}`}
-                  onClick={deleteQuery}
+                  onClick={() => { void deleteQuery(); }}
                 >
                   Delete Query
                 </button>

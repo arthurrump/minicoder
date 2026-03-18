@@ -212,7 +212,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                 </button>
                 <button 
                   class={`${styles.btnSmall} ${styles.btnDanger}`}
-                  onClick={deleteCodebook}
+                  onClick={() => { void deleteCodebook(); }}
                 >
                   Delete Codebook
                 </button>
@@ -275,7 +275,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
               <CodebookMergeTargetPicker
                 sourceCodebookGuid={cb().guid}
                 codebooks={codebooksList()}
-                onSelect={mergeCodebook}
+                onSelect={(guid) => { void mergeCodebook(guid); }}
                 onCancel={() => setMergingCodebook(false)}
               />
             </Show>

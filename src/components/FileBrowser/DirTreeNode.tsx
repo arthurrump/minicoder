@@ -45,7 +45,7 @@ function DirTreeNode(nodeProps: {
         style={{ "padding-left": `${nodeProps.depth * 16 + 6}px` }}
         onClick={select}
       >
-        <span class={styles.dirToggle} onClick={toggle}>
+        <span class={styles.dirToggle} onClick={(e) => { void toggle(e); }}>
           {expanded() ? '▼' : '▶'}
         </span>
         <span>{nodeProps.node.name}</span>
