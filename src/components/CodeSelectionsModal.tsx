@@ -208,7 +208,7 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
             )}
           </Show>
           <Show when={!editing() && codeInfo()?.code.description}>
-            <p class={styles.codeDescription}>{codeInfo()!.code.description}</p>
+            <p class={styles.codeDescription}>{codeInfo().code.description}</p>
           </Show>
 
           <div class={styles.modalOptions}>

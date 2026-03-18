@@ -38,7 +38,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       // Evaluate the query on all source selections
       const subcodeIndex = indices.subcodesByGuid();
       const codebookIndex = indices.codesByCodebook();
-      let selections = evaluateQueryOnSource(queryNode, query.userFilter, subcodeIndex, codebookIndex, source.selections);
+      const selections = evaluateQueryOnSource(queryNode, query.userFilter, subcodeIndex, codebookIndex, source.selections);
       matchCount += selections.length;
       // And short-circuit if none match
       if (selections.length === 0) continue;

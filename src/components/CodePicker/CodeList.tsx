@@ -46,7 +46,7 @@ const CodeList = (props: CodeListProps) => (
                 <Show when={code.subcodes && code.subcodes.length > 0}>
                     <div class={styles.subcodes}>
                         <CodeList 
-                            codes={code.subcodes!} 
+                            codes={code.subcodes} 
                             codebook={props.codebook}
                             onCodeClick={props.onCodeClick}
                             onInfoClick={props.onInfoClick}

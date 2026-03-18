@@ -192,7 +192,7 @@ export function FileBrowser(props: FileBrowserProps) {
 
     createEffect(async () => {
       if (nodeProps.node.handle.kind === 'directory' && isExpanded()) {
-        const dirHandle = nodeProps.node.handle as FileSystemDirectoryHandle;
+        const dirHandle = nodeProps.node.handle;
         const loadedChildren = await loadDirectory(dirHandle, nodeProps.node.relativePath);
         setChildren(loadedChildren);
       }

@@ -147,7 +147,7 @@ const CodingView: Component = () => {
         setPendingScrollOffset(null);
         // Scroll to the character offset by finding the target line
         requestAnimationFrame(() => {
-          scrollToCharOffset(textViewWrapperRef!, content, charOffset);
+          scrollToCharOffset(textViewWrapperRef, content, charOffset);
         });
       } else {
         // Use requestAnimationFrame to ensure DOM has updated
@@ -452,7 +452,7 @@ const CodingView: Component = () => {
                   return (
                     <Show when={guid()}>
                       <div class={tabPath === selectedFilePath() ? styles.viewActive : styles.viewHidden}>
-                        <CodebookEditor codebookGuid={guid()!} />
+                        <CodebookEditor codebookGuid={guid()} />
                       </div>
                     </Show>
                   );
@@ -467,7 +467,7 @@ const CodingView: Component = () => {
                     <Show when={guid()}>
                       <div class={tabPath === selectedFilePath() ? styles.viewActive : styles.viewHidden}>
                         <QueryEditor
-                          queryGuid={guid()!}
+                          queryGuid={guid()}
                           onOpenSource={handleOpenSource}
                           onSelectionCreate={handleSelectionCreateForSource}
                           onSelectionUpdate={handleSelectionUpdateForSource}
@@ -505,7 +505,7 @@ const CodingView: Component = () => {
                         <TextView
                           content={content()}
                           selections={selections()}
-                          sourcePath={selectedFilePath()!}
+                          sourcePath={selectedFilePath()}
                           onSelectionCreate={handleSelectionCreate}
                           onSelectionUpdate={handleSelectionUpdate}
                           onSelectionClear={handleSelectionClear}

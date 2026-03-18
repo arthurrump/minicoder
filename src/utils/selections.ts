@@ -224,7 +224,7 @@ export function buildMatchGroups(
       }
     }
 
-    let allSelections = [...matchingSelections];
+    const allSelections = [...matchingSelections];
 
     if (!showOnlyMatching) {
       // Transitively expand ranges with overlapping non-matching selections

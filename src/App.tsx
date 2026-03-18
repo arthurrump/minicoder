@@ -52,7 +52,7 @@ const Layout: ParentComponent = (props) => {
           <p>Loading directory...</p>
         </div>
       </Show>
-      <Show when={store.dirHandle} fallback={<p style="text-align: center">Open a folder to get started.</p>}>
+      <Show when={store.dirHandle} fallback={<p style={{"text-align":"center"}}>Open a folder to get started.</p>}>
         {props.children}
       </Show>
     </>

@@ -7,7 +7,7 @@ describe('hashBytes', () => {
   it('returns a hex string for known input', async () => {
     const encoder = new TextEncoder();
     const data = encoder.encode('hello').buffer;
-    const hash = await hashBytes(data as ArrayBuffer);
+    const hash = await hashBytes(data);
     // SHA-256 of 'hello' is well-known
     expect(hash).toBe('2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
   });
@@ -21,15 +21,15 @@ describe('hashBytes', () => {
   it('produces different hashes for different inputs', async () => {
     const a = new TextEncoder().encode('abc').buffer;
     const b = new TextEncoder().encode('xyz').buffer;
-    const hashA = await hashBytes(a as ArrayBuffer);
-    const hashB = await hashBytes(b as ArrayBuffer);
+    const hashA = await hashBytes(a);
+    const hashB = await hashBytes(b);
     expect(hashA).not.toBe(hashB);
   });
 
   it('produces the same hash for the same input', async () => {
     const data = new TextEncoder().encode('consistent').buffer;
-    const hash1 = await hashBytes(data as ArrayBuffer);
-    const hash2 = await hashBytes(data as ArrayBuffer);
+    const hash1 = await hashBytes(data);
+    const hash2 = await hashBytes(data);
     expect(hash1).toBe(hash2);
   });
 });
