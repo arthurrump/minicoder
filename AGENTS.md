@@ -123,12 +123,24 @@ pnpm build     # Output to `dist/`
 pnpm serve     # Preview production build
 ```
 
-### Type checking
-`pnpm build` runs type checks, but they can also be run separately:
+### Type checking and linting
+`pnpm build` runs type checks, but they can also be run separately. `pnpm check` runs both TypeScript type checking and ESLint:
 
 ```bash
-pnpm check     # Runs tsc to typecheck
+pnpm check     # Runs tsc typecheck + ESLint
 ```
+
+Run this before committing to catch type errors and lint violations.
+
+### ESLint configuration
+
+ESLint is configured in [eslint.config.js](eslint.config.js) with three rule sets:
+
+- **TypeScript** (`typescript-eslint` recommended with type-checked rules) — strict type safety, no `any`, no unused vars, etc.
+- **Solid.js** (`eslint-plugin-solid`) — enforces idiomatic Solid.js patterns (e.g. no direct JSX spread on components, correct reactive dependency usage)
+- **CSS** (`@eslint/css`) — enforces `rem`/`em` for font sizes (`css/relative-font-units`); baseline and invalid-property rules are disabled since the app targets Chromium only
+
+Adhere to these rules in all new code. Fix any lint errors introduced by your changes before finishing.
 
 ### Testing
 
