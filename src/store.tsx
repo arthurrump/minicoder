@@ -422,7 +422,7 @@ export const StoreProvider: ParentComponent = (props) => {
       if (store.fileContents[path] !== undefined) return;
       if (loadingFiles.has(path)) return;
       loadingFiles.add(path);
-      loadFileContentFromDisk(path);
+      void loadFileContentFromDisk(path);
     },
 
     updateCodebook(codebook: Codebook) {
@@ -912,7 +912,7 @@ export const StoreProvider: ParentComponent = (props) => {
     if (pendingKeys.size > 0) {
       e.preventDefault();
       // Attempt to flush all pending debounced saves synchronously
-      for (const saver of debouncedSavers.values()) saver.flush();
+      for (const saver of debouncedSavers.values()) void saver.flush();
     }
   }
 
