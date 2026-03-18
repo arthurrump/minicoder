@@ -1,5 +1,6 @@
 import { createSignal, For, Show, createEffect, type JSX } from 'solid-js';
 import octicons from '@primer/octicons';
+import Icon from '../Icon';
 
 import { useStore } from '../../store';
 import DirTreePicker from './DirTreePicker';
@@ -209,13 +210,13 @@ export function FileBrowser(props: FileBrowserProps) {
           </Show>
           <Show when={nodeProps.node.handle.kind === 'file'}>
             <Show when={nodeProps.node.name.endsWith('.mcc')}>
-              <span class={styles.fileIndicator} innerHTML={octicons.repo.toSVG()} />
+              <Icon icon={octicons.repo} class={styles.fileIndicator} />
             </Show>
             <Show when={nodeProps.node.name.endsWith('.mcq')}>
-              <span class={styles.fileIndicator} innerHTML={octicons.search.toSVG()} />
+              <Icon icon={octicons.search} class={styles.fileIndicator} />
             </Show>
             <Show when={!nodeProps.node.name.endsWith('.mcc') && !nodeProps.node.name.endsWith('.mcq')}>
-              <span class={styles.fileIndicator} innerHTML={octicons.file.toSVG()} />
+              <Icon icon={octicons.file} class={styles.fileIndicator} />
             </Show>
           </Show>
           <span>{nodeProps.node.name}</span>
@@ -245,18 +246,18 @@ export function FileBrowser(props: FileBrowserProps) {
     <div class={styles.fileBrowser}>
       <div class={styles.fileBrowserHeader}>
         <button class={styles.createBtn} onClick={() => openCreateModal('codebook')} title="New Codebook">
-          <span innerHTML={octicons.repo.toSVG({ width: 14 })} />
+          <Icon icon={octicons.repo} width={14} />
           <span>+</span>
         </button>
         <button class={styles.createBtn} onClick={() => openCreateModal('query')} title="New Query">
-          <span innerHTML={octicons.search.toSVG({ width: 14 })} />
+          <Icon icon={octicons.search} width={14} />
           <span>+</span>
         </button>
         <span class={styles.saveIndicator} title={store.isSaving ? 'Saving...' : 'Saved'}>
           <Show when={store.isSaving} fallback={
-            <span innerHTML={octicons['issue-closed'].toSVG({ width: 14 })} />
+            <Icon icon={octicons['issue-closed']} width={14} />
           }>
-            <span class={styles.spinning} innerHTML={octicons['issue-draft'].toSVG({ width: 14 })} />
+            <Icon icon={octicons['issue-draft']} width={14} class={styles.spinning} />
           </Show>
         </span>
         <button
@@ -266,7 +267,7 @@ export function FileBrowser(props: FileBrowserProps) {
           title="Refresh files"
           disabled={refreshing()}
         >
-          <span innerHTML={octicons.sync.toSVG({ width: 14 })} />
+          <Icon icon={octicons.sync} width={14} />
         </button>
       </div>
       <div class={styles.fileBrowserTree}>

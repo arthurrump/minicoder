@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js";
 import styles from "./CodePicker.module.css";
 import ColorChip from "../ColorChip";
+import Icon from "../Icon";
 import octicons from "@primer/octicons";
 import type { Code, Codebook } from "../../models/files";
 
@@ -40,8 +41,7 @@ const CodeList = (props: CodeListProps) => (
                                 e.preventDefault();
                                 e.stopPropagation();
                             }}
-                            innerHTML={octicons.info.toSVG()}
-                        />
+                        ><Icon icon={octicons.info} /></button>
                     </Show>
                 </div>
                 <Show when={code.subcodes && code.subcodes.length > 0}>

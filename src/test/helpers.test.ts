@@ -81,7 +81,7 @@ describe('debounce', () => {
   });
 
   it('flush() immediately executes pending call and returns result', () => {
-    const fn = vi.fn().mockReturnValue(42);
+    const fn = vi.fn<(arg: string) => number>().mockReturnValue(42);
     const d = debounce(fn, 100);
     d('x');
     const result = d.flush();

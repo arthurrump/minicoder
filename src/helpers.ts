@@ -152,6 +152,7 @@ export function isPlainText(content: string): boolean {
 export function sanitizeFileName(name: string): string | null {
     // Remove characters invalid on Windows/macOS/Linux filesystems
     let sanitized = name
+        // eslint-disable-next-line no-control-regex
         .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')  // Replace invalid chars with underscore
         .replace(/\s+/g, ' ')                       // Normalize whitespace
         .trim()

@@ -261,14 +261,12 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
             </Show>
 
             <Show when={movingCodeGuid()}>
-              {() => (
-                <MoveToCodebookPicker
-                  sourceCodebookGuid={cb().guid}
-                  codebooks={codebooksList()}
-                  onSelect={confirmMove}
-                  onCancel={() => setMovingCodeGuid(null)}
-                />
-              )}
+              <MoveToCodebookPicker
+                sourceCodebookGuid={cb().guid}
+                codebooks={codebooksList()}
+                onSelect={confirmMove}
+                onCancel={() => setMovingCodeGuid(null)}
+              />
             </Show>
 
             <Show when={mergingCodebook()}>

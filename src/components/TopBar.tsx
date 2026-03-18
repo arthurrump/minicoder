@@ -2,6 +2,7 @@ import { Show, createSignal, onMount } from "solid-js";
 import { useSettings } from "../settings";
 
 import styles from "./TopBar.module.css"
+import Icon from "./Icon";
 import octicons from "@primer/octicons";
 
 interface TopBarProps {
@@ -47,7 +48,7 @@ export function TopBar(props: TopBarProps) {
                 <button onClick={props.onChangeDir}>
                     <Show when={props.currentDir} fallback="Open Directory">Change Directory</Show>
                 </button>
-                <button onClick={openSettings} title="Settings" innerHTML={octicons.gear.toSVG()} />
+                <button onClick={openSettings} title="Settings"><Icon icon={octicons.gear} /></button>
             </div>
             <Show when={showSettings()}>
                 <div class={styles.settingsOverlay} onClick={() => setShowSettings(false)}>

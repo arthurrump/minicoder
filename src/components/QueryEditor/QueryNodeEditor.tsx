@@ -1,5 +1,6 @@
 import { createSignal, createMemo, For, Show, type Component } from 'solid-js';
 import octicons from '@primer/octicons';
+import Icon from '../Icon';
 import { useStore } from '../../store';
 import styles from './QueryEditor.module.css';
 import ColorChip from '../ColorChip';
@@ -180,8 +181,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
             class={styles.deleteBtn}
             onClick={props.onDelete}
             title="Remove"
-            innerHTML={octicons.trash.toSVG({ width: 14 })}
-          />
+          ><Icon icon={octicons.trash} width={14} /></button>
         </div>
       </div>
       

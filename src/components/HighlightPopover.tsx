@@ -1,4 +1,5 @@
 import octicons from '@primer/octicons';
+import Icon from './Icon';
 import { type Component, Show, createMemo, createSignal, For } from 'solid-js';
 import styles from './HighlightPopover.module.css';
 import ColorChip from './ColorChip';
@@ -126,20 +127,17 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
                         class={styles.popoverActionBtn}
                         onClick={handleToggleExample}
                         title={isExample() ? 'Remove as example' : 'Mark as example'}
-                        innerHTML={isExample() ? octicons['star-fill'].toSVG() : octicons.star.toSVG()}
-                    />
+                    ><Icon icon={isExample() ? octicons['star-fill'] : octicons.star} /></button>
                     <button
                         class={styles.popoverActionBtn}
                         onClick={() => setShowCodePicker(!showCodePicker())}
                         title="Change code"
-                        innerHTML={octicons['arrow-switch'].toSVG()}
-                    />
+                    ><Icon icon={octicons['arrow-switch']} /></button>
                     <button
                         class={styles.popoverActionBtn}
                         onClick={handleRemoveCode}
                         title="Remove this code"
-                        innerHTML={octicons.trash.toSVG()}
-                    />
+                    ><Icon icon={octicons.trash} /></button>
                 </div>
             </div>
             <Show when={props.selection.creatingUser}>
