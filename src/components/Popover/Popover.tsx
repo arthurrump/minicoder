@@ -43,6 +43,14 @@ const Popover: Component<PopoverProps> = (props) => {
     document.addEventListener('keydown', onKeyDown, true);
     onCleanup(() => document.removeEventListener('keydown', onKeyDown, true));
 
+    // Close on scroll outside the popover (fixed positioning breaks on scroll)
+    const onScroll = (e: Event) => {
+        if (popoverRef && e.target instanceof Node && popoverRef.contains(e.target)) return;
+        props.onClose();
+    };
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    onCleanup(() => window.removeEventListener('scroll', onScroll, { capture: true }));
+
     const codeInfo = createMemo(() => {
         const info = indices.codeByGuid()[props.codeGuid];
         return info ? { code: info.code, codebook: info.codebook } : { code: null, codebook: undefined };
