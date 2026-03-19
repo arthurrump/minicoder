@@ -10,14 +10,17 @@ function DirTreePicker(pickerProps: {
 }) {
   const [rootChildren, setRootChildren] = createSignal<DirNode[]>([]);
 
-  createEffect(async () => {
-    const dirs: DirNode[] = [];
-    for await (const entry of pickerProps.dirHandle.values()) {
-      if (entry.kind === 'directory') {
-        dirs.push({ name: entry.name, relativePath: entry.name, handle: entry as FileSystemDirectoryHandle });
+  createEffect(() => {
+    const handle = pickerProps.dirHandle;
+    void (async () => {
+      const dirs: DirNode[] = [];
+      for await (const entry of handle.values()) {
+        if (entry.kind === 'directory') {
+          dirs.push({ name: entry.name, relativePath: entry.name, handle: entry as FileSystemDirectoryHandle });
+        }
       }
-    }
-    setRootChildren(dirs.sort((a, b) => a.name.localeCompare(b.name)));
+      setRootChildren(dirs.sort((a, b) => a.name.localeCompare(b.name)));
+    })();
   });
 
   return (

@@ -112,7 +112,7 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
             }}
             class={styles.highlightPopover}
             style={{ left: `${props.x}px`, top: `${props.y}px` }}
-            onClick={props.onClick}
+            onClick={(e) => props.onClick(e)}
         >
             <div class={styles.popoverHeader}>
                 <div class={styles.popoverCodeItem}>

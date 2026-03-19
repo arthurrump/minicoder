@@ -19,7 +19,7 @@ const MoveToCodebookPicker: Component<MoveToCodebookPickerProps> = (props) => {
       <div class={styles.mergePanel}>
         <div class={styles.mergePanelHeader}>
           <span>Move to codebook…</span>
-          <button class={styles.codeActionBtn} onClick={props.onCancel}>
+          <button class={styles.codeActionBtn} onClick={() => props.onCancel()}>
             ✕
           </button>
         </div>

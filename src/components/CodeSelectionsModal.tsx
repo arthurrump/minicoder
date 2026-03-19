@@ -189,7 +189,7 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
             ><Icon icon={editing() ? octicons.check : octicons.pencil} width={16} /></button>
             <button
               class={styles.closeBtn}
-              onClick={props.onClose}
+              onClick={() => props.onClose()}
               title="Close"
             ><Icon icon={octicons.x} width={16} /></button>
           </div>

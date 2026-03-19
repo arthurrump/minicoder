@@ -20,7 +20,7 @@ const MergeTargetPicker: Component<MergeTargetPickerProps> = (props) => {
       <div class={styles.mergePanel}>
         <div class={styles.mergePanelHeader}>
           <span>Merge into…</span>
-          <button class={styles.codeActionBtn} onClick={props.onCancel}>
+          <button class={styles.codeActionBtn} onClick={() => props.onCancel()}>
             ✕
           </button>
         </div>

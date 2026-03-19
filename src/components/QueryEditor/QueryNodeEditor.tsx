@@ -179,7 +179,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
           </button>
           <button
             class={styles.deleteBtn}
-            onClick={props.onDelete}
+            onClick={() => props.onDelete()}
             title="Remove"
           ><Icon icon={octicons.trash} width={14} /></button>
         </div>

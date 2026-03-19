@@ -19,7 +19,7 @@ const CodebookMergeTargetPicker: Component<CodebookMergeTargetPickerProps> = (pr
       <div class={styles.mergePanel}>
         <div class={styles.mergePanelHeader}>
           <span>Merge codebook into…</span>
-          <button class={styles.codeActionBtn} onClick={props.onCancel}>
+          <button class={styles.codeActionBtn} onClick={() => props.onCancel()}>
             ✕
           </button>
         </div>

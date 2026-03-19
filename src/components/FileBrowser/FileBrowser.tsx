@@ -51,8 +51,8 @@ export function FileBrowser(props: FileBrowserProps) {
     }
   }
 
-  createEffect(async () => {
-    await refreshDirectory();
+  createEffect(() => {
+    void refreshDirectory();
   });
 
   function openCreateModal(type: CreateModalType) {
@@ -164,7 +164,7 @@ export function FileBrowser(props: FileBrowserProps) {
   }
 
   function FileTreeNode(nodeProps: { node: FileNode; depth?: number }): JSX.Element {
-    const depth = nodeProps.depth ?? 0;
+    const depth = () => nodeProps.depth ?? 0;
     const [children, setChildren] = createSignal<FileNode[]>([]);
 
     const isExpanded = () => {
@@ -178,11 +178,11 @@ export function FileBrowser(props: FileBrowserProps) {
       return nodeProps.node.handle.kind === 'file' && props.selectedFile === nodeProps.node.relativePath;
     };
 
-    createEffect(async () => {
-      if (nodeProps.node.handle.kind === 'directory' && isExpanded()) {
+    createEffect(() => {
+      const expanded = isExpanded();
+      if (nodeProps.node.handle.kind === 'directory' && expanded) {
         const dirHandle = nodeProps.node.handle;
-        const loadedChildren = await loadDirectory(dirHandle, nodeProps.node.relativePath);
-        setChildren(loadedChildren);
+        void loadDirectory(dirHandle, nodeProps.node.relativePath).then(setChildren);
       }
     });
 
@@ -191,7 +191,7 @@ export function FileBrowser(props: FileBrowserProps) {
         <div
           class={styles.node}
           style={{
-            padding: `4px 4px 4px ${depth * 16}px`,
+            padding: `4px 4px 4px ${depth() * 16}px`,
             background: isSelected() ? 'var(--node-selected-background)' : 'transparent',
             color: isSelected() ? 'var(--node-selected-color)' : 'inherit',
           }}
@@ -223,7 +223,7 @@ export function FileBrowser(props: FileBrowserProps) {
         </div>
         <Show when={nodeProps.node.handle.kind === 'directory' && isExpanded()}>
           <For each={children()}>
-            {(child) => <FileTreeNode node={child} depth={depth + 1} />}
+            {(child) => <FileTreeNode node={child} depth={depth() + 1} />}
           </For>
         </Show>
       </div>

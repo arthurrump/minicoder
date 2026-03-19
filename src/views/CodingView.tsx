@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, on, Show, type Component } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, on, onCleanup, Show, type Component } from 'solid-js';
 import { useParams, useNavigate } from '@solidjs/router';
 import Resizable from '@corvu/resizable';
 import FileBrowser from '../components/FileBrowser';
@@ -94,15 +94,13 @@ const CodingView: Component = () => {
   }, { defer: true }));
 
   // Escape key deselects the active code
-  createEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedCode()) {
-        setSelectedCode(null);
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  });
+  const onEscapeKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && selectedCode()) {
+      setSelectedCode(null);
+    }
+  };
+  document.addEventListener('keydown', onEscapeKey);
+  onCleanup(() => document.removeEventListener('keydown', onEscapeKey));
 
   // Sync tabs with URL - if URL has a file that's not in tabs, add it
   createEffect(on(selectedFilePath, (path) => {

@@ -45,7 +45,7 @@ export function TopBar(props: TopBarProps) {
                     </span>
                 </Show>
                 <span>{props.currentDir}</span>
-                <button onClick={props.onChangeDir}>
+                <button onClick={() => props.onChangeDir()}>
                     <Show when={props.currentDir} fallback="Open Directory">Change Directory</Show>
                 </button>
                 <button onClick={openSettings} title="Settings"><Icon icon={octicons.gear} /></button>

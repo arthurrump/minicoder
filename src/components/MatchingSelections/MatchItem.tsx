@@ -137,7 +137,7 @@ const MatchItem: Component<MatchItemProps> = (props) => {
         </Show>
       </div>
       <Show when={hasGaps()}>
-        <button class={styles.expandBtn} onClick={props.onToggleExpand}>
+        <button class={styles.expandBtn} onClick={() => props.onToggleExpand()}>
           {props.isExpanded ? 'Show less' : 'Show more'}
         </button>
       </Show>

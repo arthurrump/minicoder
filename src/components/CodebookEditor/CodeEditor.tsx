@@ -83,7 +83,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
         <div class={styles.codeSubcodesSection}>
           <button 
             class={styles.codeSubcodesToggle}
-            onClick={props.onToggleExpanded}
+            onClick={() => props.onToggleExpanded()}
           >
             <span class={styles.codeExpandIcon}>{props.isExpanded ? '▼' : '▶'}</span>
             <span>Subcodes ({props.code.subcodes?.length || 0})</span>
@@ -108,7 +108,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
               </Show>
               <button 
                 class={`${styles.btnSmall} ${styles.addSubcodeBtn}`}
-                onClick={props.onAddSubcode}
+                onClick={() => props.onAddSubcode()}
               >
                 + Add Subcode
               </button>
