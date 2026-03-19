@@ -7,6 +7,7 @@ import TextView from '../components/TextView';
 import ColorChip from '../components/ColorChip';
 import CodebookEditor from '../components/CodebookEditor';
 import QueryEditor from '../components/QueryEditor';
+import SourceCodesBar from '../components/SourceCodesBar';
 import CodeSelectionsModal from '../components/CodeSelectionsModal';
 import Dashboard from '../components/Dashboard';
 import { useStore } from '../store';
@@ -417,6 +418,11 @@ const CodingView: Component = () => {
               <div class={styles.filePathBar}>
                 {selectedFilePath()}
               </div>
+            </Show>
+
+            {/* Source codes bar for source files */}
+            <Show when={selectedFilePath() && !isSpecialFile()}>
+                <SourceCodesBar sourcePath={selectedFilePath()} />
             </Show>
             
             {/* Content area - views are layered with absolute positioning.

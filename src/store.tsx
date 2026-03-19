@@ -1,7 +1,7 @@
 import { createContext, createMemo, onCleanup, useContext, type Accessor, type ParentComponent } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
 import { hashBytes, debounce, isPlainText, fileTreeCompare, sanitizeFileName, validateCodebook, validateSource, validateQuery, type Debounced } from './helpers';
-import type { Codebook, Code, TextSelectionReference, Source, TextSelection, Query, QueryNode } from './models/files';
+import type { Codebook, Code, TextSelectionReference, Source, TextSelection, AppliedCode, Query, QueryNode } from './models/files';
 
 /** File location — cached directory handle to avoid tree walks on save */
 export interface FileLocation {
@@ -39,6 +39,7 @@ export interface StoreActions {
   deleteCode: (codebookGuid: string, codeGuid: string) => void;
 
   updateSourceSelections: (path: string, selections: TextSelection[]) => void;
+  updateSourceCodes: (path: string, sourceCodes: AppliedCode[]) => void;
 
   mergeCode: (codebookGuid: string, sourceCodeGuid: string, targetCodeGuid: string) => void;
   moveCode: (sourceCodebookGuid: string, codeGuid: string, targetCodebookGuid: string) => void;
@@ -481,16 +482,30 @@ export const StoreProvider: ParentComponent = (props) => {
         delete s.codebooks[codebookGuid];
       }));
 
-      // Remove all selections referencing codes from the deleted codebook
+      // Remove all selections and source codes referencing codes from the deleted codebook
       if (codeGuids && codeGuids.size > 0) {
         for (const [path, source] of Object.entries(store.sources)) {
+          let changed = false;
+
           const filtered = source.selections.filter(
             sel => sel.code.codebookGuid !== codebookGuid && !codeGuids.has(sel.code.codeGuid)
           );
           if (filtered.length !== source.selections.length) {
             setStore('sources', path, 'selections', filtered);
-            scheduleSourceSave(path);
+            changed = true;
           }
+
+          if (source.sourceCodes?.length) {
+            const filteredCodes = source.sourceCodes.filter(
+              sc => sc.code.codebookGuid !== codebookGuid && !codeGuids.has(sc.code.codeGuid)
+            );
+            if (filteredCodes.length !== source.sourceCodes.length) {
+              setStore('sources', path, 'sourceCodes', filteredCodes);
+              changed = true;
+            }
+          }
+
+          if (changed) scheduleSourceSave(path);
         }
       }
 
@@ -528,13 +543,25 @@ export const StoreProvider: ParentComponent = (props) => {
       const updatedCodebook = { ...codebook, codes: removeCode(codebook.codes) };
       actions.updateCodebook(updatedCodebook);
 
-      // Remove all selections referencing any of the deleted codes
+      // Remove all selections and source codes referencing any of the deleted codes
       for (const [path, source] of Object.entries(store.sources)) {
+        let changed = false;
+
         const filtered = source.selections.filter(sel => !removedGuids.has(sel.code.codeGuid));
         if (filtered.length !== source.selections.length) {
           setStore('sources', path, 'selections', filtered);
-          scheduleSourceSave(path);
+          changed = true;
         }
+
+        if (source.sourceCodes?.length) {
+          const filteredCodes = source.sourceCodes.filter(sc => !removedGuids.has(sc.code.codeGuid));
+          if (filteredCodes.length !== source.sourceCodes.length) {
+            setStore('sources', path, 'sourceCodes', filteredCodes);
+            changed = true;
+          }
+        }
+
+        if (changed) scheduleSourceSave(path);
       }
     },
 
@@ -552,8 +579,21 @@ export const StoreProvider: ParentComponent = (props) => {
       scheduleSourceSave(path, 1000);
     },
 
+    updateSourceCodes(path: string, sourceCodes: AppliedCode[]) {
+      if (!store.sources[path]) {
+        setStore('sources', path, {
+          guid: crypto.randomUUID(),
+          fileHash: '',
+          selections: [],
+        });
+      }
+
+      setStore('sources', path, 'sourceCodes', sourceCodes);
+      scheduleSourceSave(path, 1000);
+    },
+
     mergeCode(codebookGuid: string, sourceCodeGuid: string, targetCodeGuid: string) {
-      // 1. Replace code references in all selections across all sources
+      // 1. Replace code references in all selections and source codes across all sources
       for (const [path, source] of Object.entries(store.sources)) {
         let changed = false;
         const updatedSelections = source.selections.map(sel => {
@@ -565,8 +605,20 @@ export const StoreProvider: ParentComponent = (props) => {
         });
         if (changed) {
           setStore('sources', path, 'selections', updatedSelections);
-          scheduleSourceSave(path);
         }
+
+        if (source.sourceCodes?.length) {
+          const updatedSourceCodes = source.sourceCodes.map(sc => {
+            if (sc.code.codeGuid === sourceCodeGuid) {
+              changed = true;
+              return { ...sc, code: { ...sc.code, codeGuid: targetCodeGuid } };
+            }
+            return sc;
+          });
+          setStore('sources', path, 'sourceCodes', updatedSourceCodes);
+        }
+
+        if (changed) scheduleSourceSave(path);
       }
 
       // 2. Replace code references in all queries
@@ -671,7 +723,7 @@ export const StoreProvider: ParentComponent = (props) => {
       setStore('codebooks', targetCodebookGuid, updatedTarget);
       scheduleCodebookSave(targetCodebookGuid);
 
-      // Update all selections referencing any of the moved codes to point to the target codebook
+      // Update all selections and source codes referencing any of the moved codes to point to the target codebook
       for (const [path, source] of Object.entries(store.sources)) {
         let changed = false;
         const updatedSelections = source.selections.map(sel => {
@@ -683,8 +735,20 @@ export const StoreProvider: ParentComponent = (props) => {
         });
         if (changed) {
           setStore('sources', path, 'selections', updatedSelections);
-          scheduleSourceSave(path);
         }
+
+        if (source.sourceCodes?.length) {
+          const updatedSourceCodes = source.sourceCodes.map(sc => {
+            if (sc.code.codebookGuid === sourceCodebookGuid && movedGuids.has(sc.code.codeGuid)) {
+              changed = true;
+              return { ...sc, code: { ...sc.code, codebookGuid: targetCodebookGuid } };
+            }
+            return sc;
+          });
+          setStore('sources', path, 'sourceCodes', updatedSourceCodes);
+        }
+
+        if (changed) scheduleSourceSave(path);
       }
     },
 

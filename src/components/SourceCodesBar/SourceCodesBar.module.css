@@ -1,0 +1,184 @@
+.bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-color);
+    min-height: 32px;
+    position: relative;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+}
+
+.chipName {
+    font-weight: 500;
+}
+
+.chipCodebook {
+    composes: codebookNameLabel from '../../styles/shared.module.css';
+}
+
+.addBtn {
+    composes: btnSmall from '../../styles/shared.module.css';
+    font-size: 0.85em;
+    padding: 4px;
+}
+
+.pickerAnchor {
+    position: relative;
+    display: inline-flex;
+}
+
+.pickerDropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 100;
+    min-width: 200px;
+    font-size: 0.85em;
+}
+
+.pickerHeading {
+    padding: 4px 8px;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: var(--text-color);
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pickerItem {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 4px 8px;
+    border: none;
+    background: none;
+    color: var(--text-color);
+    cursor: pointer;
+    text-align: left;
+    font-size: inherit;
+}
+
+.pickerItem:hover {
+    background: var(--code-hover);
+}
+
+/* ── Source code popover ─────────────────────────────────────────────── */
+
+.popover {
+    position: fixed;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    padding: 8px;
+    z-index: 1000;
+    width: 300px;
+    font-size: 0.8em;
+}
+
+.popoverHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.popoverCodeItem {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.popoverCodeName {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.popoverCodeCodebook {
+    color: var(--text-color);
+}
+
+.popoverActions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.popoverActionBtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.popoverActionBtn:hover {
+    opacity: 1;
+}
+
+.popoverUser {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+
+.popoverUserLabel {
+    color: var(--text-color);
+}
+
+.popoverUserName {
+    font-weight: 500;
+    color: var(--text-color);
+    background: var(--bg-secondary);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.popoverCodePicker {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.popoverNote {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    /* eslint-disable-next-line css/font-family-fallbacks */
+    font-family: inherit;
+    font-size: inherit;
+    resize: vertical;
+    min-height: 60px;
+    box-sizing: border-box;
+}
