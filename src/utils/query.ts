@@ -1,5 +1,11 @@
 import { buildSegments } from '../helpers';
-import type { QueryNode, TextSelection } from '../models/files';
+import type { AppliedCode, QueryNode, TextSelection } from '../models/files';
+
+export interface QueryResult {
+  matchingSelections: TextSelection[];
+  fileMatch: boolean;
+  fileMatchCodes: AppliedCode[];
+}
 
 /**
  * Evaluate a query node against a single atomic segment (a region of text
@@ -92,6 +98,11 @@ function evaluateQueryOnSegment(
  * segments where each segment knows all covering selections. The query tree
  * is then evaluated per-segment, and the union of contributing selections
  * across all segments is returned.
+ *
+ * Source codes (file-level codes) are injected as phantom selections that span
+ * the full range of all text selections. If a phantom contributes to the match,
+ * the result's `fileMatch` flag is set to true. The phantom selections
+ * themselves are stripped from the returned selections.
  */
 export function evaluateQueryOnSource(
   node: QueryNode | null,
@@ -99,18 +110,39 @@ export function evaluateQueryOnSource(
   subcodeIndex: Record<string, Set<string>>,
   codebookIndex: Record<string, Set<string>>,
   selections: TextSelection[],
-): TextSelection[] {
+  sourceCodes?: AppliedCode[],
+): QueryResult {
   // Pre-filter by user
   let filtered = selections;
   if (userFilter.length > 0) {
     filtered = selections.filter(s => userFilter.includes(s.creatingUser));
   }
 
-  // No query node → include all filtered selections
-  if (!node) return filtered;
+  // No query node → include all filtered selections, fileMatch if any sourceCodes exist
+  if (!node) return { matchingSelections: filtered, fileMatch: false, fileMatchCodes: [] };
 
-  // Build atomic segments from the filtered selections (no content needed)
-  const segments = buildSegments(filtered);
+  // Filter source codes by user and build phantom selections
+  const phantomPrefix = '__phantom__';
+  const filteredSourceCodes = (sourceCodes ?? []).filter(
+    sc => userFilter.length === 0 || userFilter.includes(sc.creatingUser),
+  );
+  let allSelections = filtered;
+  if (filteredSourceCodes.length > 0 && filtered.length > 0) {
+    const minStart = filtered.reduce((min, s) => Math.min(min, s.start), Infinity);
+    const maxEnd = filtered.reduce((max, s) => Math.max(max, s.end), 0);
+    const phantoms: TextSelection[] = filteredSourceCodes.map((sc, i) => ({
+      guid: `${phantomPrefix}${i}`,
+      start: minStart,
+      end: maxEnd,
+      code: sc.code,
+      creatingUser: sc.creatingUser,
+      note: sc.note,
+    }));
+    allSelections = [...filtered, ...phantoms];
+  }
+
+  // Build atomic segments from the combined selections (no content needed)
+  const segments = buildSegments(allSelections);
 
   // Evaluate each segment, collecting the union of contributing selection GUIDs
   const contributingGuids = new Set<string>();
@@ -120,8 +152,40 @@ export function evaluateQueryOnSource(
     for (const guid of guids) contributingGuids.add(guid);
   }
 
+  // Collect contributing phantom indices
+  const matchingPhantomIndices = new Set<number>();
+  for (const guid of contributingGuids) {
+    if (guid.startsWith(phantomPrefix)) {
+      matchingPhantomIndices.add(Number(guid.slice(phantomPrefix.length)));
+    }
+  }
+
+  // Also handle source-code-only queries when there are no text selections:
+  // create a single zero-width segment with just the phantoms
+  if (filtered.length === 0 && filteredSourceCodes.length > 0 && matchingPhantomIndices.size === 0) {
+    const phantoms: TextSelection[] = filteredSourceCodes.map((sc, i) => ({
+      guid: `${phantomPrefix}${i}`,
+      start: 0,
+      end: 0,
+      code: sc.code,
+      creatingUser: sc.creatingUser,
+      note: sc.note,
+    }));
+    const guids = evaluateQueryOnSegment(node, subcodeIndex, codebookIndex, phantoms);
+    for (const guid of guids) {
+      if (guid.startsWith(phantomPrefix)) {
+        matchingPhantomIndices.add(Number(guid.slice(phantomPrefix.length)));
+      }
+    }
+  }
+
+  const fileMatch = matchingPhantomIndices.size > 0;
+  const fileMatchCodes = Array.from(matchingPhantomIndices).map(i => filteredSourceCodes[i]);
+
   // Return the filtered selections whose GUIDs ended up in the contributing set
-  return filtered.filter(s => contributingGuids.has(s.guid));
+  // (phantom GUIDs are naturally excluded since they are not in `filtered`)
+  const matchingSelections = filtered.filter(s => contributingGuids.has(s.guid));
+  return { matchingSelections, fileMatch, fileMatchCodes };
 }
 
 export function parseFilterList(filter: string | undefined): string[] {

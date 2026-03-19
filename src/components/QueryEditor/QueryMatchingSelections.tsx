@@ -1,6 +1,6 @@
 import { createMemo, type Component } from 'solid-js';
 import { useStore } from '../../store';
-import { findOverlapping, MatchingSelectionsList, type MatchGroup } from '../MatchingSelections';
+import { findOverlapping, MatchingSelectionsList, type MatchGroup, type FileMatch } from '../MatchingSelections';
 import { evaluateQueryOnSource, parseFilterList, compileGlobs, matchesAnyGlob } from '../../utils/query';
 import type { Code, Codebook, Query } from '../../models/files';
 
@@ -19,8 +19,9 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
   const { store, indices } = useStore();
 
   // Compute match groups via query evaluation
-  const matches = createMemo((): { matchCount: number, groups: MatchGroup[] } => {
+  const matches = createMemo((): { matchCount: number, groups: MatchGroup[], fileMatches: FileMatch[] } => {
     const groups: MatchGroup[] = [];
+    const fileMatches: FileMatch[] = [];
     let matchCount = 0;
 
     const query = props.query;
@@ -31,18 +32,25 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       // Skip files that don't match any of the file filters
       if (!matchesAnyGlob(sourcePath, fileFilter)) continue;
 
-      // Skip empty files (shouldn't happen, just to be sure)
       const fc = store.fileContents[sourcePath];
       const content = fc?.type === 'plain-text' ? fc.content : '';
-      if (!content) continue;
       
-      // Evaluate the query on all source selections
+      // Evaluate the query on all source selections (including source codes)
       const subcodeIndex = indices.subcodesByGuid();
       const codebookIndex = indices.codesByCodebook();
-      const selections = evaluateQueryOnSource(queryNode, query.userFilter, subcodeIndex, codebookIndex, source.selections);
+      const result = evaluateQueryOnSource(queryNode, query.userFilter, subcodeIndex, codebookIndex, source.selections, source.sourceCodes);
+      const selections = result.matchingSelections;
       matchCount += selections.length;
-      // And short-circuit if none match
+
+      if (result.fileMatch) {
+        fileMatches.push({ path: sourcePath, sourceCodes: result.fileMatchCodes });
+      }
+
+      // Short-circuit if no text selections match and no file match
       if (selections.length === 0) continue;
+
+      // Skip text-level grouping if no content (binary files)
+      if (!content) continue;
 
       // Capture the directly-matching GUIDs before transitive expansion
       const matchingGuids = new Set(selections.map(s => s.guid));
@@ -130,12 +138,13 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       lastGroup.content = content.slice(lastGroup.start, lastGroup.end);
     }
     
-    return { matchCount, groups };
+    return { matchCount, groups, fileMatches };
   });
 
   return (
     <MatchingSelectionsList
       matchGroups={matches().groups}
+      fileMatches={matches().fileMatches}
       title={`Matching Selections (${matches().matchCount})`}
       expandedKeys={props.expandedKeys}
       onExpandedKeysChange={props.onExpandedKeysChange}

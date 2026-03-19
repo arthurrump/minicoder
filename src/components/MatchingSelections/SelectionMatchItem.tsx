@@ -1,12 +1,12 @@
-import { createMemo, For, Index, Show, type Component } from 'solid-js';
+import { createMemo, Index, Show, type Component } from 'solid-js';
 import { useStore } from '../../store';
 import styles from './MatchingSelections.module.css';
-import ColorChip from '../ColorChip';
+import MatchItemBase from './MatchItemBase';
 import TextView from '../TextView';
 import { computeCollapsedRegions, type MatchGroup } from '../../utils/selections';
 import type { Code, Codebook } from '../../models/files';
 
-export interface MatchItemProps {
+export interface SelectionMatchItemProps {
   group: MatchGroup;
   isExpanded: boolean;
   onToggleExpand: () => void;
@@ -18,7 +18,7 @@ export interface MatchItemProps {
   selectedCode?: { code: Code; codebook: Codebook } | null;
 }
 
-const MatchItem: Component<MatchItemProps> = (props) => {
+const SelectionMatchItem: Component<SelectionMatchItemProps> = (props) => {
   const { indices } = useStore();
 
   // Compute collapsed sub-regions
@@ -49,8 +49,8 @@ const MatchItem: Component<MatchItemProps> = (props) => {
     return guids;
   });
   
-  // Build code map for this group
-  const codeMap = createMemo(() => {
+  // Get unique codes for the header display
+  const uniqueCodes = createMemo(() => {
     const map = new Map<string, { code: Code; codebook: Codebook }>();
     const idx = indices.codeByGuid();
     for (const sel of props.group.selections) {
@@ -59,35 +59,16 @@ const MatchItem: Component<MatchItemProps> = (props) => {
         if (info) map.set(sel.code.codeGuid, info);
       }
     }
-    return map;
-  });
-  
-  // Get unique codes for the header display
-  const uniqueCodes = createMemo(() => {
-    return Array.from(codeMap().values());
+    return Array.from(map.values());
   });
   
   return (
-    <div class={styles.matchItem}>
-      <div class={styles.matchHeader}>
-        <span
-          class={`${styles.matchSource} ${props.onOpenSource ? styles.matchSourceLink : ''}`}
-          onClick={() => props.onOpenSource?.(props.group.sourcePath, props.group.start)}
-          title={props.onOpenSource ? 'Open file at this position' : undefined}
-        >
-          {props.group.sourcePath}
-        </span>
-        <div class={styles.matchCodes}>
-          <For each={uniqueCodes()}>
-            {(info) => (
-              <span class={styles.matchCodeTag}>
-                <ColorChip color={info.code.color} class={styles.codeChip} />
-                <span>{info.code.name}</span>
-              </span>
-            )}
-          </For>
-        </div>
-      </div>
+    <MatchItemBase
+      sourcePath={props.group.sourcePath}
+      codes={uniqueCodes()}
+      charOffset={props.group.start}
+      onOpenSource={props.onOpenSource}
+    >
       <div class={styles.matchContent}>
         <Show when={props.isExpanded || !hasGaps()} fallback={
           /* Collapsed view: show only matching sub-regions with ellipsis separators.
@@ -141,8 +122,8 @@ const MatchItem: Component<MatchItemProps> = (props) => {
           {props.isExpanded ? 'Show less' : 'Show more'}
         </button>
       </Show>
-    </div>
+    </MatchItemBase>
   );
 };
 
-export default MatchItem;
+export default SelectionMatchItem;

@@ -1,6 +1,6 @@
 import { createSignal, Show, onMount, onCleanup, type Component } from 'solid-js';
 import styles from './MatchingSelections.module.css';
-import MatchItem, { type MatchItemProps } from './MatchItem';
+import SelectionMatchItem, { type SelectionMatchItemProps } from './SelectionMatchItem';
 
 /**
  * Lazy wrapper around MatchItem that only mounts the full component
@@ -8,7 +8,7 @@ import MatchItem, { type MatchItemProps } from './MatchItem';
  * placeholders, so expand/collapse and other state changes only
  * trigger re-renders for visible items.
  */
-const LazyMatchItem: Component<MatchItemProps> = (props) => {
+const LazyMatchItem: Component<SelectionMatchItemProps> = (props) => {
   let wrapperRef: HTMLDivElement | undefined;
   const [isNearViewport, setIsNearViewport] = createSignal(false);
   const [lastHeight, setLastHeight] = createSignal(80);
@@ -47,7 +47,7 @@ const LazyMatchItem: Component<MatchItemProps> = (props) => {
           />
         }
       >
-        <MatchItem
+        <SelectionMatchItem
           group={props.group}
           isExpanded={props.isExpanded}
           onToggleExpand={props.onToggleExpand}

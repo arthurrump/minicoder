@@ -1,15 +1,23 @@
-import { createSignal, Index, Show, type Component } from 'solid-js';
+import { createSignal, For, Index, Show, type Component } from 'solid-js';
 import styles from './MatchingSelections.module.css';
 import LazyMatchItem from './LazyMatchItem';
+import FileMatchItem from './FileMatchItem';
 import { type MatchGroup } from '../../utils/selections';
-import type { Code, Codebook } from '../../models/files';
+import type { AppliedCode, Code, Codebook } from '../../models/files';
 
 // Re-export functions and types that were extracted to utils for backward compatibility
 export { findOverlapping, computeCollapsedRegions, buildMatchGroups, type MatchGroup, type CollapsedRegion, type BuildMatchGroupsResult } from '../../utils/selections';
 export { flattenCodesWithPath as flattenCodes } from '../../utils/codeTree';
 
+export interface FileMatch {
+  path: string;
+  sourceCodes: AppliedCode[];
+}
+
 export interface MatchingSelectionsListProps {
   matchGroups: MatchGroup[];
+  /** Files that matched via source codes (file-level codes). */
+  fileMatches?: FileMatch[];
   title?: string;
   expandedKeys?: Set<string>;
   onExpandedKeysChange?: (keys: Set<string>) => void;
@@ -82,10 +90,21 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
           </button>
         </div>
       </div>
-      <Show when={props.matchGroups.length > 0} fallback={
+      <Show when={(props.matchGroups.length > 0) || (props.fileMatches && props.fileMatches.length > 0)} fallback={
         <p class={styles.noMatches}>No matching selections found.</p>
       }>
         <div class={styles.matchingList}>
+          <Show when={props.fileMatches && props.fileMatches.length > 0}>
+            <For each={props.fileMatches}>
+              {(fm) => (
+                <FileMatchItem
+                  sourcePath={fm.path}
+                  sourceCodes={fm.sourceCodes}
+                  onOpenSource={props.onOpenSource}
+                />
+              )}
+            </For>
+          </Show>
           <Index each={props.matchGroups}>
             {(group) => (
               <LazyMatchItem

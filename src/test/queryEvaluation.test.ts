@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateQueryOnSource, updateQueryNodeAtPath } from '../utils/query';
-import type { QueryNode, TextSelection } from '../models/files';
+import type { AppliedCode, QueryNode, TextSelection } from '../models/files';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -55,7 +55,8 @@ describe('evaluateQueryOnSource — null query', () => {
   it('returns all selections when query is null and no user filter', () => {
     const sels = [mkSel('s1', 0, 5, 'c1'), mkSel('s2', 10, 15, 'c2')];
     const result = evaluateQueryOnSource(null, [], emptySubcodes, emptyCodebooks, sels);
-    expect(result).toEqual(sels);
+    expect(result.matchingSelections).toEqual(sels);
+    expect(result.fileMatch).toBe(false);
   });
 
   it('filters by user when userFilter is provided', () => {
@@ -64,7 +65,7 @@ describe('evaluateQueryOnSource — null query', () => {
       mkSel('s2', 10, 15, 'c2', 'cb1', 'bob'),
     ];
     const result = evaluateQueryOnSource(null, ['alice'], emptySubcodes, emptyCodebooks, sels);
-    expect(result.map(s => s.guid)).toEqual(['s1']);
+    expect(result.matchingSelections.map(s => s.guid)).toEqual(['s1']);
   });
 
   it('includes undefined user when undefined is in userFilter', () => {
@@ -73,7 +74,7 @@ describe('evaluateQueryOnSource — null query', () => {
       mkSel('s2', 10, 15, 'c2', 'cb1', 'alice'),
     ];
     const result = evaluateQueryOnSource(null, [undefined], emptySubcodes, emptyCodebooks, sels);
-    expect(result.map(s => s.guid)).toEqual(['s1']);
+    expect(result.matchingSelections.map(s => s.guid)).toEqual(['s1']);
   });
 });
 
@@ -87,7 +88,7 @@ describe('evaluateQueryOnSource — code node', () => {
     ];
     const node: QueryNode = { type: 'code', codeGuid: 'c1', includeSubcodes: false };
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
-    expect(result.map(s => s.guid)).toEqual(['s1']);
+    expect(result.matchingSelections.map(s => s.guid)).toEqual(['s1']);
   });
 
   it('includes subcodes when includeSubcodes is true (default)', () => {
@@ -100,14 +101,15 @@ describe('evaluateQueryOnSource — code node', () => {
     ];
     const node: QueryNode = { type: 'code', codeGuid: 'c_parent', includeSubcodes: true };
     const result = evaluateQueryOnSource(node, [], subcodes, emptyCodebooks, sels);
-    expect(result.map(s => s.guid)).toEqual(['s1', 's2']);
+    expect(result.matchingSelections.map(s => s.guid)).toEqual(['s1', 's2']);
   });
 
   it('returns empty array when no selections match', () => {
     const sels = [mkSel('s1', 0, 5, 'c2')];
     const node: QueryNode = { type: 'code', codeGuid: 'c1', includeSubcodes: false };
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
-    expect(result).toEqual([]);
+    expect(result.matchingSelections).toEqual([]);
+    expect(result.fileMatch).toBe(false);
   });
 });
 
@@ -122,7 +124,7 @@ describe('evaluateQueryOnSource — codebook node', () => {
     ];
     const node: QueryNode = { type: 'codebook', codebookGuid: 'cb1' };
     const result = evaluateQueryOnSource(node, [], emptySubcodes, codebooks, sels);
-    expect(result.map(s => s.guid)).toEqual(['s1']);
+    expect(result.matchingSelections.map(s => s.guid)).toEqual(['s1']);
   });
 });
 
@@ -144,7 +146,7 @@ describe('evaluateQueryOnSource — OR operator', () => {
       ],
     };
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
-    expect(result.map(s => s.guid)).toEqual(['s1', 's2']);
+    expect(result.matchingSelections.map(s => s.guid)).toEqual(['s1', 's2']);
   });
 
   it('returns empty array when no children match', () => {
@@ -158,7 +160,7 @@ describe('evaluateQueryOnSource — OR operator', () => {
       ],
     };
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
-    expect(result).toEqual([]);
+    expect(result.matchingSelections).toEqual([]);
   });
 });
 
@@ -166,10 +168,9 @@ describe('evaluateQueryOnSource — OR operator', () => {
 
 describe('evaluateQueryOnSource — AND operator', () => {
   it('returns selections in overlapping segments that satisfy all conditions', () => {
-    // s1 and s2 overlap [0,10): a segment [0,5) has s1+s2, [5,10) has s2 only
     const sels = [
-      mkSel('s1', 0, 5, 'c1'),   // [0,5)
-      mkSel('s2', 0, 10, 'c2'),  // [0,10)
+      mkSel('s1', 0, 5, 'c1'),
+      mkSel('s2', 0, 10, 'c2'),
     ];
     const node: QueryNode = {
       type: 'operator',
@@ -179,14 +180,12 @@ describe('evaluateQueryOnSource — AND operator', () => {
         { type: 'code', codeGuid: 'c2', includeSubcodes: false },
       ],
     };
-    // Segment [0,5) is covered by both s1 (c1) and s2 (c2) → matches AND
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
-    expect(result.map(s => s.guid)).toContain('s1');
-    expect(result.map(s => s.guid)).toContain('s2');
+    expect(result.matchingSelections.map(s => s.guid)).toContain('s1');
+    expect(result.matchingSelections.map(s => s.guid)).toContain('s2');
   });
 
   it('does not match when conditions are met on non-overlapping segments', () => {
-    // s1 and s2 do NOT overlap
     const sels = [
       mkSel('s1', 0, 5, 'c1'),
       mkSel('s2', 10, 15, 'c2'),
@@ -200,29 +199,17 @@ describe('evaluateQueryOnSource — AND operator', () => {
       ],
     };
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
-    expect(result).toEqual([]);
+    expect(result.matchingSelections).toEqual([]);
   });
 
   it('returns empty when AND has zero children', () => {
     const sels = [mkSel('s1', 0, 5, 'c1')];
     const node: QueryNode = { type: 'operator', operator: 'AND', children: [] };
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
-    expect(result).toEqual([]);
+    expect(result.matchingSelections).toEqual([]);
   });
 
-  // Regression test for commit 5dbbf18 ("Fix AND queries").
-  // The old implementation evaluated each TextSelection independently:
-  //   evaluateQuery(node, selection)  →  AND checked every child against the SAME selection
-  // Since each selection has exactly ONE code, an AND(c1, c2) query would ALWAYS return
-  // empty — no single selection satisfies two different codes simultaneously.
-  //
-  // The fix rewrites query evaluation to use atomic text segments.  Each segment knows
-  // ALL selections covering it; AND passes when every child matches at least one
-  // covering selection.  Two overlapping selections with different codes now satisfy AND.
   it('regression 5dbbf18: AND(c1,c2) matches where two differently-coded selections overlap', () => {
-    // The only way for AND(c1, c2) to produce results is via overlapping segments.
-    // Old code: each selection tested independently → AND always empty.
-    // New code: segment [0,5) is covered by both s1(c1) and s2(c2) → AND matches.
     const sels = [
       mkSel('s1', 0, 5, 'c1'),
       mkSel('s2', 2, 8, 'c2'),
@@ -236,16 +223,14 @@ describe('evaluateQueryOnSource — AND operator', () => {
       ],
     };
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
-    // Both selections should be returned because the overlap region satisfies AND
-    expect(result.map(s => s.guid)).toContain('s1');
-    expect(result.map(s => s.guid)).toContain('s2');
-    // A third selection with no overlap must NOT be returned
+    expect(result.matchingSelections.map(s => s.guid)).toContain('s1');
+    expect(result.matchingSelections.map(s => s.guid)).toContain('s2');
     const selsWithExtra = [
       ...sels,
-      mkSel('s3', 20, 25, 'c1'), // isolated, no c2 overlap
+      mkSel('s3', 20, 25, 'c1'),
     ];
     const resultWithExtra = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, selsWithExtra);
-    expect(resultWithExtra.map(s => s.guid)).not.toContain('s3');
+    expect(resultWithExtra.matchingSelections.map(s => s.guid)).not.toContain('s3');
   });
 });
 
@@ -253,7 +238,6 @@ describe('evaluateQueryOnSource — AND operator', () => {
 
 describe('evaluateQueryOnSource — NOT operator', () => {
   it('returns selections NOT matching the child code', () => {
-    // s1: c1, s2: c2 — segments are non-overlapping
     const sels = [
       mkSel('s1', 0, 5, 'c1'),
       mkSel('s2', 10, 15, 'c2'),
@@ -263,17 +247,122 @@ describe('evaluateQueryOnSource — NOT operator', () => {
       operator: 'NOT',
       children: [{ type: 'code', codeGuid: 'c1', includeSubcodes: false }],
     };
-    // Segment [0,5) has c1 → NOT fails
-    // Segment [10,15) has c2 → NOT passes → s2 is returned
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
-    expect(result.map(s => s.guid)).toEqual(['s2']);
+    expect(result.matchingSelections.map(s => s.guid)).toEqual(['s2']);
   });
 
   it('returns empty when NOT has zero children', () => {
     const sels = [mkSel('s1', 0, 5, 'c1')];
     const node: QueryNode = { type: 'operator', operator: 'NOT', children: [] };
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
-    expect(result).toEqual([]);
+    expect(result.matchingSelections).toEqual([]);
+  });
+});
+
+// ── source codes (file-level codes / phantom selections) ───────────────────
+
+function mkSourceCode(codeGuid: string, codebookGuid = 'cb1', creatingUser?: string): AppliedCode {
+  return { code: { codeGuid, codebookGuid }, creatingUser };
+}
+
+describe('evaluateQueryOnSource — source codes', () => {
+  it('sets fileMatch when a source code matches a code query (with text selections)', () => {
+    const sels = [mkSel('s1', 0, 5, 'c_text')];
+    const scs = [mkSourceCode('c_src')];
+    const node: QueryNode = { type: 'code', codeGuid: 'c_src', includeSubcodes: false };
+    const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels, scs);
+    expect(result.fileMatch).toBe(true);
+    expect(result.fileMatchCodes).toEqual(scs);
+    // Only the phantom matched — no real text selections should be returned
+    expect(result.matchingSelections).toEqual([]);
+  });
+
+  it('returns text selections AND sets fileMatch for OR(sourceCode, textCode)', () => {
+    const sels = [mkSel('s1', 0, 5, 'c_text')];
+    const scs = [mkSourceCode('c_src')];
+    const node: QueryNode = {
+      type: 'operator',
+      operator: 'OR',
+      children: [
+        { type: 'code', codeGuid: 'c_src', includeSubcodes: false },
+        { type: 'code', codeGuid: 'c_text', includeSubcodes: false },
+      ],
+    };
+    const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels, scs);
+    expect(result.fileMatch).toBe(true);
+    expect(result.matchingSelections.map(s => s.guid)).toContain('s1');
+  });
+
+  it('AND(sourceCode, textCode) matches when text code is present alongside source code', () => {
+    const sels = [mkSel('s1', 0, 5, 'c_text')];
+    const scs = [mkSourceCode('c_src')];
+    const node: QueryNode = {
+      type: 'operator',
+      operator: 'AND',
+      children: [
+        { type: 'code', codeGuid: 'c_src', includeSubcodes: false },
+        { type: 'code', codeGuid: 'c_text', includeSubcodes: false },
+      ],
+    };
+    const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels, scs);
+    expect(result.fileMatch).toBe(true);
+    expect(result.matchingSelections.map(s => s.guid)).toContain('s1');
+  });
+
+  it('AND(sourceCode, textCode) does not match when text code is absent', () => {
+    const sels = [mkSel('s1', 0, 5, 'c_other')];
+    const scs = [mkSourceCode('c_src')];
+    const node: QueryNode = {
+      type: 'operator',
+      operator: 'AND',
+      children: [
+        { type: 'code', codeGuid: 'c_src', includeSubcodes: false },
+        { type: 'code', codeGuid: 'c_text', includeSubcodes: false },
+      ],
+    };
+    const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels, scs);
+    expect(result.fileMatch).toBe(false);
+    expect(result.matchingSelections).toEqual([]);
+  });
+
+  it('returns fileMatch with no text selections when only source codes exist', () => {
+    const scs = [mkSourceCode('c_src')];
+    const node: QueryNode = { type: 'code', codeGuid: 'c_src', includeSubcodes: false };
+    const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, [], scs);
+    expect(result.fileMatch).toBe(true);
+    expect(result.fileMatchCodes).toEqual(scs);
+    expect(result.matchingSelections).toEqual([]);
+  });
+
+  it('does not set fileMatch when source code does not match the query', () => {
+    const sels = [mkSel('s1', 0, 5, 'c_text')];
+    const scs = [mkSourceCode('c_other')];
+    const node: QueryNode = { type: 'code', codeGuid: 'c_text', includeSubcodes: false };
+    const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels, scs);
+    expect(result.fileMatch).toBe(false);
+    expect(result.fileMatchCodes).toEqual([]);
+    expect(result.matchingSelections.map(s => s.guid)).toEqual(['s1']);
+  });
+
+  it('returns only matching source codes in fileMatchCodes', () => {
+    const sels = [mkSel('s1', 0, 5, 'c_text')];
+    const matching = mkSourceCode('c_src');
+    const nonMatching = mkSourceCode('c_other');
+    const scs = [matching, nonMatching];
+    const node: QueryNode = { type: 'code', codeGuid: 'c_src', includeSubcodes: false };
+    const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels, scs);
+    expect(result.fileMatch).toBe(true);
+    expect(result.fileMatchCodes).toEqual([matching]);
+  });
+
+  it('respects user filter on source codes', () => {
+    const sels = [mkSel('s1', 0, 5, 'c_text', 'cb1', 'alice')];
+    const scs = [mkSourceCode('c_src', 'cb1', 'bob')];
+    const node: QueryNode = { type: 'code', codeGuid: 'c_src', includeSubcodes: false };
+    // Only allow alice — bob's source code should be filtered out
+    const result = evaluateQueryOnSource(node, ['alice'], emptySubcodes, emptyCodebooks, sels, scs);
+    expect(result.fileMatch).toBe(false);
+    expect(result.matchingSelections).toEqual([]);
   });
 });
 

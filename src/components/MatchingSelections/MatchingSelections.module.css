@@ -79,6 +79,14 @@
     font-size: 0.85em;
 }
 
+.matchCodeTagClickable {
+    cursor: pointer;
+}
+
+.matchCodeTagClickable:hover {
+    background: var(--code-hover);
+}
+
 .matchCodeName {
     font-weight: 500;
 }
@@ -127,6 +135,12 @@
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--bg-color);
+}
+
+.fileMatchLabel {
+    font-size: 0.8em;
+    opacity: 0.6;
+    white-space: nowrap;
 }
 
 .ellipsisSeparator {
