@@ -53,7 +53,7 @@ const SourceCodesBar: Component<SourceCodesBarProps> = (props) => {
         setPopover({ appliedCode, x: rect.left, y: rect.bottom + 4 });
     };
 
-    // Close picker/popover on Escape
+    // Close picker on Escape
     const onKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
             if (popover()) setPopover(null);
@@ -68,7 +68,6 @@ const SourceCodesBar: Component<SourceCodesBarProps> = (props) => {
     const onClickOutside = (e: MouseEvent) => {
         if (barRef && !barRef.contains(e.target as Node)) {
             if (showPicker()) setShowPicker(false);
-            if (popover()) setPopover(null);
         }
     };
     document.addEventListener('mousedown', onClickOutside);

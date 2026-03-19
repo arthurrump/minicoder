@@ -1,5 +1,5 @@
 import Icon from '../Icon';
-import { type Component, Show, createMemo, createSignal, For } from 'solid-js';
+import { type Component, Show, createMemo, createSignal, For, onCleanup } from 'solid-js';
 import ColorChip from '../ColorChip';
 import { useStore } from '../../store';
 import { flattenCodesWithDepth } from '../../utils/codeTree';
@@ -17,6 +17,26 @@ interface SourceCodePopoverProps {
 const SourceCodePopover: Component<SourceCodePopoverProps> = (props) => {
     const { store, actions, indices } = useStore();
     const [showCodePicker, setShowCodePicker] = createSignal(false);
+    let popoverRef: HTMLDivElement | undefined;
+
+    // Close on outside click
+    const onMouseDown = (e: MouseEvent) => {
+        if (popoverRef && !popoverRef.contains(e.target as Node)) {
+            props.onClose();
+        }
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    onCleanup(() => document.removeEventListener('mousedown', onMouseDown));
+
+    // Close on Escape
+    const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            props.onClose();
+            e.preventDefault();
+        }
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    onCleanup(() => document.removeEventListener('keydown', onKeyDown, true));
 
     const codeInfo = createMemo(() => {
         const info = indices.codeByGuid()[props.appliedCode.code.codeGuid];
@@ -75,6 +95,7 @@ const SourceCodePopover: Component<SourceCodePopoverProps> = (props) => {
     return (
         <div
             ref={(el) => {
+                popoverRef = el;
                 requestAnimationFrame(() => {
                     const rect = el.getBoundingClientRect();
                     const margin = 8;
@@ -88,7 +109,6 @@ const SourceCodePopover: Component<SourceCodePopoverProps> = (props) => {
             }}
             class={styles.popover}
             style={{ left: `${props.x}px`, top: `${props.y}px` }}
-            onClick={(e) => e.stopPropagation()}
         >
             <div class={styles.popoverHeader}>
                 <div class={styles.popoverCodeItem}>

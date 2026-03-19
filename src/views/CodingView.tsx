@@ -90,7 +90,7 @@ const CodingView: Component = () => {
 
   // Escape key deselects the active code
   const onEscapeKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && selectedCode()) {
+    if (e.key === 'Escape' && !e.defaultPrevented && selectedCode()) {
       setSelectedCode(null);
     }
   };
