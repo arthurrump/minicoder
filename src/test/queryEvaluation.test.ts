@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateQueryOnSource } from '../utils/query';
+import { evaluateQueryOnSource, updateQueryNodeAtPath } from '../utils/query';
 import type { QueryNode, TextSelection } from '../models/files';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -274,5 +274,78 @@ describe('evaluateQueryOnSource — NOT operator', () => {
     const node: QueryNode = { type: 'operator', operator: 'NOT', children: [] };
     const result = evaluateQueryOnSource(node, [], emptySubcodes, emptyCodebooks, sels);
     expect(result).toEqual([]);
+  });
+});
+
+// ── updateQueryNodeAtPath ──────────────────────────────────────────────────
+
+describe('updateQueryNodeAtPath', () => {
+  const leaf1: QueryNode = { type: 'code', codeGuid: 'c1', includeSubcodes: true };
+  const leaf2: QueryNode = { type: 'code', codeGuid: 'c2', includeSubcodes: true };
+  const leaf3: QueryNode = { type: 'code', codeGuid: 'c3', includeSubcodes: true };
+  const nested: QueryNode = {
+    type: 'operator', operator: 'AND', children: [
+      { type: 'operator', operator: 'OR', children: [leaf1, leaf2] },
+      leaf3,
+    ],
+  };
+
+  it('replaces the root node when path is empty', () => {
+    const result = updateQueryNodeAtPath(nested, [], leaf1);
+    expect(result).toEqual(leaf1);
+  });
+
+  it('returns null when removing the root node', () => {
+    const result = updateQueryNodeAtPath(nested, [], null);
+    expect(result).toBeNull();
+  });
+
+  it('replaces a direct child', () => {
+    const replacement: QueryNode = { type: 'code', codeGuid: 'c4', includeSubcodes: false };
+    const result = updateQueryNodeAtPath(nested, [1], replacement);
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe('operator');
+    if (result!.type === 'operator') {
+      expect(result!.children[1]).toEqual(replacement);
+      expect(result!.children[0]).toEqual(nested.type === 'operator' ? nested.children[0] : null);
+    }
+  });
+
+  it('removes a direct child when replacement is null', () => {
+    const result = updateQueryNodeAtPath(nested, [0], null);
+    expect(result).not.toBeNull();
+    if (result!.type === 'operator') {
+      expect(result!.children).toHaveLength(1);
+      expect(result!.children[0]).toEqual(leaf3);
+    }
+  });
+
+  it('replaces a deeply nested child', () => {
+    const replacement: QueryNode = { type: 'code', codeGuid: 'c5', includeSubcodes: false };
+    const result = updateQueryNodeAtPath(nested, [0, 1], replacement);
+    expect(result).not.toBeNull();
+    if (result!.type === 'operator' && result!.children[0].type === 'operator') {
+      expect(result!.children[0].children[1]).toEqual(replacement);
+      expect(result!.children[0].children[0]).toEqual(leaf1);
+    }
+  });
+
+  it('removes a deeply nested child', () => {
+    const result = updateQueryNodeAtPath(nested, [0, 0], null);
+    expect(result).not.toBeNull();
+    if (result!.type === 'operator' && result!.children[0].type === 'operator') {
+      expect(result!.children[0].children).toHaveLength(1);
+      expect(result!.children[0].children[0]).toEqual(leaf2);
+    }
+  });
+
+  it('returns root unchanged for out-of-bounds index', () => {
+    const result = updateQueryNodeAtPath(nested, [5], leaf1);
+    expect(result).toEqual(nested);
+  });
+
+  it('returns root unchanged when descending into a leaf node', () => {
+    const result = updateQueryNodeAtPath(leaf1, [0], leaf2);
+    expect(result).toEqual(leaf1);
   });
 });

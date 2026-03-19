@@ -3,7 +3,7 @@ import { useStore } from '../../store';
 import styles from './QueryEditor.module.css';
 import QueryNodeEditor from './QueryNodeEditor';
 import QueryMatchingSelections from './QueryMatchingSelections';
-import type { Code, Codebook, QueryNode } from '../../models/files';
+import type { Code, Codebook } from '../../models/files';
 
 interface QueryEditorProps {
   queryGuid: string;
@@ -30,12 +30,6 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
     if (!q || !newName.trim()) return;
     actions.updateQuery({ ...q, name: newName.trim() });
     setEditingName(false);
-  };
-
-  const updateQueryNode = (queryNode: QueryNode | null) => {
-    const q = query();
-    if (!q) return;
-    actions.updateQuery({ ...q, query: queryNode });
   };
 
   const updateFileFilter = (value: string) => {
@@ -70,7 +64,9 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
   });
 
   const clearQuery = () => {
-    updateQueryNode(null);
+    const q = query();
+    if (!q) return;
+    actions.updateQuery({ ...q, query: null });
   };
 
   const deleteQuery = async () => {
@@ -189,18 +185,22 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
             <div class={styles.queryBuilder}>
               <Show when={q().query} fallback={
                 <div class={styles.addChildButtons}>
-                  <button class={styles.addChildBtn} onClick={() => updateQueryNode({ type: 'code', codeGuid: '', includeSubcodes: true })}>
+                  <button class={styles.addChildBtn} onClick={() => {
+                    actions.updateQuery({ ...q(), query: { type: 'code', codeGuid: '', includeSubcodes: true } });
+                  }}>
                     + Add Code
                   </button>
-                  <button class={styles.addChildBtn} onClick={() => updateQueryNode({ type: 'operator', operator: 'AND', children: [] })}>
+                  <button class={styles.addChildBtn} onClick={() => {
+                    actions.updateQuery({ ...q(), query: { type: 'operator', operator: 'AND', children: [] } });
+                  }}>
                     + Add Operator
                   </button>
                 </div>
               }>
                 <QueryNodeEditor
                   node={q().query!}
-                  onUpdate={(updated) => updateQueryNode(updated)}
-                  onDelete={() => clearQuery()}
+                  queryGuid={props.queryGuid}
+                  path={[]}
                   depth={0}
                 />
               </Show>

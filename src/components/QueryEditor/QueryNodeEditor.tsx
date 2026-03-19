@@ -1,6 +1,7 @@
 import { createSignal, createMemo, For, Show, type Component } from 'solid-js';
 import Icon from '../Icon';
 import { useStore } from '../../store';
+import { updateQueryNodeAtPath } from '../../utils/query';
 import styles from './QueryEditor.module.css';
 import ColorChip from '../ColorChip';
 import { flattenCodes } from '../MatchingSelections';
@@ -8,17 +9,32 @@ import type { QueryNode, QueryOperator } from '../../models/files';
 
 interface QueryNodeEditorProps {
   node: QueryNode;
-  onUpdate: (node: QueryNode) => void;
-  onDelete: () => void;
+  queryGuid: string;
+  /** Index path from the query root to this node ([] for root) */
+  path: number[];
   depth: number;
 }
 
 const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
-  const { store, indices } = useStore();
+  const { store, actions, indices } = useStore();
   const [showCodePicker, setShowCodePicker] = createSignal(false);
   const allCodes = createMemo(() => flattenCodes(indices.sortedCodebooks()));
   
   const isCodeLike = () => props.node.type === 'code' || props.node.type === 'codebook';
+
+  const updateNode = (replacement: QueryNode) => {
+    const q = store.queries[props.queryGuid];
+    if (!q?.query) return;
+    const updated = updateQueryNodeAtPath(q.query, props.path, replacement);
+    actions.updateQuery({ ...q, query: updated });
+  };
+
+  const deleteNode = () => {
+    const q = store.queries[props.queryGuid];
+    if (!q?.query) return;
+    const updated = updateQueryNodeAtPath(q.query, props.path, null);
+    actions.updateQuery({ ...q, query: updated });
+  };
 
   const codeInfo = createMemo(() => {
     if (props.node.type === 'code') {
@@ -36,19 +52,15 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
 
   const handleOperatorChange = (operator: QueryOperator) => {
     const children = props.node.type === 'operator' ? props.node.children : [];
-    props.onUpdate({
-      type: 'operator',
-      operator,
-      children,
-    });
+    updateNode({ type: 'operator', operator, children });
   };
 
   const handleAddChild = (type: 'code' | 'operator') => {
     if (props.node.type === 'operator') {
       const newChild: QueryNode = type === 'code' 
-        ? { type: 'code', codeGuid: '', includeSubcodes: true } // Empty codeGuid will show picker
+        ? { type: 'code', codeGuid: '', includeSubcodes: true }
         : { type: 'operator', operator: 'AND', children: [] };
-      props.onUpdate({
+      updateNode({
         type: 'operator',
         operator: props.node.operator,
         children: [...props.node.children, newChild],
@@ -56,23 +68,8 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
     }
   };
 
-  const handleChildUpdate = (index: number, updatedChild: QueryNode) => {
-    if (props.node.type === 'operator') {
-      const newChildren = [...props.node.children];
-      newChildren[index] = updatedChild;
-      props.onUpdate({ type: 'operator', operator: props.node.operator, children: newChildren });
-    }
-  };
-
-  const handleChildDelete = (index: number) => {
-    if (props.node.type === 'operator') {
-      const newChildren = props.node.children.filter((_, i) => i !== index);
-      props.onUpdate({ type: 'operator', operator: props.node.operator, children: newChildren });
-    }
-  };
-
   const handleCodeSelect = (codeGuid: string) => {
-    props.onUpdate({
+    updateNode({
       type: 'code',
       codeGuid,
       includeSubcodes: props.node.type === 'code' ? (props.node.includeSubcodes !== false) : true,
@@ -81,12 +78,12 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
   };
 
   const handleCodebookSelect = (codebookGuid: string) => {
-    props.onUpdate({ type: 'codebook', codebookGuid });
+    updateNode({ type: 'codebook', codebookGuid });
     setShowCodePicker(false);
   };
 
   const handleWrapWithOperator = (operator: QueryOperator) => {
-    props.onUpdate({
+    updateNode({
       type: 'operator',
       operator,
       children: [ props.node ],
@@ -142,7 +139,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
               disabled={props.node.type === 'codebook'}
               onChange={(e) => {
                 if (props.node.type === 'code') {
-                  props.onUpdate({
+                  updateNode({
                     type: 'code',
                     codeGuid: props.node.codeGuid,
                     includeSubcodes: (e.target as HTMLInputElement).checked,
@@ -178,7 +175,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
           </button>
           <button
             class={styles.deleteBtn}
-            onClick={() => props.onDelete()}
+            onClick={deleteNode}
             title="Remove"
           ><Icon name="trash" width={14} /></button>
         </div>
@@ -226,8 +223,8 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
             {(child, index) => (
               <QueryNodeEditor
                 node={child}
-                onUpdate={(updated) => handleChildUpdate(index(), updated)}
-                onDelete={() => handleChildDelete(index())}
+                queryGuid={props.queryGuid}
+                path={[...props.path, index()]}
                 depth={props.depth + 1}
               />
             )}

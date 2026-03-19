@@ -58,35 +58,11 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
     return flattenCodesWithDepth(cb.codes);
   });
 
-  const selectionCountByCode = createMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const source of Object.values(store.sources)) {
-      for (const sel of source.selections) {
-        if (sel.code.codebookGuid === props.codebookGuid) {
-          counts[sel.code.codeGuid] = (counts[sel.code.codeGuid] || 0) + 1;
-        }
-      }
-    }
-    return counts;
-  });
-
-  const getSelectionCount = (codeGuid: string): number => {
-    return selectionCountByCode()[codeGuid] || 0;
-  };
-
   const updateName = (newName: string) => {
     const cb = codebook();
     if (!cb || !newName.trim()) return;
     actions.updateCodebook({ ...cb, name: newName.trim() });
     setEditingName(false);
-  };
-
-  const updateCodes = (codes: Code[]) => {
-    const cb = codebook();
-    if (!cb) return;
-    
-    const updatedCodebook = { ...cb, codes };
-    actions.updateCodebook(updatedCodebook);
   };
 
   const addTopLevelCode = () => {
@@ -116,21 +92,6 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
     if (!codeGuid || !cb) return;
     actions.moveCode(cb.guid, codeGuid, targetCodebookGuid);
     setMovingCodeGuid(null);
-  };
-
-  const handleDeleteCode = (codeGuid: string) => {
-    const cb = codebook();
-    if (!cb) return;
-    const findName = (codes: Code[]): string | undefined => {
-      for (const c of codes) {
-        if (c.guid === codeGuid) return c.name;
-        const sub = findName(c.subcodes || []);
-        if (sub) return sub;
-      }
-    };
-    const name = findName(cb.codes) ?? 'this code';
-    if (!confirm(`Delete "${name}" and all its subcodes? This cannot be undone.`)) return;
-    actions.deleteCode(cb.guid, codeGuid);
   };
 
   const confirmMerge = (targetGuid: string) => {
@@ -226,15 +187,13 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                 <CodeTreeEditor
                   codes={cb().codes}
                   codebookGuid={cb().guid}
+                  parentCodeGuid={null}
                   depth={0}
-                  onCodesChange={updateCodes}
-                  onDelete={handleDeleteCode}
                   isExpanded={isExpanded}
                   onToggleExpanded={toggleExpanded}
                   onViewSelections={(codeGuid) => setViewingSelectionsForCode(codeGuid)}
                   onMerge={handleMerge}
                   onMove={handleMove}
-                  getSelectionCount={getSelectionCount}
                 />
               </Show>
             </div>

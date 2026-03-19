@@ -43,3 +43,25 @@ export function updateCodeInTree(codes: Code[], guid: string, updates: Partial<C
     return code;
   });
 }
+
+/**
+ * Apply an updater function to a specific level in the code tree.
+ * If parentCodeGuid is null, applies to the top-level codes array.
+ * Otherwise, finds the parent code by GUID and applies to its subcodes.
+ */
+export function updateCodesAtLevel(
+  codes: Code[],
+  parentCodeGuid: string | null,
+  updater: (codes: Code[]) => Code[],
+): Code[] {
+  if (parentCodeGuid === null) return updater(codes);
+  return codes.map(code => {
+    if (code.guid === parentCodeGuid) {
+      return { ...code, subcodes: updater(code.subcodes || []) };
+    }
+    if (code.subcodes?.length) {
+      return { ...code, subcodes: updateCodesAtLevel(code.subcodes, parentCodeGuid, updater) };
+    }
+    return code;
+  });
+}

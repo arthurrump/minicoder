@@ -5,7 +5,7 @@ import {
   buildMatchGroups,
   type MatchGroup,
 } from '../utils/selections';
-import { flattenCodesWithPath as flattenCodes } from '../utils/codeTree';
+import { flattenCodesWithPath as flattenCodes, updateCodesAtLevel } from '../utils/codeTree';
 import { FileContent } from '../store';
 import type { Code, Codebook, Source, TextSelection } from '../models/files';
 
@@ -373,5 +373,57 @@ describe('buildMatchGroups', () => {
     const guids = groups[0].selections.map(s => s.guid);
     expect(guids[0]).toBe('wide');
     expect(guids[1]).toBe('narrow');
+  });
+});
+
+// ── updateCodesAtLevel ─────────────────────────────────────────────────────
+
+describe('updateCodesAtLevel', () => {
+  const tree: Code[] = [
+    mkCode('a', 'A', '#f00', [
+      mkCode('a1', 'A1', '#f00', [
+        mkCode('a1x', 'A1X'),
+      ]),
+      mkCode('a2', 'A2'),
+    ]),
+    mkCode('b', 'B'),
+  ];
+
+  it('applies updater to top-level codes when parentCodeGuid is null', () => {
+    const result = updateCodesAtLevel(tree, null, codes => [
+      ...codes,
+      mkCode('c', 'C'),
+    ]);
+    expect(result.map(c => c.guid)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('applies updater to subcodes of the identified parent', () => {
+    const result = updateCodesAtLevel(tree, 'a', codes => [
+      ...codes,
+      mkCode('a3', 'A3'),
+    ]);
+    expect(result[0].subcodes.map(c => c.guid)).toEqual(['a1', 'a2', 'a3']);
+    // rest unchanged
+    expect(result[1].guid).toBe('b');
+  });
+
+  it('applies updater to deeply nested subcodes', () => {
+    const result = updateCodesAtLevel(tree, 'a1', codes => [
+      ...codes,
+      mkCode('a1y', 'A1Y'),
+    ]);
+    expect(result[0].subcodes[0].subcodes.map(c => c.guid)).toEqual(['a1x', 'a1y']);
+  });
+
+  it('returns codes unchanged when parentCodeGuid is not found', () => {
+    const result = updateCodesAtLevel(tree, 'nonexistent', () => []);
+    expect(result).toEqual(tree);
+  });
+
+  it('can remove codes at a level', () => {
+    const result = updateCodesAtLevel(tree, 'a', codes =>
+      codes.filter(c => c.guid !== 'a2'),
+    );
+    expect(result[0].subcodes.map(c => c.guid)).toEqual(['a1']);
   });
 });

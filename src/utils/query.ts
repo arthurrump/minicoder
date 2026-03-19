@@ -149,3 +149,44 @@ export function matchesAnyGlob(path: string, compiled: RegExp[]): boolean {
   if (compiled.length === 0) return true;
   return compiled.some(re => re.test(path));
 }
+
+/**
+ * Navigate to a node in a query tree by index path and replace or remove it.
+ * - path [] targets the root node itself.
+ * - path [i] targets child i of the root operator node.
+ * - path [i, j] targets child j of child i, etc.
+ * - If replacement is null the child is removed from its parent's children.
+ *   Removing the root (path []) returns null.
+ */
+export function updateQueryNodeAtPath(
+  root: QueryNode,
+  path: number[],
+  replacement: QueryNode | null,
+): QueryNode | null {
+  if (path.length === 0) return replacement;
+
+  if (root.type !== 'operator') return root; // can't descend into non-operator
+
+  const [head, ...rest] = path;
+  if (head < 0 || head >= root.children.length) return root;
+
+  if (rest.length === 0) {
+    // Direct child — replace or remove
+    if (replacement === null) {
+      return { ...root, children: root.children.filter((_, i) => i !== head) };
+    }
+    const newChildren = [...root.children];
+    newChildren[head] = replacement;
+    return { ...root, children: newChildren };
+  }
+
+  // Recurse into the child at head
+  const updatedChild = updateQueryNodeAtPath(root.children[head], rest, replacement);
+  if (updatedChild === null) {
+    // Child was removed — remove from this level
+    return { ...root, children: root.children.filter((_, i) => i !== head) };
+  }
+  const newChildren = [...root.children];
+  newChildren[head] = updatedChild;
+  return { ...root, children: newChildren };
+}

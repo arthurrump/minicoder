@@ -1,4 +1,5 @@
-import { Show, type Component } from 'solid-js';
+import { createMemo, Show, type Component } from 'solid-js';
+import { useStore } from '../../store';
 import Icon from '../Icon';
 import styles from './CodebookEditor.module.css';
 import CodeTreeEditor from './CodeTreeEditor';
@@ -7,24 +8,39 @@ import type { Code } from '../../models/files';
 interface CodeEditorProps {
   code: Code;
   codebookGuid: string;
-  onUpdate: (updates: Partial<Code>) => void;
-  onDelete: (codeGuid: string) => void;
+  onUpdateCode: (codeGuid: string, updates: Partial<Code>) => void;
   onMerge: (sourceGuid: string) => void;
   onMove: (codeGuid: string) => void;
   onAddSubcode: () => void;
-  onSubcodesChange: (subcodes: Code[]) => void;
   isExpanded: boolean;
   onToggleExpanded: () => void;
   isExpandedForCode: (guid: string) => boolean;
   onToggleExpandedForCode: (guid: string) => void;
   onViewSelections: (codeGuid: string) => void;
-  getSelectionCount: (codeGuid: string) => number;
   depth: number;
 }
 
 const CodeEditor: Component<CodeEditorProps> = (props) => {
+  const { store, actions } = useStore();
   const hasSubcodes = () => props.code.subcodes && props.code.subcodes.length > 0;
-  const selectionCount = () => props.getSelectionCount(props.code.guid);
+
+  const selectionCount = createMemo(() => {
+    let count = 0;
+    for (const source of Object.values(store.sources)) {
+      for (const sel of source.selections) {
+        if (sel.code.codebookGuid === props.codebookGuid && sel.code.codeGuid === props.code.guid) {
+          count++;
+        }
+      }
+    }
+    return count;
+  });
+
+  const handleDelete = () => {
+    const name = props.code.name || 'this code';
+    if (!confirm(`Delete "${name}" and all its subcodes? This cannot be undone.`)) return;
+    actions.deleteCode(props.codebookGuid, props.code.guid);
+  };
 
   return (
     <>
@@ -33,7 +49,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
           type="color"
           class={styles.codeColorPicker}
           value={props.code.color}
-          onChange={(e) => props.onUpdate({ color: e.target.value })}
+          onChange={(e) => props.onUpdateCode(props.code.guid, { color: e.target.value })}
           title="Code color"
         />
         
@@ -41,7 +57,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
           type="text"
           class={styles.codeNameInput}
           value={props.code.name}
-          onInput={(e) => props.onUpdate({ name: e.target.value })}
+          onInput={(e) => props.onUpdateCode(props.code.guid, { name: e.target.value })}
           placeholder="Code name..."
         />
         
@@ -66,7 +82,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
           ><Icon name="arrow-right" /></button>
           <button 
             class={`${styles.codeActionBtn} ${styles.codeDeleteBtn}`} 
-            onClick={() => props.onDelete(props.code.guid)}
+            onClick={handleDelete}
             title="Delete code"
           ><Icon name="trash" /></button>
         </div>
@@ -75,7 +91,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
           class={styles.codeDescriptionInput}
           placeholder="Description..."
           value={props.code.description || ''}
-          onInput={(e) => props.onUpdate({ description: e.target.value })}
+          onInput={(e) => props.onUpdateCode(props.code.guid, { description: e.target.value })}
           rows="2"
         />
         
@@ -94,15 +110,13 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
                 <CodeTreeEditor
                   codes={props.code.subcodes}
                   codebookGuid={props.codebookGuid}
+                  parentCodeGuid={props.code.guid}
                   depth={props.depth + 1}
-                  onCodesChange={props.onSubcodesChange}
-                  onDelete={props.onDelete}
                   isExpanded={props.isExpandedForCode}
                   onToggleExpanded={props.onToggleExpandedForCode}
                   onViewSelections={props.onViewSelections}
                   onMerge={props.onMerge}
                   onMove={props.onMove}
-                  getSelectionCount={props.getSelectionCount}
                 />
               </Show>
               <button 
