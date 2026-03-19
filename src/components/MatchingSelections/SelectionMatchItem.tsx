@@ -1,10 +1,11 @@
-import { createMemo, Index, Show, type Component } from 'solid-js';
+import { createMemo, createSignal, Index, Show, type Component } from 'solid-js';
 import { useStore } from '../../store';
 import styles from './MatchingSelections.module.css';
 import MatchItemBase from './MatchItemBase';
 import TextView from '../TextView';
+import { SelectionPopover } from '../Popover';
 import { computeCollapsedRegions, type MatchGroup } from '../../utils/selections';
-import type { Code, Codebook } from '../../models/files';
+import type { Code, Codebook, TextSelection } from '../../models/files';
 
 export interface SelectionMatchItemProps {
   group: MatchGroup;
@@ -20,6 +21,16 @@ export interface SelectionMatchItemProps {
 
 const SelectionMatchItem: Component<SelectionMatchItemProps> = (props) => {
   const { indices } = useStore();
+  const [popover, setPopover] = createSignal<{ selection: TextSelection; x: number; y: number } | null>(null);
+
+  const handleCodeClick = (codeGuid: string, e: MouseEvent) => {
+    const sel = props.group.selections.find(s => s.code.codeGuid === codeGuid);
+    if (sel) {
+      setPopover({ selection: sel, x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleClosePopover = () => setPopover(null);
 
   // Compute collapsed sub-regions
   const collapsedRegions = createMemo(() => computeCollapsedRegions(props.group));
@@ -63,11 +74,13 @@ const SelectionMatchItem: Component<SelectionMatchItemProps> = (props) => {
   });
   
   return (
+    <>
     <MatchItemBase
       sourcePath={props.group.sourcePath}
       codes={uniqueCodes()}
       charOffset={props.group.start}
       onOpenSource={props.onOpenSource}
+      onCodeClick={handleCodeClick}
     >
       <div class={styles.matchContent}>
         <Show when={props.isExpanded || !hasGaps()} fallback={
@@ -123,6 +136,18 @@ const SelectionMatchItem: Component<SelectionMatchItemProps> = (props) => {
         </button>
       </Show>
     </MatchItemBase>
+    <Show when={popover()}>
+      {(p) => (
+        <SelectionPopover
+          sourcePath={props.group.sourcePath}
+          selection={p().selection}
+          x={p().x}
+          y={p().y}
+          onClose={handleClosePopover}
+        />
+      )}
+    </Show>
+    </>
   );
 };
 
