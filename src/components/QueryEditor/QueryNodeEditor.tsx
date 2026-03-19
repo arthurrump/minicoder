@@ -1,5 +1,4 @@
 import { createSignal, createMemo, For, Show, type Component } from 'solid-js';
-import octicons from '@primer/octicons';
 import Icon from '../Icon';
 import { useStore } from '../../store';
 import styles from './QueryEditor.module.css';
@@ -181,7 +180,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
             class={styles.deleteBtn}
             onClick={() => props.onDelete()}
             title="Remove"
-          ><Icon icon={octicons.trash} width={14} /></button>
+          ><Icon name="trash" width={14} /></button>
         </div>
       </div>
       

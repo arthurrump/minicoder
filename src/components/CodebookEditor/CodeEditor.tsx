@@ -1,5 +1,4 @@
 import { Show, type Component } from 'solid-js';
-import octicons from '@primer/octicons';
 import Icon from '../Icon';
 import styles from './CodebookEditor.module.css';
 import CodeTreeEditor from './CodeTreeEditor';
@@ -53,23 +52,23 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
             title="View selections"
           >
             <span class={styles.selectionCount}>{selectionCount()}</span>
-            <Icon icon={octicons['list-unordered']} />
+            <Icon name="list-unordered" />
           </button>
           <button 
             class={styles.codeActionBtn}
             onClick={() => props.onMerge(props.code.guid)}
             title="Merge into another code"
-          ><Icon icon={octicons['git-merge']} /></button>
+          ><Icon name="git-merge" /></button>
           <button 
             class={styles.codeActionBtn}
             onClick={() => props.onMove(props.code.guid)}
             title="Move to another codebook"
-          ><Icon icon={octicons['arrow-right']} /></button>
+          ><Icon name="arrow-right" /></button>
           <button 
             class={`${styles.codeActionBtn} ${styles.codeDeleteBtn}`} 
             onClick={() => props.onDelete(props.code.guid)}
             title="Delete code"
-          ><Icon icon={octicons.trash} /></button>
+          ><Icon name="trash" /></button>
         </div>
         
         <textarea

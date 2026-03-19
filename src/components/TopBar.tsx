@@ -3,7 +3,6 @@ import { useSettings } from "../settings";
 
 import styles from "./TopBar.module.css"
 import Icon from "./Icon";
-import octicons from "@primer/octicons";
 
 interface TopBarProps {
     currentDir: string;
@@ -48,7 +47,7 @@ export function TopBar(props: TopBarProps) {
                 <button onClick={() => props.onChangeDir()}>
                     <Show when={props.currentDir} fallback="Open Directory">Change Directory</Show>
                 </button>
-                <button onClick={openSettings} title="Settings"><Icon icon={octicons.gear} /></button>
+                <button onClick={openSettings} title="Settings"><Icon name="gear" /></button>
             </div>
             <Show when={showSettings()}>
                 <div class={styles.settingsOverlay} onClick={() => setShowSettings(false)}>

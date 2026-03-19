@@ -1,5 +1,4 @@
 import { createSignal, For, Show, createEffect, type JSX } from 'solid-js';
-import octicons from '@primer/octicons';
 import Icon from '../Icon';
 
 import { useStore } from '../../store';
@@ -210,13 +209,13 @@ export function FileBrowser(props: FileBrowserProps) {
           </Show>
           <Show when={nodeProps.node.handle.kind === 'file'}>
             <Show when={nodeProps.node.name.endsWith('.mcc')}>
-              <Icon icon={octicons.repo} class={styles.fileIndicator} />
+              <Icon name="repo" class={styles.fileIndicator} />
             </Show>
             <Show when={nodeProps.node.name.endsWith('.mcq')}>
-              <Icon icon={octicons.search} class={styles.fileIndicator} />
+              <Icon name="search" class={styles.fileIndicator} />
             </Show>
             <Show when={!nodeProps.node.name.endsWith('.mcc') && !nodeProps.node.name.endsWith('.mcq')}>
-              <Icon icon={octicons.file} class={styles.fileIndicator} />
+              <Icon name="file" class={styles.fileIndicator} />
             </Show>
           </Show>
           <span>{nodeProps.node.name}</span>
@@ -246,18 +245,18 @@ export function FileBrowser(props: FileBrowserProps) {
     <div class={styles.fileBrowser}>
       <div class={styles.fileBrowserHeader}>
         <button class={styles.createBtn} onClick={() => openCreateModal('codebook')} title="New Codebook">
-          <Icon icon={octicons.repo} width={14} />
+          <Icon name="repo" width={14} />
           <span>+</span>
         </button>
         <button class={styles.createBtn} onClick={() => openCreateModal('query')} title="New Query">
-          <Icon icon={octicons.search} width={14} />
+          <Icon name="search" width={14} />
           <span>+</span>
         </button>
         <span class={styles.saveIndicator} title={store.isSaving ? 'Saving...' : 'Saved'}>
           <Show when={store.isSaving} fallback={
-            <Icon icon={octicons['issue-closed']} width={14} />
+            <Icon name="issue-closed" width={14} />
           }>
-            <Icon icon={octicons['issue-draft']} width={14} class={styles.spinning} />
+            <Icon name="issue-draft" width={14} class={styles.spinning} />
           </Show>
         </span>
         <button
@@ -267,7 +266,7 @@ export function FileBrowser(props: FileBrowserProps) {
           title="Refresh files"
           disabled={refreshing()}
         >
-          <Icon icon={octicons.sync} width={14} />
+          <Icon name="sync" width={14} />
         </button>
       </div>
       <div class={styles.fileBrowserTree}>

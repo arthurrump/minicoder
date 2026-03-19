@@ -1,5 +1,4 @@
 import { createSignal, createMemo, Show, type Component, onMount, onCleanup } from 'solid-js';
-import octicons from '@primer/octicons';
 import Icon from './Icon';
 import { useStore } from '../store';
 import { updateCodeInTree } from '../utils/codeTree';
@@ -186,12 +185,12 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
               class={styles.closeBtn}
               onClick={() => setEditing(e => !e)}
               title={editing() ? 'Stop editing' : 'Edit code'}
-            ><Icon icon={editing() ? octicons.check : octicons.pencil} width={16} /></button>
+            ><Icon name={editing() ? "check" : "pencil"} width={16} /></button>
             <button
               class={styles.closeBtn}
               onClick={() => props.onClose()}
               title="Close"
-            ><Icon icon={octicons.x} width={16} /></button>
+            ><Icon name="x" width={16} /></button>
           </div>
         </div>
 
