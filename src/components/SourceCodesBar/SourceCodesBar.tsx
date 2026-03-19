@@ -1,6 +1,6 @@
 import { type Component, createMemo, createSignal, For, Show, onCleanup } from 'solid-js';
 import ColorChip from '../ColorChip';
-import SourceCodePopover from './SourceCodePopover';
+import { SourceCodePopover } from '../Popover';
 import { useStore } from '../../store';
 import { useSettings } from '../../settings';
 import { flattenCodesWithDepth } from '../../utils/codeTree';

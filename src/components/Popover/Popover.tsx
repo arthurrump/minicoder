@@ -1,21 +1,26 @@
 import Icon from '../Icon';
-import { type Component, Show, createMemo, createSignal, For, onCleanup } from 'solid-js';
+import { type Component, type JSX, Show, createMemo, createSignal, For, onCleanup } from 'solid-js';
 import ColorChip from '../ColorChip';
 import { useStore } from '../../store';
 import { flattenCodesWithDepth } from '../../utils/codeTree';
-import type { AppliedCode, Code, Codebook, CodeReference } from '../../models/files';
-import styles from './SourceCodesBar.module.css';
+import type { Code, Codebook } from '../../models/files';
+import styles from './Popover.module.css';
 
-interface SourceCodePopoverProps {
-    sourcePath: string;
-    appliedCode: AppliedCode;
+interface PopoverProps {
     x: number;
     y: number;
     onClose: () => void;
+    codeGuid: string;
+    creatingUser?: string;
+    note?: string;
+    onRemove: () => void;
+    onChangeCode: (code: Code, codebook: Codebook) => void;
+    onNoteChange: (note: string | undefined) => void;
+    extraActions?: JSX.Element;
 }
 
-const SourceCodePopover: Component<SourceCodePopoverProps> = (props) => {
-    const { store, actions, indices } = useStore();
+const Popover: Component<PopoverProps> = (props) => {
+    const { indices } = useStore();
     const [showCodePicker, setShowCodePicker] = createSignal(false);
     let popoverRef: HTMLDivElement | undefined;
 
@@ -39,44 +44,19 @@ const SourceCodePopover: Component<SourceCodePopoverProps> = (props) => {
     onCleanup(() => document.removeEventListener('keydown', onKeyDown, true));
 
     const codeInfo = createMemo(() => {
-        const info = indices.codeByGuid()[props.appliedCode.code.codeGuid];
+        const info = indices.codeByGuid()[props.codeGuid];
         return info ? { code: info.code, codebook: info.codebook } : { code: null, codebook: undefined };
     });
 
-    const handleRemove = () => {
-        const source = store.sources[props.sourcePath];
-        if (!source) return;
-        actions.updateSourceCodes(
-            props.sourcePath,
-            (source.sourceCodes ?? []).filter(sc => sc.code.codeGuid !== props.appliedCode.code.codeGuid),
-        );
-        props.onClose();
-    };
-
     const handleChangeCode = (code: Code, codebook: Codebook) => {
-        const source = store.sources[props.sourcePath];
-        if (!source) return;
-        const newRef: CodeReference = { codebookGuid: codebook.guid, codeGuid: code.guid };
-        actions.updateSourceCodes(
-            props.sourcePath,
-            (source.sourceCodes ?? []).map(sc =>
-                sc.code.codeGuid === props.appliedCode.code.codeGuid ? { ...sc, code: newRef } : sc
-            ),
-        );
+        props.onChangeCode(code, codebook);
         setShowCodePicker(false);
     };
 
     const handleNoteChange = (e: Event) => {
         const target = e.currentTarget as HTMLTextAreaElement;
         const note = target.value.trim() === '' ? undefined : target.value;
-        const source = store.sources[props.sourcePath];
-        if (!source) return;
-        actions.updateSourceCodes(
-            props.sourcePath,
-            (source.sourceCodes ?? []).map(sc =>
-                sc.code.codeGuid === props.appliedCode.code.codeGuid ? { ...sc, note } : sc
-            ),
-        );
+        props.onNoteChange(note);
     };
 
     /** Codebook groups for the change-code picker, excluding the current code */
@@ -84,7 +64,7 @@ const SourceCodePopover: Component<SourceCodePopoverProps> = (props) => {
         const groups: { codebook: Codebook; codes: { code: Code; depth: number }[] }[] = [];
         for (const cb of indices.sortedCodebooks()) {
             const all = flattenCodesWithDepth(cb.codes);
-            const filtered = all.filter(item => item.code.guid !== props.appliedCode.code.codeGuid);
+            const filtered = all.filter(item => item.code.guid !== props.codeGuid);
             if (filtered.length > 0) {
                 groups.push({ codebook: cb, codes: filtered });
             }
@@ -109,6 +89,7 @@ const SourceCodePopover: Component<SourceCodePopoverProps> = (props) => {
             }}
             class={styles.popover}
             style={{ left: `${props.x}px`, top: `${props.y}px` }}
+            onClick={(e) => e.stopPropagation()}
         >
             <div class={styles.popoverHeader}>
                 <div class={styles.popoverCodeItem}>
@@ -119,6 +100,7 @@ const SourceCodePopover: Component<SourceCodePopoverProps> = (props) => {
                     </Show>
                 </div>
                 <div class={styles.popoverActions}>
+                    {props.extraActions}
                     <button
                         class={styles.popoverActionBtn}
                         onClick={() => setShowCodePicker(!showCodePicker())}
@@ -126,15 +108,15 @@ const SourceCodePopover: Component<SourceCodePopoverProps> = (props) => {
                     ><Icon name="arrow-switch" /></button>
                     <button
                         class={styles.popoverActionBtn}
-                        onClick={handleRemove}
+                        onClick={() => props.onRemove()}
                         title="Remove this code"
                     ><Icon name="trash" /></button>
                 </div>
             </div>
-            <Show when={props.appliedCode.creatingUser}>
+            <Show when={props.creatingUser}>
                 <div class={styles.popoverUser}>
                     <span class={styles.popoverUserLabel}>Created by:</span>
-                    <span class={styles.popoverUserName}>{props.appliedCode.creatingUser}</span>
+                    <span class={styles.popoverUserName}>{props.creatingUser}</span>
                 </div>
             </Show>
             <Show when={showCodePicker()}>
@@ -163,7 +145,7 @@ const SourceCodePopover: Component<SourceCodePopoverProps> = (props) => {
             <textarea
                 class={styles.popoverNote}
                 placeholder="Add a note..."
-                value={props.appliedCode.note || ''}
+                value={props.note || ''}
                 onInput={handleNoteChange}
                 rows={3}
             />
@@ -171,4 +153,4 @@ const SourceCodePopover: Component<SourceCodePopoverProps> = (props) => {
     );
 };
 
-export default SourceCodePopover;
+export default Popover;

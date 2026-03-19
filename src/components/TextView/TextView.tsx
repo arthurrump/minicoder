@@ -1,6 +1,6 @@
 import { createMemo, createSignal, For, Show, type Component, onCleanup, createEffect } from 'solid-js';
 import styles from './TextView.module.css';
-import HighlightPopover from '../HighlightPopover';
+import { SelectionPopover } from '../Popover';
 import ColorChip from '../ColorChip';
 import TextSegment from './TextSegment';
 import SelectionHandles from './SelectionHandles';
@@ -292,12 +292,15 @@ const TextView: Component<TextViewProps> = (props) => {
                         props.selections.find(s => s.guid === p().selection.guid) ?? p().selection
                     );
                     return (
-                        <HighlightPopover
+                        <SelectionPopover
                             x={p().x}
                             y={p().y}
+                            onClose={() => {
+                                setPopover(null);
+                                if (!draggingHandle()) setActiveSelectionGuid(null);
+                            }}
                             sourcePath={props.sourcePath}
                             selection={liveSelection()}
-                            onClick={(e: MouseEvent) => e.stopPropagation()}
                         />
                     );
                 }}

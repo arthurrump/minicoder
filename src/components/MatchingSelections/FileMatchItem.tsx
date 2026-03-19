@@ -2,7 +2,7 @@ import { createMemo, createSignal, Show, type Component } from 'solid-js';
 import { useStore } from '../../store';
 import styles from './MatchingSelections.module.css';
 import MatchItemBase from './MatchItemBase';
-import SourceCodePopover from '../SourceCodesBar/SourceCodePopover';
+import { SourceCodePopover } from '../Popover';
 import type { AppliedCode, Code, Codebook } from '../../models/files';
 
 export interface FileMatchItemProps {
