@@ -68,12 +68,6 @@ const CodingView: Component = () => {
       scrollPositions.set(currentPath, textViewWrapperRef.scrollTop);
     }
   }
-
-  function restoreScrollPosition(path: string) {
-    if (textViewWrapperRef) {
-      textViewWrapperRef.scrollTop = scrollPositions.get(path) || 0;
-    }
-  }
   
   const [selectedCode, setSelectedCode] = createSignal<{ code: Code, codebook: Codebook } | null>(null);
   const [infoModal, setInfoModal] = createSignal<{ codeGuid: string; codebookGuid: string; sourceFilter?: string; includeSubcodes?: boolean } | null>(null);
@@ -138,7 +132,8 @@ const CodingView: Component = () => {
   // Restore scroll position when file content loads or path changes (text files only)
   createEffect(on([() => fileContent(), selectedFilePath], () => {
     const path = selectedFilePath();
-    if (path && textViewWrapperRef) {
+    const wrapper = textViewWrapperRef;
+    if (path && wrapper) {
       const charOffset = pendingScrollOffset();
       if (charOffset !== null) {
         const content = fileContent();
@@ -146,12 +141,12 @@ const CodingView: Component = () => {
         setPendingScrollOffset(null);
         // Scroll to the character offset by finding the target line
         requestAnimationFrame(() => {
-          scrollToCharOffset(textViewWrapperRef, content, charOffset);
+          scrollToCharOffset(wrapper, content, charOffset);
         });
       } else {
         // Use requestAnimationFrame to ensure DOM has updated
         requestAnimationFrame(() => {
-          restoreScrollPosition(path);
+          wrapper.scrollTop = scrollPositions.get(path) || 0;
         });
       }
     }
@@ -351,11 +346,10 @@ const CodingView: Component = () => {
     // If the file is already selected and content loaded, scroll immediately
     const fc = store.fileContents[sourcePath];
     const content = fc?.type === 'plain-text' ? fc.content : undefined;
-    if (sourcePath === selectedFilePath() && content) {
+    const wrapper = textViewWrapperRef;
+    if (sourcePath === selectedFilePath() && content && wrapper) {
       requestAnimationFrame(() => {
-        if (textViewWrapperRef) {
-          scrollToCharOffset(textViewWrapperRef, content, charOffset);
-        }
+        scrollToCharOffset(wrapper, content, charOffset);
       });
       return;
     }
