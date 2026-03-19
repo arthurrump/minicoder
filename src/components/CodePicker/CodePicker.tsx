@@ -1,8 +1,8 @@
 import { createEffect, createSignal, For, Show, on, createMemo } from "solid-js";
-import styles from "./CodePicker.module.css";
 import codebookStyles from "./CodebookList.module.css";
-import ColorChip from "./ColorChip";
-import octicons from "@primer/octicons";
+import CodeList from "./CodeList";
+import Icon from "../Icon";
+import type { Code, Codebook } from "../../models/files";
 
 interface CodePickerProps {
     codebooks: Codebook[];
@@ -10,61 +10,6 @@ interface CodePickerProps {
     onInfoClick?: (code: Code, codebook: Codebook) => void;
     onEditClick?: (codebook: Codebook) => void;
 }
-
-interface CodeListProps {
-    codes: Code[];
-    codebook: Codebook;
-    onCodeClick: (code: Code, codebook: Codebook) => void;
-    onInfoClick?: (code: Code, codebook: Codebook) => void;
-}
-
-const CodeList = (props: CodeListProps) => (
-    <For each={props.codes}>
-        {(code) => (
-            <>
-                <div
-                    class={styles.codeItem}
-                    onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        props.onCodeClick(code, props.codebook);
-                    }}
-                >
-                    <ColorChip class={styles.colorChip} color={code.color} />
-                    <span>{code.name}</span>
-                    <Show when={props.onInfoClick}>
-                        <button
-                            class={styles.infoBtn}
-                            title="View selections"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                props.onInfoClick!(code, props.codebook);
-                            }}
-                            onMouseDown={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                            }}
-                            innerHTML={octicons.info.toSVG()}
-                        />
-                    </Show>
-                </div>
-                <Show when={code.subcodes && code.subcodes.length > 0}>
-                    <div class={styles.subcodes}>
-                        <CodeList 
-                            codes={code.subcodes!} 
-                            codebook={props.codebook}
-                            onCodeClick={props.onCodeClick}
-                            onInfoClick={props.onInfoClick}
-                        />
-                    </div>
-                </Show>
-            </>
-        )}
-    </For>
-);
 
 export const CodePicker = (props: CodePickerProps) => {
     // Track expanded state for each codebook by guid
@@ -134,8 +79,7 @@ export const CodePicker = (props: CodePickerProps) => {
                                         e.stopPropagation();
                                         props.onEditClick!(codebook);
                                     }}
-                                    innerHTML={octicons.pencil.toSVG({ width: 14 })}
-                                />
+                                ><Icon name="pencil" width={14} /></button>
                             </Show>
                         </div>
                         <Show when={isExpanded(codebook.guid)}>

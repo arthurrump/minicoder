@@ -60,6 +60,9 @@
     padding: 8px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
+    /* Override the default textarea styling with the default application font. */
+    /* https://github.com/eslint/css/issues/387 */
+    /* eslint-disable-next-line css/font-family-fallbacks */
     font-family: inherit;
     font-size: inherit;
     resize: vertical;

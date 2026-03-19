@@ -16,18 +16,11 @@
 }
 
 .queryEditorHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border-color);
-    margin-bottom: 8px;
+    composes: editorHeader from '../../styles/shared.module.css';
 }
 
 .queryTitle {
-    margin: 0;
-    font-size: 1.2rem;
-    cursor: pointer;
+    composes: editorTitle from '../../styles/shared.module.css';
 }
 
 .queryTitle:hover {
@@ -35,18 +28,11 @@
 }
 
 .queryTitleInput {
-    font-size: 1.2rem;
-    font-weight: bold;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--bg-color);
-    color: var(--text-color);
-    padding: 2px 6px;
+    composes: editorTitleInput from '../../styles/shared.module.css';
 }
 
 .queryHeaderActions {
-    display: flex;
-    gap: 8px;
+    composes: headerActions from '../../styles/shared.module.css';
 }
 
 .queryBuilder {
@@ -92,36 +78,15 @@
 }
 
 .btnSmall {
-    padding: 4px 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--bg-color);
-    color: var(--text-color);
-    cursor: pointer;
-}
-
-.btnSmall:hover {
-    background: var(--code-hover);
+    composes: btnSmall from '../../styles/shared.module.css';
 }
 
 .btnPrimary {
-    background: #007acc;
-    border-color: #007acc;
-    color: white;
-}
-
-.btnPrimary:hover {
-    background: #005a9e;
+    composes: btnPrimary from '../../styles/shared.module.css';
 }
 
 .btnDanger {
-    background: #d9534f;
-    border-color: #d43f3a;
-    color: white;
-}
-
-.btnDanger:hover {
-    background: #c9302c;
+    composes: btnDanger from '../../styles/shared.module.css';
 }
 
 /* Query Node Styles */
@@ -197,15 +162,11 @@
 }
 
 .codeChip {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-    flex-shrink: 0;
+    composes: codeChip from '../../styles/shared.module.css';
 }
 
 .codebookName {
-    opacity: 0.6;
-    font-size: 0.9em;
+    composes: codebookNameLabel from '../../styles/shared.module.css';
 }
 
 .nodeActions {

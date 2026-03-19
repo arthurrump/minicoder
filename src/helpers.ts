@@ -1,3 +1,5 @@
+import type { Codebook, Source, TextSelection, Query } from './models/files';
+
 // Hash raw bytes (ArrayBuffer)
 export async function hashBytes(data: ArrayBuffer): Promise<string> {
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -6,7 +8,7 @@ export async function hashBytes(data: ArrayBuffer): Promise<string> {
 }
 
 // Debounce utility with flush/cancel support
-export type Debounced<T extends (...args: any[]) => any> =
+export type Debounced<T extends (...args: never[]) => unknown> =
     ((...args: Parameters<T>) => void) & {
         /** Immediately execute the pending call (if any), cancelling the timer. */
         flush(): ReturnType<T> | undefined;
@@ -14,7 +16,7 @@ export type Debounced<T extends (...args: any[]) => any> =
         cancel(): void;
     };
 
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: never[]) => unknown>(
     fn: T,
     delay: number
 ): Debounced<T> {
@@ -42,7 +44,7 @@ export function debounce<T extends (...args: any[]) => any>(
         if (savedArgs !== null) {
             const args = savedArgs;
             savedArgs = null;
-            return fn(...args);
+            return fn(...args) as ReturnType<T>;
         }
         return undefined;
     };
@@ -150,7 +152,8 @@ export function isPlainText(content: string): boolean {
 export function sanitizeFileName(name: string): string | null {
     // Remove characters invalid on Windows/macOS/Linux filesystems
     let sanitized = name
-        .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')  // Replace invalid chars with underscore
+        // eslint-disable-next-line no-control-regex
+        .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')  // Replace invalid chars with underscore
         .replace(/\s+/g, ' ')                       // Normalize whitespace
         .trim()
         .toLowerCase();

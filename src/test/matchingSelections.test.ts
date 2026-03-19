@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   findOverlapping,
-  flattenCodes,
   computeCollapsedRegions,
   buildMatchGroups,
   type MatchGroup,
-} from '../components/MatchingSelections';
+} from '../utils/selections';
+import { flattenCodesWithPath as flattenCodes } from '../utils/codeTree';
 import { FileContent } from '../store';
+import type { Code, Codebook, Source, TextSelection } from '../models/files';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

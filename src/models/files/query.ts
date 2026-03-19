@@ -1,6 +1,6 @@
 // .mcq query file
 
-interface Query {
+export interface Query {
     guid: string;
     name: string;
     query: QueryNode | null;
@@ -9,9 +9,9 @@ interface Query {
     showOnlyMatching?: boolean;
 }
 
-type QueryNode =
+export type QueryNode =
     | { type: 'operator'; operator: QueryOperator; children: QueryNode[] }
     | { type: 'code'; codeGuid: string; includeSubcodes?: boolean }
     | { type: 'codebook'; codebookGuid: string };
 
-type QueryOperator = 'AND' | 'OR' | 'NOT';
+export type QueryOperator = 'AND' | 'OR' | 'NOT';

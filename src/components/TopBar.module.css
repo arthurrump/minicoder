@@ -32,16 +32,7 @@
 }
 
 .settingsOverlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
+    composes: overlay from '../styles/shared.module.css';
 }
 
 .settingsModal {
@@ -110,10 +101,10 @@
     background: var(--bg-secondary);
 }
 
-.primaryBtn {
-    background: var(--accent-color) !important;
+.settingsActions .primaryBtn {
+    background: var(--accent-color);
     color: white;
-    border-color: var(--accent-color) !important;
+    border-color: var(--accent-color);
 }
 
 .primaryBtn:hover {

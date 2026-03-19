@@ -1,3 +1,3 @@
-interface UserSettings {
+export interface UserSettings {
     userId: string;
 }

@@ -1,0 +1,100 @@
+/* Shared styles referenced via `composes` from component CSS modules */
+
+/* ── Modal overlay backdrop ──────────────────────────────────────────── */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+/* ── Small button family ─────────────────────────────────────────────── */
+.btnSmall {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.btnSmall:hover {
+    background: var(--code-hover);
+}
+
+.btnPrimary {
+    composes: btnSmall;
+    background: #007acc;
+    border-color: #007acc;
+    color: white;
+}
+
+.btnPrimary:hover {
+    background: #005a9e;
+}
+
+.btnDanger {
+    composes: btnSmall;
+    background: #d9534f;
+    border-color: #d43f3a;
+    color: white;
+}
+
+.btnDanger:hover {
+    background: #c9302c;
+}
+
+/* ── Editor header row (e.g. codebook / query editors) ───────────────── */
+.editorHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 8px;
+}
+
+.editorTitle {
+    margin: 0;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.editorTitle:hover {
+    opacity: 0.8;
+}
+
+.editorTitleInput {
+    font-size: 1.2rem;
+    font-weight: bold;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    padding: 2px 6px;
+}
+
+.headerActions {
+    display: flex;
+    gap: 8px;
+}
+
+/* ── Inline code indicator chip ──────────────────────────────────────── */
+.codeChip {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+/* ── Codebook name label ─────────────────────────────────────────────── */
+.codebookNameLabel {
+    opacity: 0.6;
+    font-size: 0.9em;
+}

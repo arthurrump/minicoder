@@ -1,12 +1,12 @@
 // .mcs coded source file
 
-interface Source {
+export interface Source {
     guid: string;
     fileHash: string;
     selections: TextSelection[];
 }
 
-interface TextSelection {
+export interface TextSelection {
     guid: string;
     start: number;
     end: number;
@@ -15,7 +15,7 @@ interface TextSelection {
     note?: string;
 }
 
-interface CodeReference {
+export interface CodeReference {
     codebookGuid: string;
     codeGuid: string;
 }

@@ -1,4 +1,5 @@
 import { createContext, useContext, createSignal, type ParentComponent } from 'solid-js';
+import type { UserSettings } from './models/settings';
 
 const SETTINGS_KEY = 'minicoder-settings';
 

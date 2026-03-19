@@ -1,10 +1,11 @@
 import { createSignal, createMemo, Show, type Component, onMount, onCleanup } from 'solid-js';
-import octicons from '@primer/octicons';
+import Icon from './Icon';
 import { useStore } from '../store';
+import { updateCodeInTree } from '../utils/codeTree';
 import styles from './CodeSelectionsModal.module.css';
-import editorStyles from './CodebookEditor.module.css';
 import ColorChip from './ColorChip';
 import { MatchingSelectionsList, buildMatchGroups } from './MatchingSelections';
+import type { Code, Source } from '../models/files';
 
 interface CodeSelectionsModalProps {
   codeGuid: string;
@@ -16,16 +17,6 @@ interface CodeSelectionsModalProps {
   includeSubcodes?: boolean;
   onClose: () => void;
   onOpenSource?: (sourcePath: string, charOffset: number) => void;
-}
-
-function updateCodeInTree(codes: Code[], guid: string, updates: Partial<Code>): Code[] {
-  return codes.map(code => {
-    if (code.guid === guid) return { ...code, ...updates };
-    if (code.subcodes?.length) {
-      return { ...code, subcodes: updateCodeInTree(code.subcodes, guid, updates) };
-    }
-    return code;
-  });
 }
 
 const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
@@ -173,14 +164,14 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
                 }>
                   <input
                     type="color"
-                    class={editorStyles.codeColorPicker}
+                    class={styles.codeColorPicker}
                     value={info().code.color}
                     onChange={(e) => handleUpdateCode({ color: e.target.value })}
                     title="Code color"
                   />
                   <input
                     type="text"
-                    class={editorStyles.codeNameInput}
+                    class={styles.codeNameInput}
                     value={info().code.name}
                     onInput={(e) => handleUpdateCode({ name: e.target.value })}
                     placeholder="Code name..."
@@ -194,14 +185,12 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
               class={styles.closeBtn}
               onClick={() => setEditing(e => !e)}
               title={editing() ? 'Stop editing' : 'Edit code'}
-              innerHTML={editing() ? octicons.check.toSVG({ width: 16 }) : octicons.pencil.toSVG({ width: 16 })}
-            />
+            ><Icon name={editing() ? "check" : "pencil"} width={16} /></button>
             <button
               class={styles.closeBtn}
-              onClick={props.onClose}
+              onClick={() => props.onClose()}
               title="Close"
-              innerHTML={octicons.x.toSVG({ width: 16 })}
-            />
+            ><Icon name="x" width={16} /></button>
           </div>
         </div>
 
@@ -218,7 +207,7 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
             )}
           </Show>
           <Show when={!editing() && codeInfo()?.code.description}>
-            <p class={styles.codeDescription}>{codeInfo()!.code.description}</p>
+            <p class={styles.codeDescription}>{codeInfo().code.description}</p>
           </Show>
 
           <div class={styles.modalOptions}>

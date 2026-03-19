@@ -1,8 +1,9 @@
-import octicons from '@primer/octicons';
-import { type Component, Show, createMemo, createSignal, For, onMount } from 'solid-js';
+import Icon from './Icon';
+import { type Component, Show, createMemo, createSignal, For } from 'solid-js';
 import styles from './HighlightPopover.module.css';
 import ColorChip from './ColorChip';
 import { useStore } from '../store';
+import type { Code, Codebook, CodeReference, TextSelection } from '../models/files';
 
 interface HighlightPopoverProps {
     x: number;
@@ -110,7 +111,7 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
             }}
             class={styles.highlightPopover}
             style={{ left: `${props.x}px`, top: `${props.y}px` }}
-            onClick={props.onClick}
+            onClick={(e) => props.onClick(e)}
         >
             <div class={styles.popoverHeader}>
                 <div class={styles.popoverCodeItem}>
@@ -125,20 +126,17 @@ const HighlightPopover: Component<HighlightPopoverProps> = (props) => {
                         class={styles.popoverActionBtn}
                         onClick={handleToggleExample}
                         title={isExample() ? 'Remove as example' : 'Mark as example'}
-                        innerHTML={isExample() ? octicons['star-fill'].toSVG() : octicons.star.toSVG()}
-                    />
+                    ><Icon name={isExample() ? "star-fill" : "star"} /></button>
                     <button
                         class={styles.popoverActionBtn}
                         onClick={() => setShowCodePicker(!showCodePicker())}
                         title="Change code"
-                        innerHTML={octicons['arrow-switch'].toSVG()}
-                    />
+                    ><Icon name="arrow-switch" /></button>
                     <button
                         class={styles.popoverActionBtn}
                         onClick={handleRemoveCode}
                         title="Remove this code"
-                        innerHTML={octicons.trash.toSVG()}
-                    />
+                    ><Icon name="trash" /></button>
                 </div>
             </div>
             <Show when={props.selection.creatingUser}>

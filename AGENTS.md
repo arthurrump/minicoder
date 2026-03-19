@@ -76,7 +76,7 @@ Single-page application with file-based routing:
   - Handles "pending selection" → "code application" workflow
   - Warns on file hash mismatch (file changed since last coding)
 
-- **CodebookEditor** - [src/components/CodebookEditor.tsx](src/components/CodebookEditor.tsx)
+- **CodebookEditor** - [src/components/CodebookEditor/](src/components/CodebookEditor/)
   - Embedded component for editing `.mcc` files
   - CRUD for codes (including nested subcodes)
   - Displayed in place of TextView when a codebook file is selected
@@ -94,6 +94,21 @@ Single-page application with file-based routing:
 - Recursive `findAllFiles()` to discover all files
 - `createWritable()` for atomic writes to `.mcc` / `.mcs` files
 
+### Utility Modules (`src/utils/`)
+
+Pure functions extracted from components for reuse and testability:
+
+- **`colors.ts`** — HSL↔Hex conversion, color generation for codes/subcodes, `lightenColor`
+- **`codeTree.ts`** — `flattenCodesWithDepth`, `flattenCodesWithPath`, `updateCodeInTree` for recursive code tree operations
+- **`paths.ts`** — `disambiguatePaths` for showing unique file suffixes in tabs/headers
+- **`query.ts`** — `evaluateQueryOnSource`, glob matching utilities (`parseFilterList`, `compileGlobs`, `matchesAnyGlob`)
+- **`selections.ts`** — `findOverlapping`, `computeSelectionLayers`, `computeCollapsedRegions`, `buildMatchGroups` plus associated types (`MatchGroup`, `CollapsedRegion`, `BuildMatchGroupsResult`)
+- **`textLayout.ts`** — `getUnderlineStyle`, `getHoveredLayer`, `getSelectionAtLayer`, `getHandlePositions`, `getCharIndexFromPoint`, `getTextOffset`, `scrollToCharOffset` plus constants (`UNDERLINE_HEIGHT`, `UNDERLINE_GAP`)
+
+### Shared Styles (`src/styles/`)
+
+- **`shared.module.css`** — Common CSS classes used via `composes` in component CSS modules: `.overlay` (modal backdrop), `.btnSmall`/`.btnPrimary`/`.btnDanger` (button styles), `.editorHeader`/`.editorTitle`/`.editorTitleInput`/`.headerActions` (editor header pattern), `.codeChip`, `.codebookNameLabel`
+
 ## Developer Workflows
 
 ### Start Development
@@ -108,12 +123,24 @@ pnpm build     # Output to `dist/`
 pnpm serve     # Preview production build
 ```
 
-### Type checking
-`pnpm build` runs type checks, but they can also be run separately:
+### Type checking and linting
+`pnpm build` runs type checks, but they can also be run separately. `pnpm check` runs both TypeScript type checking and ESLint:
 
 ```bash
-pnpm check     # Runs tsc to typecheck
+pnpm check     # Runs tsc typecheck + ESLint
 ```
+
+Run this before committing to catch type errors and lint violations.
+
+### ESLint configuration
+
+ESLint is configured in [eslint.config.js](eslint.config.js) with three rule sets:
+
+- **TypeScript** (`typescript-eslint` recommended with type-checked rules) — strict type safety, no `any`, no unused vars, etc.
+- **Solid.js** (`eslint-plugin-solid`) — enforces idiomatic Solid.js patterns (e.g. no direct JSX spread on components, correct reactive dependency usage)
+- **CSS** (`@eslint/css`) — enforces `rem`/`em` for font sizes (`css/relative-font-units`); baseline and invalid-property rules are disabled since the app targets Chromium only
+
+Adhere to these rules in all new code. Fix any lint errors introduced by your changes before finishing.
 
 ### Testing
 
@@ -134,15 +161,16 @@ pnpm test:watch    # Run tests in watch mode (development)
 | File | What is tested |
 |---|---|
 | `src/test/helpers.test.ts` | `hashBytes`, `debounce` (with flush/cancel), `buildSegments`, `isPlainText`, `fileTreeCompare` |
-| `src/test/queryEvaluation.test.ts` | `evaluateQueryOnSource` — null query, code/codebook leaf nodes, AND/OR/NOT operators, user filtering |
-| `src/test/matchingSelections.test.ts` | `findOverlapping`, `flattenCodes`, `computeCollapsedRegions`, `buildMatchGroups` |
+| `src/test/queryEvaluation.test.ts` | `evaluateQueryOnSource` (from `src/utils/query.ts`) — null query, code/codebook leaf nodes, AND/OR/NOT operators, user filtering |
+| `src/test/matchingSelections.test.ts` | `findOverlapping`, `computeCollapsedRegions`, `buildMatchGroups` (from `src/utils/selections.ts`), `flattenCodesWithPath` (from `src/utils/codeTree.ts`) |
 | `src/test/components/ColorChip.test.tsx` | `ColorChip` (render, styles, class prop) |
 | `src/test/components/CodePicker.test.tsx` | `CodePicker` (expand/collapse, code click, edit button) |
 
 #### What to Test When Adding Features
-- **New pure utility functions** in `src/helpers.ts` → add unit tests in `src/test/helpers.test.ts`
-- **New query logic** in `src/components/QueryEditor.tsx` → add unit tests in `src/test/queryEvaluation.test.ts`; export any function you want to test
-- **New data-processing utilities** exported from components → add unit tests in the relevant `src/test/*.test.ts` file
+- **New pure utility functions** in `src/utils/` → add unit tests in the relevant `src/test/*.test.ts` file (or create a new one)
+- **New helpers** in `src/helpers.ts` → add unit tests in `src/test/helpers.test.ts`
+- **New query logic** in `src/utils/query.ts` → add unit tests in `src/test/queryEvaluation.test.ts`
+- **New selection/matching logic** in `src/utils/selections.ts` → add unit tests in `src/test/matchingSelections.test.ts`
 - **New Solid.js components** → add component tests in a new `src/test/components/ComponentName.test.tsx` file using `@solidjs/testing-library`
 
 #### Writing Component Tests
@@ -178,12 +206,83 @@ Some features require manual testing in a Chromium browser, as they depend on th
 - **Store** (`createStore`) for global state with immutable updates
 
 ### Component Structure
-- Most components co-locate styles as `.module.css` files
+
+Components live in `src/components/`. Each component with sub-components is organized as a **directory** with an `index.ts` barrel export. Simple standalone components remain as flat files.
+
+**One component per file**: Each `.tsx` file should contain exactly one component. When a component is split into multiple pieces, each piece gets its own file within the component's directory.
+
+#### Directory-based components
+
+Multi-file components are structured as directories:
+
+```
+src/components/
+  CodebookEditor/
+    index.ts              # barrel: export { default } from './CodebookEditor'
+    CodebookEditor.tsx     # main component (default export)
+    CodebookEditor.module.css
+    CodeEditor.tsx         # sub-component
+    CodeTreeEditor.tsx     # sub-component
+    MergeTargetPicker.tsx  # sub-component
+    ...
+  CodePicker/
+    index.ts
+    CodePicker.tsx
+    CodePicker.module.css
+    CodebookList.module.css
+    CodeList.tsx
+  Dashboard/
+    index.ts
+    Dashboard.tsx
+    Dashboard.module.css
+    CodebookTable.tsx
+    CodeRow.tsx
+  FileBrowser/
+    index.ts
+    FileBrowser.tsx
+    FileBrowser.module.css
+    DirTreePicker.tsx
+    DirTreeNode.tsx
+  MatchingSelections/
+    index.ts
+    MatchingSelections.tsx
+    MatchingSelections.module.css
+    MatchItem.tsx
+    LazyMatchItem.tsx
+  QueryEditor/
+    index.ts
+    QueryEditor.tsx
+    QueryEditor.module.css
+    QueryNodeEditor.tsx
+    QueryMatchingSelections.tsx
+  TextView/
+    index.ts
+    TextView.tsx
+    TextView.module.css
+    TextSegment.tsx
+    SelectionHandles.tsx
+```
+
+#### Flat components
+
+Simple single-file components remain as flat files in `src/components/`:
+- `ColorChip.tsx` / `ColorChip.module.css`
+- `HighlightPopover.tsx` / `HighlightPopover.module.css`
+- `TopBar.tsx` / `TopBar.module.css`
+- `CodeSelectionsModal.tsx` / `CodeSelectionsModal.module.css`
+
+#### Conventions
+
+- **Barrel exports**: Each directory has an `index.ts` that re-exports the default export (and any named exports consumed by other modules). This preserves import paths like `../components/CodebookEditor`.
+- **Shared CSS module**: Sub-components within a directory import the parent's `.module.css` file (e.g., `import styles from './CodebookEditor.module.css'`).
+- **CSS `composes` paths**: Files one level deeper use `../../styles/shared.module.css`; flat files use `../styles/shared.module.css`.
+- Pure utility functions live in `src/utils/` (not in component files)
 - Props are typed interfaces (e.g., `CodePickerProps`)
-- Recursive rendering for nested codes (e.g., CodeList in [src/components/CodePicker.tsx](src/components/CodePicker.tsx))
+- Recursive rendering for nested codes (e.g., CodeList in [src/components/CodePicker/CodeList.tsx](src/components/CodePicker/CodeList.tsx))
 
 ### File Naming Conventions
 - Components: PascalCase (e.g., `FileBrowser.tsx`)
+- Component directories: PascalCase matching the main component (e.g., `FileBrowser/`)
 - Styles: `ComponentName.module.css`
 - Views: PascalCase in `views/` directory
 - Types: Defined inline or in [src/models.ts](src/models.ts)
@@ -201,11 +300,14 @@ Some features require manual testing in a Chromium browser, as they depend on th
 
 ### When Adding Features
 1. **File format changes**: Update both read/write paths in [src/store.tsx](src/store.tsx)
-2. **New components**: Add to `src/components/` with co-located `.module.css`
-3. **New store state**: Update AppStore interface + initialization
-4. **Component state**: Prefer `createMemo` for derived state over extra signals
-5. **Solid.js**: Write idiomatic Solid.js code
-6. **New testable logic**: Add unit tests in `src/test/` (see [Testing](#testing) section above)
+2. **New components**: Add to `src/components/` with co-located `.module.css`. If the component has sub-components, create a directory with an `index.ts` barrel export. Keep **one component per file**.
+3. **New sub-components**: Add a new `.tsx` file in the parent component's directory. Import the shared CSS module from the same directory.
+4. **New store state**: Update AppStore interface + initialization
+5. **Component state**: Prefer `createMemo` for derived state over extra signals
+6. **Solid.js**: Write idiomatic Solid.js code
+7. **New testable logic**: Add unit tests in `src/test/` (see [Testing](#testing) section above)
+8. **New pure functions**: Add to `src/utils/` (not inside component files)
+9. **New shared CSS patterns**: Add to `src/styles/shared.module.css` and compose into component modules
 
 ## External Dependencies
 - `@solidjs/router` - hash-based client routing

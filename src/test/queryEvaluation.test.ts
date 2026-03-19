@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateQueryOnSource } from '../components/QueryEditor';
+import { evaluateQueryOnSource } from '../utils/query';
+import type { QueryNode, TextSelection } from '../models/files';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

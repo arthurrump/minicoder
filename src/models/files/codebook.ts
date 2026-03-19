@@ -1,12 +1,12 @@
 // .mcc codebook file
 
-interface Codebook {
+export interface Codebook {
     guid: string;
     name: string;
     codes: Code[];
 }
 
-interface Code {
+export interface Code {
     guid: string;
     name: string;
     color: string;
@@ -15,7 +15,7 @@ interface Code {
     subcodes: Code[];
 }
 
-interface TextSelectionReference {
+export interface TextSelectionReference {
     sourceGuid: string;
     textSelectionGuid: string;
 }

@@ -1,7 +1,8 @@
 import { createSignal, For, Show, createEffect, type JSX } from 'solid-js';
-import octicons from '@primer/octicons';
+import Icon from '../Icon';
 
-import { useStore } from '../store';
+import { useStore } from '../../store';
+import DirTreePicker from './DirTreePicker';
 import styles from "./FileBrowser.module.css";
 
 interface ExtensionFilter {
@@ -33,114 +34,6 @@ interface FileNode {
 
 type CreateModalType = 'codebook' | 'query';
 
-interface DirNode {
-  name: string;
-  relativePath: string;
-  handle: FileSystemDirectoryHandle;
-}
-
-/** Lazy-loading tree view for picking a directory */
-function DirTreePicker(pickerProps: {
-  dirHandle: FileSystemDirectoryHandle;
-  selectedDir: string;
-  onSelect: (dir: string) => void;
-}) {
-  const [rootChildren, setRootChildren] = createSignal<DirNode[]>([]);
-
-  createEffect(async () => {
-    const dirs: DirNode[] = [];
-    for await (const entry of pickerProps.dirHandle.values()) {
-      if (entry.kind === 'directory') {
-        dirs.push({ name: entry.name, relativePath: entry.name, handle: entry as FileSystemDirectoryHandle });
-      }
-    }
-    setRootChildren(dirs.sort((a, b) => a.name.localeCompare(b.name)));
-  });
-
-  return (
-    <div>
-      <div
-        class={styles.dirNode}
-        classList={{ [styles.dirNodeSelected]: pickerProps.selectedDir === '' }}
-        onClick={() => pickerProps.onSelect('')}
-      >
-        <span class={styles.dirToggle} />
-        <span>/</span>
-      </div>
-      <For each={rootChildren()}>
-        {(node) => (
-          <DirTreeNode
-            node={node}
-            depth={1}
-            selectedDir={pickerProps.selectedDir}
-            onSelect={pickerProps.onSelect}
-          />
-        )}
-      </For>
-    </div>
-  );
-}
-
-/** A single node in the directory tree picker */
-function DirTreeNode(nodeProps: {
-  node: DirNode;
-  depth: number;
-  selectedDir: string;
-  onSelect: (dir: string) => void;
-}) {
-  const [expanded, setExpanded] = createSignal(false);
-  const [children, setChildren] = createSignal<DirNode[]>([]);
-  const [loaded, setLoaded] = createSignal(false);
-
-  async function toggle(e: MouseEvent) {
-    e.stopPropagation();
-    if (!loaded()) {
-      const dirs: DirNode[] = [];
-      for await (const entry of nodeProps.node.handle.values()) {
-        if (entry.kind === 'directory') {
-          const relativePath = `${nodeProps.node.relativePath}/${entry.name}`;
-          dirs.push({ name: entry.name, relativePath, handle: entry as FileSystemDirectoryHandle });
-        }
-      }
-      setChildren(dirs.sort((a, b) => a.name.localeCompare(b.name)));
-      setLoaded(true);
-    }
-    setExpanded(!expanded());
-  }
-
-  function select() {
-    nodeProps.onSelect(nodeProps.node.relativePath);
-  }
-
-  return (
-    <div>
-      <div
-        class={styles.dirNode}
-        classList={{ [styles.dirNodeSelected]: nodeProps.selectedDir === nodeProps.node.relativePath }}
-        style={{ "padding-left": `${nodeProps.depth * 16 + 6}px` }}
-        onClick={select}
-      >
-        <span class={styles.dirToggle} onClick={toggle}>
-          {expanded() ? '▼' : '▶'}
-        </span>
-        <span>{nodeProps.node.name}</span>
-      </div>
-      <Show when={expanded()}>
-        <For each={children()}>
-          {(child) => (
-            <DirTreeNode
-              node={child}
-              depth={nodeProps.depth + 1}
-              selectedDir={nodeProps.selectedDir}
-              onSelect={nodeProps.onSelect}
-            />
-          )}
-        </For>
-      </Show>
-    </div>
-  );
-}
-
 export function FileBrowser(props: FileBrowserProps) {
   const { store, actions } = useStore();
   const [rootNodes, setRootNodes] = createSignal<FileNode[]>([]);
@@ -157,21 +50,9 @@ export function FileBrowser(props: FileBrowserProps) {
     }
   }
 
-  createEffect(async () => {
-    await refreshDirectory();
+  createEffect(() => {
+    void refreshDirectory();
   });
-
-  /** Load immediate subdirectories of a directory handle */
-  async function loadSubdirectories(dirHandle: FileSystemDirectoryHandle, pathPrefix: string): Promise<DirNode[]> {
-    const dirs: DirNode[] = [];
-    for await (const entry of dirHandle.values()) {
-      if (entry.kind === 'directory') {
-        const relativePath = pathPrefix ? `${pathPrefix}/${entry.name}` : entry.name;
-        dirs.push({ name: entry.name, relativePath, handle: entry as FileSystemDirectoryHandle });
-      }
-    }
-    return dirs.sort((a, b) => a.name.localeCompare(b.name));
-  }
 
   function openCreateModal(type: CreateModalType) {
     setCreateName('');
@@ -282,7 +163,7 @@ export function FileBrowser(props: FileBrowserProps) {
   }
 
   function FileTreeNode(nodeProps: { node: FileNode; depth?: number }): JSX.Element {
-    const depth = nodeProps.depth ?? 0;
+    const depth = () => nodeProps.depth ?? 0;
     const [children, setChildren] = createSignal<FileNode[]>([]);
 
     const isExpanded = () => {
@@ -296,11 +177,11 @@ export function FileBrowser(props: FileBrowserProps) {
       return nodeProps.node.handle.kind === 'file' && props.selectedFile === nodeProps.node.relativePath;
     };
 
-    createEffect(async () => {
-      if (nodeProps.node.handle.kind === 'directory' && isExpanded()) {
-        const dirHandle = nodeProps.node.handle as FileSystemDirectoryHandle;
-        const loadedChildren = await loadDirectory(dirHandle, nodeProps.node.relativePath);
-        setChildren(loadedChildren);
+    createEffect(() => {
+      const expanded = isExpanded();
+      if (nodeProps.node.handle.kind === 'directory' && expanded) {
+        const dirHandle = nodeProps.node.handle;
+        void loadDirectory(dirHandle, nodeProps.node.relativePath).then(setChildren);
       }
     });
 
@@ -309,7 +190,7 @@ export function FileBrowser(props: FileBrowserProps) {
         <div
           class={styles.node}
           style={{
-            padding: `4px 4px 4px ${depth * 16}px`,
+            padding: `4px 4px 4px ${depth() * 16}px`,
             background: isSelected() ? 'var(--node-selected-background)' : 'transparent',
             color: isSelected() ? 'var(--node-selected-color)' : 'inherit',
           }}
@@ -328,20 +209,20 @@ export function FileBrowser(props: FileBrowserProps) {
           </Show>
           <Show when={nodeProps.node.handle.kind === 'file'}>
             <Show when={nodeProps.node.name.endsWith('.mcc')}>
-              <span class={styles.fileIndicator} innerHTML={octicons.repo.toSVG()} />
+              <Icon name="repo" class={styles.fileIndicator} />
             </Show>
             <Show when={nodeProps.node.name.endsWith('.mcq')}>
-              <span class={styles.fileIndicator} innerHTML={octicons.search.toSVG()} />
+              <Icon name="search" class={styles.fileIndicator} />
             </Show>
             <Show when={!nodeProps.node.name.endsWith('.mcc') && !nodeProps.node.name.endsWith('.mcq')}>
-              <span class={styles.fileIndicator} innerHTML={octicons.file.toSVG()} />
+              <Icon name="file" class={styles.fileIndicator} />
             </Show>
           </Show>
           <span>{nodeProps.node.name}</span>
         </div>
         <Show when={nodeProps.node.handle.kind === 'directory' && isExpanded()}>
           <For each={children()}>
-            {(child) => <FileTreeNode node={child} depth={depth + 1} />}
+            {(child) => <FileTreeNode node={child} depth={depth() + 1} />}
           </For>
         </Show>
       </div>
@@ -364,28 +245,28 @@ export function FileBrowser(props: FileBrowserProps) {
     <div class={styles.fileBrowser}>
       <div class={styles.fileBrowserHeader}>
         <button class={styles.createBtn} onClick={() => openCreateModal('codebook')} title="New Codebook">
-          <span innerHTML={octicons.repo.toSVG({ width: 14 })} />
+          <Icon name="repo" width={14} />
           <span>+</span>
         </button>
         <button class={styles.createBtn} onClick={() => openCreateModal('query')} title="New Query">
-          <span innerHTML={octicons.search.toSVG({ width: 14 })} />
+          <Icon name="search" width={14} />
           <span>+</span>
         </button>
         <span class={styles.saveIndicator} title={store.isSaving ? 'Saving...' : 'Saved'}>
           <Show when={store.isSaving} fallback={
-            <span innerHTML={octicons['issue-closed'].toSVG({ width: 14 })} />
+            <Icon name="issue-closed" width={14} />
           }>
-            <span class={styles.spinning} innerHTML={octicons['issue-draft'].toSVG({ width: 14 })} />
+            <Icon name="issue-draft" width={14} class={styles.spinning} />
           </Show>
         </span>
         <button
           class={styles.createBtn}
           classList={{ [styles.spinning]: refreshing() }}
-          onClick={handleRefresh}
+          onClick={() => { void handleRefresh(); }}
           title="Refresh files"
           disabled={refreshing()}
         >
-          <span innerHTML={octicons.sync.toSVG({ width: 14 })} />
+          <Icon name="sync" width={14} />
         </button>
       </div>
       <div class={styles.fileBrowserTree}>
@@ -406,7 +287,7 @@ export function FileBrowser(props: FileBrowserProps) {
                 placeholder={`Enter ${createModal()} name`}
                 value={createName()}
                 onInput={(e) => setCreateName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && createName().trim()) handleCreateConfirm(); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && createName().trim()) void handleCreateConfirm(); }}
                 ref={(el) => setTimeout(() => el.focus(), 0)}
               />
             </div>
@@ -424,7 +305,7 @@ export function FileBrowser(props: FileBrowserProps) {
               <button onClick={closeCreateModal}>Cancel</button>
               <button
                 class={styles.primaryBtn}
-                onClick={handleCreateConfirm}
+                onClick={() => { void handleCreateConfirm(); }}
                 disabled={!createName().trim()}
               >Create</button>
             </div>
