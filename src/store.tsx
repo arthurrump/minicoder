@@ -280,6 +280,21 @@ export const StoreProvider: ParentComponent = (props) => {
     debouncedSavers.get(key)!();
   }
 
+  // These helpers centralise the eslint-disable for reactive save callbacks.
+  // The save functions intentionally read the latest store state when executed.
+  function scheduleCodebookSave(guid: string) {
+    // eslint-disable-next-line solid/reactivity
+    scheduleSave(`codebook:${guid}`, () => saveCodebook(guid), 500);
+  }
+  function scheduleSourceSave(path: string, delayMs = 500) {
+    // eslint-disable-next-line solid/reactivity
+    scheduleSave(`source:${path}`, () => saveSource(path), delayMs);
+  }
+  function scheduleQuerySave(guid: string) {
+    // eslint-disable-next-line solid/reactivity
+    scheduleSave(`query:${guid}`, () => saveQuery(guid), 500);
+  }
+
   function registerFileLocation(key: string, loc: FileLocation) {
     setStore('fileLocations', key, loc);
   }
@@ -427,7 +442,7 @@ export const StoreProvider: ParentComponent = (props) => {
 
     updateCodebook(codebook: Codebook) {
       setStore('codebooks', codebook.guid, codebook);
-      scheduleSave(`codebook:${codebook.guid}`, () => saveCodebook(codebook.guid), 500);
+      scheduleCodebookSave(codebook.guid);
     },
 
     async createCodebook(name: string, dirPath?: string): Promise<Codebook | null> {
@@ -474,7 +489,7 @@ export const StoreProvider: ParentComponent = (props) => {
           );
           if (filtered.length !== source.selections.length) {
             setStore('sources', path, 'selections', filtered);
-            scheduleSave(`source:${path}`, () => saveSource(path), 500);
+            scheduleSourceSave(path);
           }
         }
       }
@@ -485,7 +500,7 @@ export const StoreProvider: ParentComponent = (props) => {
           const cleaned = removeCodebookFromQuery(query.query, codebookGuid, codeGuids);
           if (cleaned !== query.query) {
             setStore('queries', guid, 'query', cleaned);
-            scheduleSave(`query:${guid}`, () => saveQuery(guid), 500);
+            scheduleQuerySave(guid);
           }
         }
       }
@@ -518,7 +533,7 @@ export const StoreProvider: ParentComponent = (props) => {
         const filtered = source.selections.filter(sel => !removedGuids.has(sel.code.codeGuid));
         if (filtered.length !== source.selections.length) {
           setStore('sources', path, 'selections', filtered);
-          scheduleSave(`source:${path}`, () => saveSource(path), 500);
+          scheduleSourceSave(path);
         }
       }
     },
@@ -534,7 +549,7 @@ export const StoreProvider: ParentComponent = (props) => {
 
       selections.sort((a, b) => a.start - b.start || b.end - a.end);
       setStore('sources', path, 'selections', selections);
-      scheduleSave(`source:${path}`, () => saveSource(path), 1000);
+      scheduleSourceSave(path, 1000);
     },
 
     mergeCode(codebookGuid: string, sourceCodeGuid: string, targetCodeGuid: string) {
@@ -550,7 +565,7 @@ export const StoreProvider: ParentComponent = (props) => {
         });
         if (changed) {
           setStore('sources', path, 'selections', updatedSelections);
-          scheduleSave(`source:${path}`, () => saveSource(path), 500);
+          scheduleSourceSave(path);
         }
       }
 
@@ -573,7 +588,7 @@ export const StoreProvider: ParentComponent = (props) => {
           const updatedNode = replaceInQueryNode(query.query);
           if (updatedNode !== query.query) {
             setStore('queries', guid, 'query', updatedNode);
-            scheduleSave(`query:${guid}`, () => saveQuery(guid), 500);
+            scheduleQuerySave(guid);
           }
         }
       }
@@ -619,7 +634,7 @@ export const StoreProvider: ParentComponent = (props) => {
 
       const updatedCodebook = { ...codebook, codes: removeAndMerge(codebook.codes) };
       setStore('codebooks', codebookGuid, updatedCodebook);
-      scheduleSave(`codebook:${codebookGuid}`, () => saveCodebook(codebookGuid), 500);
+      scheduleCodebookSave(codebookGuid);
     },
 
     moveCode(sourceCodebookGuid: string, codeGuid: string, targetCodebookGuid: string) {
@@ -649,12 +664,12 @@ export const StoreProvider: ParentComponent = (props) => {
       // Update source codebook (remove the code)
       const updatedSource = { ...sourceCodebook, codes: updatedSourceCodes };
       setStore('codebooks', sourceCodebookGuid, updatedSource);
-      scheduleSave(`codebook:${sourceCodebookGuid}`, () => saveCodebook(sourceCodebookGuid), 500);
+      scheduleCodebookSave(sourceCodebookGuid);
 
       // Update target codebook (add code as top-level)
       const updatedTarget = { ...targetCodebook, codes: [...targetCodebook.codes, movedCode] };
       setStore('codebooks', targetCodebookGuid, updatedTarget);
-      scheduleSave(`codebook:${targetCodebookGuid}`, () => saveCodebook(targetCodebookGuid), 500);
+      scheduleCodebookSave(targetCodebookGuid);
 
       // Update all selections referencing any of the moved codes to point to the target codebook
       for (const [path, source] of Object.entries(store.sources)) {
@@ -668,7 +683,7 @@ export const StoreProvider: ParentComponent = (props) => {
         });
         if (changed) {
           setStore('sources', path, 'selections', updatedSelections);
-          scheduleSave(`source:${path}`, () => saveSource(path), 500);
+          scheduleSourceSave(path);
         }
       }
     },
@@ -707,7 +722,7 @@ export const StoreProvider: ParentComponent = (props) => {
       };
 
       setStore('codebooks', codebookGuid, updatedCodebook);
-      scheduleSave(`codebook:${codebookGuid}`, () => saveCodebook(codebookGuid), 500);
+      scheduleCodebookSave(codebookGuid);
     },
 
     removeExample(sourcePath: string, selectionGuid: string, codebookGuid: string, codeGuid: string) {
@@ -740,7 +755,7 @@ export const StoreProvider: ParentComponent = (props) => {
       };
 
       setStore('codebooks', codebookGuid, updatedCodebook);
-      scheduleSave(`codebook:${codebookGuid}`, () => saveCodebook(codebookGuid), 500);
+      scheduleCodebookSave(codebookGuid);
     },
 
     async mergeCodebook(sourceCodebookGuid: string, targetCodebookGuid: string) {
@@ -754,7 +769,7 @@ export const StoreProvider: ParentComponent = (props) => {
         codes: [...targetCodebook.codes, ...sourceCodebook.codes],
       };
       setStore('codebooks', targetCodebookGuid, updatedTarget);
-      scheduleSave(`codebook:${targetCodebookGuid}`, () => saveCodebook(targetCodebookGuid), 500);
+      scheduleCodebookSave(targetCodebookGuid);
 
       // 2. Update all selections that reference the source codebook
       for (const [path, source] of Object.entries(store.sources)) {
@@ -768,7 +783,7 @@ export const StoreProvider: ParentComponent = (props) => {
         });
         if (changed) {
           setStore('sources', path, 'selections', updatedSelections);
-          scheduleSave(`source:${path}`, () => saveSource(path), 500);
+          scheduleSourceSave(path);
         }
       }
 
@@ -778,7 +793,7 @@ export const StoreProvider: ParentComponent = (props) => {
 
     updateQuery(query: Query) {
       setStore('queries', query.guid, query);
-      scheduleSave(`query:${query.guid}`, () => saveQuery(query.guid), 500);
+      scheduleQuerySave(query.guid);
     },
 
     async createQuery(name: string, dirPath?: string): Promise<Query | null> {
@@ -841,69 +856,80 @@ export const StoreProvider: ParentComponent = (props) => {
   };
 
   // ---- Indices ----
-  
-  const indices: StoreIndices = { 
-    codeByGuid: createMemo(() => {
-      const index: Record<string, { code: Code; codebook: Codebook }> = {};
-      function walk(codes: Code[], codebook: Codebook) {
-        for (const code of codes) {
-          index[code.guid] = { code, codebook };
-          if (code.subcodes) walk(code.subcodes, codebook);
+
+  const codeByGuid = createMemo(() => {
+    const index: Record<string, { code: Code; codebook: Codebook }> = {};
+    function walk(codes: Code[], codebook: Codebook) {
+      for (const code of codes) {
+        index[code.guid] = { code, codebook };
+        if (code.subcodes) walk(code.subcodes, codebook);
+      }
+    }
+    for (const codebook of Object.values(store.codebooks)) {
+      walk(codebook.codes, codebook);
+    }
+    return index;
+  });
+
+  const subcodesByGuid = createMemo(() => {
+    const index: Record<string, Set<string>> = {};
+    function collect(code: Code): Set<string> {
+      const guids = new Set<string>([code.guid]);
+      if (code.subcodes) {
+        for (const sub of code.subcodes) {
+          for (const g of collect(sub)) guids.add(g);
         }
       }
-      for (const codebook of Object.values(store.codebooks)) {
-        walk(codebook.codes, codebook);
+      index[code.guid] = guids;
+      return guids;
+    }
+    for (const codebook of Object.values(store.codebooks)) {
+      for (const code of codebook.codes) collect(code);
+    }
+    return index;
+  });
+
+  const codesByCodebook = createMemo(() => {
+    const index: Record<string, Set<string>> = {};
+    function collect(codes: Code[], guids: Set<string>) {
+      for (const code of codes) {
+        guids.add(code.guid);
+        if (code.subcodes) collect(code.subcodes, guids);
       }
-      return index;
-    }),
-    subcodesByGuid: createMemo(() => {
-      const index: Record<string, Set<string>> = {};
-      function collect(code: Code): Set<string> {
-        const guids = new Set<string>([code.guid]);
-        if (code.subcodes) {
-          for (const sub of code.subcodes) {
-            for (const g of collect(sub)) guids.add(g);
-          }
-        }
-        index[code.guid] = guids;
-        return guids;
+    }
+    for (const codebook of Object.values(store.codebooks)) {
+      const guids = new Set<string>();
+      collect(codebook.codes, guids);
+      index[codebook.guid] = guids;
+    }
+    return index;
+  });
+
+  const pathToGuid = createMemo(() => {
+    const index: Record<string, string> = {};
+    for (const [guid, loc] of Object.entries(store.fileLocations)) {
+      if (!guid.startsWith('source:') && !guid.startsWith('content:')) {
+        index[loc.path] = guid;
       }
-      for (const codebook of Object.values(store.codebooks)) {
-        for (const code of codebook.codes) collect(code);
-      }
-      return index;
-    }),
-    codesByCodebook: createMemo(() => {
-      const index: Record<string, Set<string>> = {};
-      function collect(codes: Code[], guids: Set<string>) {
-        for (const code of codes) {
-          guids.add(code.guid);
-          if (code.subcodes) collect(code.subcodes, guids);
-        }
-      }
-      for (const codebook of Object.values(store.codebooks)) {
-        const guids = new Set<string>();
-        collect(codebook.codes, guids);
-        index[codebook.guid] = guids;
-      }
-      return index;
-    }),
-    pathToGuid: createMemo(() => {
-      const index: Record<string, string> = {};
-      for (const [guid, loc] of Object.entries(store.fileLocations)) {
-        if (!guid.startsWith('source:') && !guid.startsWith('content:')) {
-          index[loc.path] = guid;
-        }
-      }
-      return index;
-    }),
-    sortedCodebooks: createMemo(() => {
-      return Object.values(store.codebooks).sort((a, b) => {
-        const pathA = store.fileLocations[a.guid]?.path ?? a.name;
-        const pathB = store.fileLocations[b.guid]?.path ?? b.name;
-        return fileTreeCompare(pathA, pathB);
-      });
-    }),
+    }
+    return index;
+  });
+
+  const sortedCodebooks = createMemo(() => {
+    // eslint-disable-next-line solid/reactivity -- reactive reads are tracked by the wrapping createMemo
+    return Object.values(store.codebooks).sort((a, b) => {
+      const pathA = store.fileLocations[a.guid]?.path ?? a.name;
+      const pathB = store.fileLocations[b.guid]?.path ?? b.name;
+      return fileTreeCompare(pathA, pathB);
+    });
+  });
+
+  const indices: StoreIndices = {
+    codeByGuid,
+    subcodesByGuid,
+    codesByCodebook,
+    pathToGuid,
+    sortedCodebooks,
   };
 
   // ---- Warn on unsaved changes when closing/navigating away ----
