@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, Show, type Component } from 'solid-js';
+import { createMemo, createSignal, For, Show, onCleanup, type Component } from 'solid-js';
 import { disambiguatePaths } from '../../utils/paths';
 import CodeRow from './CodeRow';
 import styles from './Dashboard.module.css';
@@ -18,6 +18,28 @@ interface CodebookTableProps {
 
 const CodebookTable: Component<CodebookTableProps> = (props) => {
   const [expanded, setExpanded] = createSignal<Set<string>>(new Set());
+
+  let isResizing = false;
+  let resizeMouseMoveListener: ((e: MouseEvent) => void) | null = null;
+  let resizeMouseUpListener: ((e: MouseEvent | FocusEvent) => void) | null = null;
+
+  function stopResize() {
+    if (!isResizing) return;
+    if (resizeMouseMoveListener) {
+      document.removeEventListener('mousemove', resizeMouseMoveListener);
+    }
+    if (resizeMouseUpListener) {
+      document.removeEventListener('mouseup', resizeMouseUpListener as EventListener);
+      window.removeEventListener('blur', resizeMouseUpListener as EventListener);
+    }
+    isResizing = false;
+    resizeMouseMoveListener = null;
+    resizeMouseUpListener = null;
+  }
+
+  onCleanup(() => {
+    stopResize();
+  });
 
   function toggleExpanded(codeGuid: string) {
     setExpanded(prev => {
@@ -60,18 +82,23 @@ const CodebookTable: Component<CodebookTableProps> = (props) => {
     const startX = e.clientX;
     const startWidth = props.codeColWidth();
 
-    function onMouseMove(e: MouseEvent) {
-      const delta = e.clientX - startX;
+    const onMouseMove = (event: MouseEvent) => {
+      const delta = event.clientX - startX;
       props.onResizeCodeCol(Math.max(80, startWidth + delta));
-    }
+    };
 
-    function onMouseUp() {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    }
+    const onMouseUp = () => {
+      stopResize();
+    };
+
+    // Store listeners so they can be removed on cleanup/unmount.
+    resizeMouseMoveListener = onMouseMove;
+    resizeMouseUpListener = onMouseUp;
+    isResizing = true;
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('blur', onMouseUp);
   }
 
   return (
