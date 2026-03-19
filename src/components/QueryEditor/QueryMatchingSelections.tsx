@@ -27,7 +27,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
     const queryNode = query.query;
     const fileFilter = compileGlobs(parseFilterList(query.fileFilter));
     
-    for (const [sourcePath, source] of Object.entries(store.sources).sort()) {
+    for (const [sourcePath, source] of Object.entries(store.sources).sort(([a], [b]) => a.localeCompare(b))) {
       // Skip files that don't match any of the file filters
       if (!matchesAnyGlob(sourcePath, fileFilter)) continue;
 
