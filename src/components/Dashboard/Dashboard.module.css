@@ -60,7 +60,7 @@
 }
 
 /* First column (code name) */
-.table th:first-child,
+.table tr:first-child th:first-child,
 .table td:first-child {
     text-align: left;
     position: sticky;
@@ -192,6 +192,12 @@
     text-overflow: ellipsis;
     font-size: 0.85em;
     writing-mode: vertical-lr;
+}
+
+/* Folder header when expanded — horizontal text spanning children */
+.folderHeaderExpanded {
+    font-size: 0.85em;
+    white-space: nowrap;
 }
 
 /* Data cell with bar */

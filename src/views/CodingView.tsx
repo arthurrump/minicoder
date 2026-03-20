@@ -71,7 +71,7 @@ const CodingView: Component = () => {
   }
   
   const [selectedCode, setSelectedCode] = createSignal<{ code: Code, codebook: Codebook } | null>(null);
-  const [infoModal, setInfoModal] = createSignal<{ codeGuid: string; codebookGuid: string; sourceFilter?: string; includeSubcodes?: boolean } | null>(null);
+  const [infoModal, setInfoModal] = createSignal<{ codeGuid: string; codebookGuid: string; sourceFilter?: string[]; includeSubcodes?: boolean } | null>(null);
   const [pendingSelection, setPendingSelection] = createSignal<{ sourcePath: string; start: number; end: number } | null>(null);
   const [pendingScrollOffset, setPendingScrollOffset] = createSignal<number | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
@@ -433,7 +433,7 @@ const CodingView: Component = () => {
               <Show when={!selectedFilePath()}>
                 <Dashboard
                   onCodeClick={(codeGuid, codebookGuid) => setInfoModal({ codeGuid, codebookGuid })}
-                  onCellClick={(codeGuid, codebookGuid, sourcePath, includeSubcodes) => setInfoModal({ codeGuid, codebookGuid, sourceFilter: sourcePath, includeSubcodes })}
+                  onCellClick={(codeGuid, codebookGuid, sourcePaths, includeSubcodes) => setInfoModal({ codeGuid, codebookGuid, sourceFilter: sourcePaths, includeSubcodes })}
                   onSourceClick={(sourcePath) => {
                     saveCurrentScrollPosition();
                     if (!openTabs().includes(sourcePath)) {

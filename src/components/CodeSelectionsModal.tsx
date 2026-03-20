@@ -11,8 +11,8 @@ interface CodeSelectionsModalProps {
   codeGuid: string;
   codebookGuid: string;
   currentFilePath?: string;
-  /** When set, only show selections from this source file */
-  sourceFilter?: string;
+  /** When set, only show selections from these source files */
+  sourceFilter?: string[];
   /** When true, include selections for all subcodes of the given code */
   includeSubcodes?: boolean;
   onClose: () => void;
@@ -40,9 +40,12 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
   // Build all match groups for this code, optionally filtered to a single source
   const filteredSources = createMemo(() => {
     if (!props.sourceFilter) return store.sources;
-    const source = store.sources[props.sourceFilter];
-    if (!source) return {} as Record<string, Source>;
-    return { [props.sourceFilter]: source } as Record<string, Source>;
+    const result: Record<string, Source> = {};
+    for (const path of props.sourceFilter) {
+      const source = store.sources[path];
+      if (source) result[path] = source;
+    }
+    return result;
   });
 
   const allMatchResult = createMemo(() =>

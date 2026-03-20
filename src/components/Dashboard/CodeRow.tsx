@@ -2,32 +2,35 @@ import { For, Show, type Component } from 'solid-js';
 import ColorChip from '../ColorChip';
 import styles from './Dashboard.module.css';
 import type { Code } from '../../models/files';
+import type { ColumnNode } from '../../utils/paths';
 
 export interface CodeRowProps {
   code: Code;
   codebookGuid: string;
   depth: number;
-  sourcePaths: string[];
+  leafColumns: ColumnNode[];
   expanded: Set<string>;
   onToggle: (codeGuid: string) => void;
   aggregatedCount: (codeGuid: string, sourcePath: string) => number;
   selfCount: (codeGuid: string, sourcePath: string) => number;
   maxCount: number;
   onCodeClick?: (codeGuid: string, codebookGuid: string) => void;
-  onCellClick?: (codeGuid: string, codebookGuid: string, sourcePath: string, includeSubcodes: boolean) => void;
+  onCellClick?: (codeGuid: string, codebookGuid: string, sourcePaths: string[], includeSubcodes: boolean) => void;
 }
 
 const CodeRow: Component<CodeRowProps> = (props) => {
   const hasSubcodes = () => props.code.subcodes && props.code.subcodes.length > 0;
   const isExpanded = () => props.expanded.has(props.code.guid);
 
-  // When collapsed or no subcodes: show aggregated count (self + descendants)
-  // When expanded: show only direct (self) count
-  function cellCount(sourcePath: string): number {
-    if (isExpanded()) {
-      return props.selfCount(props.code.guid, sourcePath);
+  // Sum counts across all leaf files in a column node
+  function cellCount(column: ColumnNode): number {
+    let count = 0;
+    for (const sp of column.leafPaths) {
+      count += isExpanded()
+        ? props.selfCount(props.code.guid, sp)
+        : props.aggregatedCount(props.code.guid, sp);
     }
-    return props.aggregatedCount(props.code.guid, sourcePath);
+    return count;
   }
 
   return (
@@ -51,9 +54,9 @@ const CodeRow: Component<CodeRowProps> = (props) => {
             >{props.code.name}</span>
           </div>
         </td>
-        <For each={props.sourcePaths}>
-          {(sourcePath) => {
-            const count = () => cellCount(sourcePath);
+        <For each={props.leafColumns}>
+          {(column) => {
+            const count = () => cellCount(column);
             const barPct = () => props.maxCount > 0 ? (count() / props.maxCount) * 100 : 0;
             const includesSubcodes = () => !isExpanded() && hasSubcodes();
             return (
@@ -61,7 +64,7 @@ const CodeRow: Component<CodeRowProps> = (props) => {
                 <Show when={count() > 0}>
                   <span
                     class={props.onCellClick ? styles.clickableCount : ''}
-                    onClick={() => props.onCellClick?.(props.code.guid, props.codebookGuid, sourcePath, includesSubcodes())}
+                    onClick={() => props.onCellClick?.(props.code.guid, props.codebookGuid, column.leafPaths, includesSubcodes())}
                   >{count()}</span>
                   <div
                     class={styles.cellBar}
@@ -80,7 +83,7 @@ const CodeRow: Component<CodeRowProps> = (props) => {
               code={subcode}
               codebookGuid={props.codebookGuid}
               depth={props.depth + 1}
-              sourcePaths={props.sourcePaths}
+              leafColumns={props.leafColumns}
               expanded={props.expanded}
               onToggle={props.onToggle}
               aggregatedCount={props.aggregatedCount}

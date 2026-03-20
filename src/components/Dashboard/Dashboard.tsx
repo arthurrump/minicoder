@@ -10,7 +10,7 @@ interface CountMap {
 
 interface DashboardProps {
   onCodeClick?: (codeGuid: string, codebookGuid: string) => void;
-  onCellClick?: (codeGuid: string, codebookGuid: string, sourcePath: string, includeSubcodes: boolean) => void;
+  onCellClick?: (codeGuid: string, codebookGuid: string, sourcePaths: string[], includeSubcodes: boolean) => void;
   onSourceClick?: (sourcePath: string) => void;
 }
 
@@ -18,6 +18,7 @@ const Dashboard: Component<DashboardProps> = (props) => {
   const { store, indices } = useStore();
 
   const [codeColWidth, setCodeColWidth] = createSignal(200);
+  const [expandedColumns, setExpandedColumns] = createSignal<Set<string>>(new Set());
 
   const codebooksList = indices.sortedCodebooks;
 
@@ -65,6 +66,18 @@ const Dashboard: Component<DashboardProps> = (props) => {
     return directCounts()[codeGuid]?.[sourcePath] || 0;
   }
 
+  function toggleColumn(folderPath: string) {
+    setExpandedColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(folderPath)) {
+        next.delete(folderPath);
+      } else {
+        next.add(folderPath);
+      }
+      return next;
+    });
+  }
+
   return (
     <div class={styles.dashboard} style={{ "--code-col-width": `${codeColWidth()}px` }}>
       <h2>Dashboard</h2>
@@ -78,6 +91,8 @@ const Dashboard: Component<DashboardProps> = (props) => {
               selfCount={selfCount}
               codeColWidth={codeColWidth}
               onResizeCodeCol={setCodeColWidth}
+              expandedColumns={expandedColumns()}
+              onToggleColumn={toggleColumn}
               onCodeClick={props.onCodeClick}
               onCellClick={props.onCellClick}
               onSourceClick={props.onSourceClick}
