@@ -1,9 +1,13 @@
-import { createSignal, For, Index, Show, type Component } from 'solid-js';
+import { createMemo, createSignal, Index, Show, Switch, Match, type Component } from 'solid-js';
 import styles from './MatchingSelections.module.css';
 import LazyMatchItem from './LazyMatchItem';
 import FileMatchItem from './FileMatchItem';
 import { type MatchGroup } from '../../utils/selections';
 import type { AppliedCode, Code, Codebook } from '../../models/files';
+
+type MergedItem =
+  | { kind: 'file'; fileMatch: FileMatch }
+  | { kind: 'selection'; group: MatchGroup };
 
 // Re-export functions and types that were extracted to utils for backward compatibility
 export { findOverlapping, computeCollapsedRegions, buildMatchGroups, type MatchGroup, type CollapsedRegion, type BuildMatchGroupsResult } from '../../utils/selections';
@@ -65,6 +69,28 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
     setExpandedKeys(next);
   };
 
+  const mergedItems = createMemo((): MergedItem[] => {
+    const items: MergedItem[] = props.matchGroups.map(
+      (group) => ({ kind: 'selection' as const, group }),
+    );
+    if (props.fileMatches) {
+      for (const fm of props.fileMatches) {
+        items.push({ kind: 'file' as const, fileMatch: fm });
+      }
+    }
+    items.sort((a, b) => {
+      const pathA = a.kind === 'file' ? a.fileMatch.path : a.group.sourcePath;
+      const pathB = b.kind === 'file' ? b.fileMatch.path : b.group.sourcePath;
+      const pathCmp = pathA.localeCompare(pathB);
+      if (pathCmp !== 0) return pathCmp;
+      // File-level matches sort before selection matches within the same file
+      const startA = a.kind === 'file' ? -1 : a.group.start;
+      const startB = b.kind === 'file' ? -1 : b.group.start;
+      return startA - startB;
+    });
+    return items;
+  });
+
   return (
     <div class={styles.matchingSelections}>
       <div class={styles.matchingHeader}>
@@ -90,34 +116,38 @@ export const MatchingSelectionsList: Component<MatchingSelectionsListProps> = (p
           </button>
         </div>
       </div>
-      <Show when={(props.matchGroups.length > 0) || (props.fileMatches && props.fileMatches.length > 0)} fallback={
+      <Show when={mergedItems().length > 0} fallback={
         <p class={styles.noMatches}>No matching selections found.</p>
       }>
         <div class={styles.matchingList}>
-          <Show when={props.fileMatches && props.fileMatches.length > 0}>
-            <For each={props.fileMatches}>
-              {(fm) => (
-                <FileMatchItem
-                  sourcePath={fm.path}
-                  sourceCodes={fm.sourceCodes}
-                  onOpenSource={props.onOpenSource}
-                />
-              )}
-            </For>
-          </Show>
-          <Index each={props.matchGroups}>
-            {(group) => (
-              <LazyMatchItem
-                group={group()}
-                isExpanded={isExpanded(group())}
-                onToggleExpand={() => toggleExpanded(group())}
-                onEnsureExpanded={() => ensureExpanded(group())}
-                onOpenSource={props.onOpenSource}
-                onSelectionCreate={props.onSelectionCreate}
-                onSelectionUpdate={props.onSelectionUpdate}
-                onSelectionClear={props.onSelectionClear}
-                selectedCode={props.selectedCode}
-              />
+          <Index each={mergedItems()}>
+            {(item) => (
+              <Switch>
+                <Match when={item().kind === 'file' ? item() as MergedItem & { kind: 'file' } : undefined}>
+                  {(fileItem) => (
+                    <FileMatchItem
+                      sourcePath={fileItem().fileMatch.path}
+                      sourceCodes={fileItem().fileMatch.sourceCodes}
+                      onOpenSource={props.onOpenSource}
+                    />
+                  )}
+                </Match>
+                <Match when={item().kind === 'selection' ? item() as MergedItem & { kind: 'selection' } : undefined}>
+                  {(selItem) => (
+                    <LazyMatchItem
+                      group={selItem().group}
+                      isExpanded={isExpanded(selItem().group)}
+                      onToggleExpand={() => toggleExpanded(selItem().group)}
+                      onEnsureExpanded={() => ensureExpanded(selItem().group)}
+                      onOpenSource={props.onOpenSource}
+                      onSelectionCreate={props.onSelectionCreate}
+                      onSelectionUpdate={props.onSelectionUpdate}
+                      onSelectionClear={props.onSelectionClear}
+                      selectedCode={props.selectedCode}
+                    />
+                  )}
+                </Match>
+              </Switch>
             )}
           </Index>
         </div>
