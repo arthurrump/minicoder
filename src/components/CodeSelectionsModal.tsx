@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { updateCodeInTree } from '../utils/codeTree';
 import styles from './CodeSelectionsModal.module.css';
 import ColorChip from './ColorChip';
-import { MatchingSelectionsList, buildMatchGroups } from './MatchingSelections';
+import { MatchingSelectionsList, buildMatchGroups, type FileMatch } from './MatchingSelections';
 import type { Code, Source } from '../models/files';
 
 interface CodeSelectionsModalProps {
@@ -51,6 +51,34 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
 
   const allGroups = createMemo(() => allMatchResult().groups);
   const totalMatchCount = createMemo(() => allMatchResult().matchCount);
+
+  // Collect file-level matches (sourceCodes matching target GUIDs)
+  const fileMatches = createMemo(() => {
+    const guids = targetGuids();
+    const matches: FileMatch[] = [];
+    for (const [path, source] of Object.entries(filteredSources())) {
+      const matchingCodes = (source.sourceCodes ?? []).filter(sc => guids.has(sc.code.codeGuid));
+      if (matchingCodes.length > 0) {
+        matches.push({ path, sourceCodes: matchingCodes });
+      }
+    }
+    return matches;
+  });
+
+  const currentFileFileMatches = createMemo(() => {
+    const currentPath = props.currentFilePath;
+    if (!currentPath) return [];
+    return fileMatches().filter(fm => fm.path === currentPath);
+  });
+
+  const otherFileMatches = createMemo(() => {
+    const currentPath = props.currentFilePath;
+    return fileMatches().filter(fm => fm.path !== currentPath);
+  });
+
+  const fileMatchCount = createMemo(() =>
+    fileMatches().reduce((sum, fm) => sum + fm.sourceCodes.length, 0)
+  );
 
   // Build a set of example selection GUIDs for quick lookup
   const exampleSelectionGuids = createMemo(() => {
@@ -211,7 +239,7 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
           </Show>
 
           <div class={styles.modalOptions}>
-            <span class={styles.totalCount}>{totalMatchCount()} selections total</span>
+            <span class={styles.totalCount}>{totalMatchCount() + fileMatchCount()} selections total</span>
             <label class={styles.showOnlyMatchingLabel}>
               <input
                 type="checkbox"
@@ -230,9 +258,10 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
             />
           </Show>
 
-          <Show when={currentFileGroups().length > 0}>
+          <Show when={currentFileGroups().length > 0 || currentFileFileMatches().length > 0}>
             <MatchingSelectionsList
               matchGroups={currentFileGroups()}
+              fileMatches={currentFileFileMatches()}
               title={`In Current File (${currentFileSelectionCount()})`}
               onOpenSource={(sourcePath, charOffset) => { props.onClose(); props.onOpenSource?.(sourcePath, charOffset); }}
             />
@@ -240,6 +269,7 @@ const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
 
           <MatchingSelectionsList
             matchGroups={otherGroups()}
+            fileMatches={otherFileMatches()}
             title={`Selections (${otherSelectionCount()})`}
             onOpenSource={(sourcePath, charOffset) => { props.onClose(); props.onOpenSource?.(sourcePath, charOffset); }}
           />

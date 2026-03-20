@@ -21,7 +21,7 @@ const Dashboard: Component<DashboardProps> = (props) => {
 
   const codebooksList = indices.sortedCodebooks;
 
-  // Build direct count map: for each selection, increment count for its codeGuid + sourcePath
+  // Build direct count map: for each selection and source code, increment count for its codeGuid + sourcePath
   const directCounts = createMemo(() => {
     const counts: CountMap = {};
     for (const [sourcePath, source] of Object.entries(store.sources)) {
@@ -30,14 +30,21 @@ const Dashboard: Component<DashboardProps> = (props) => {
         if (!counts[codeGuid]) counts[codeGuid] = {};
         counts[codeGuid][sourcePath] = (counts[codeGuid][sourcePath] || 0) + 1;
       }
+      if (source.sourceCodes) {
+        for (const sc of source.sourceCodes) {
+          const codeGuid = sc.code.codeGuid;
+          if (!counts[codeGuid]) counts[codeGuid] = {};
+          counts[codeGuid][sourcePath] = (counts[codeGuid][sourcePath] || 0) + 1;
+        }
+      }
     }
     return counts;
   });
 
-  // All source paths (any file that has at least one selection), consistent across all tables
+  // All source paths (any file that has at least one selection or source code), consistent across all tables
   const allSourcePaths = createMemo(() =>
     Object.keys(store.sources)
-      .filter(path => store.sources[path].selections.length > 0)
+      .filter(path => store.sources[path].selections.length > 0 || (store.sources[path].sourceCodes?.length ?? 0) > 0)
       .sort((a, b) => a.localeCompare(b))
   );
 
