@@ -54,6 +54,7 @@
 .table th {
     background-color: var(--bg-secondary);
     font-weight: 600;
+    vertical-align: bottom;
     position: sticky;
     top: 0;
     z-index: 1;
@@ -78,7 +79,6 @@
     z-index: 2;
     position: sticky;
     left: 0;
-    vertical-align: bottom;
 }
 
 .headerFirstCell {
