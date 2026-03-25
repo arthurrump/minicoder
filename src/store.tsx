@@ -39,6 +39,7 @@ export interface StoreActions {
   deleteCode: (codebookGuid: string, codeGuid: string) => void;
 
   updateSourceSelections: (path: string, selections: TextSelection[]) => void;
+  resizeSelection: (path: string, selectionGuid: string, start: number, end: number) => void;
   updateSourceCodes: (path: string, sourceCodes: AppliedCode[]) => void;
 
   mergeCode: (codebookGuid: string, sourceCodeGuid: string, targetCodeGuid: string) => void;
@@ -577,6 +578,18 @@ export const StoreProvider: ParentComponent = (props) => {
       selections.sort((a, b) => a.start - b.start || b.end - a.end);
       setStore('sources', path, 'selections', selections);
       scheduleSourceSave(path, 1000);
+    },
+
+    resizeSelection(path: string, selectionGuid: string, start: number, end: number) {
+      const currentSelections = store.sources[path]?.selections || [];
+      this.updateSourceSelections(
+        path,
+        currentSelections.map(s =>
+          s.guid === selectionGuid
+            ? { ...s, start, end }
+            : s
+        )
+      );
     },
 
     updateSourceCodes(path: string, sourceCodes: AppliedCode[]) {

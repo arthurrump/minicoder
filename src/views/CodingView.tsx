@@ -239,22 +239,10 @@ const CodingView: Component = () => {
     }
   }
 
-  function handleSelectionUpdateForSource(sourcePath: string, selectionGuid: string, start: number, end: number) {
-    const currentSelections = store.sources[sourcePath]?.selections || [];
-    actions.updateSourceSelections(
-      sourcePath,
-      currentSelections.map(s => 
-        s.guid === selectionGuid 
-          ? { ...s, start, end }
-          : s
-      )
-    );
-  }
-
   function handleSelectionUpdate(selectionGuid: string, start: number, end: number) {
     const path = selectedFilePath();
     if (path) {
-      handleSelectionUpdateForSource(path, selectionGuid, start, end);
+      actions.resizeSelection(path, selectionGuid, start, end);
     }
   }
 
@@ -469,7 +457,6 @@ const CodingView: Component = () => {
                           queryGuid={guid()}
                           onOpenSource={handleOpenSource}
                           onSelectionCreate={handleSelectionCreateForSource}
-                          onSelectionUpdate={handleSelectionUpdateForSource}
                           onSelectionClear={handleSelectionClear}
                           selectedCode={selectedCode()}
                         />

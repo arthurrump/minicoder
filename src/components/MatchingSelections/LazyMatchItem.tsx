@@ -54,7 +54,6 @@ const LazyMatchItem: Component<SelectionMatchItemProps> = (props) => {
           onEnsureExpanded={props.onEnsureExpanded}
           onOpenSource={props.onOpenSource}
           onSelectionCreate={props.onSelectionCreate}
-          onSelectionUpdate={props.onSelectionUpdate}
           onSelectionClear={props.onSelectionClear}
           selectedCode={props.selectedCode}
         />

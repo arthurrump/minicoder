@@ -10,7 +10,6 @@ interface QueryMatchingSelectionsProps {
   onExpandedKeysChange?: (keys: Set<string>) => void;
   onOpenSource?: (sourcePath: string, charOffset: number) => void;
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
-  onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number) => void;
   onSelectionClear?: () => void;
   selectedCode?: { code: Code; codebook: Codebook } | null;
 }
@@ -150,7 +149,6 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       onExpandedKeysChange={props.onExpandedKeysChange}
       onOpenSource={props.onOpenSource}
       onSelectionCreate={props.onSelectionCreate}
-      onSelectionUpdate={props.onSelectionUpdate}
       onSelectionClear={props.onSelectionClear}
       selectedCode={props.selectedCode}
     />

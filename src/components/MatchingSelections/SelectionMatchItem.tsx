@@ -14,13 +14,12 @@ export interface SelectionMatchItemProps {
   onEnsureExpanded: () => void;
   onOpenSource?: (sourcePath: string, charOffset: number) => void;
   onSelectionCreate?: (sourcePath: string, start: number, end: number) => void;
-  onSelectionUpdate?: (sourcePath: string, selectionGuid: string, start: number, end: number) => void;
   onSelectionClear?: () => void;
   selectedCode?: { code: Code; codebook: Codebook } | null;
 }
 
 const SelectionMatchItem: Component<SelectionMatchItemProps> = (props) => {
-  const { indices } = useStore();
+  const { indices, actions } = useStore();
   const [popover, setPopover] = createSignal<{ selection: TextSelection; x: number; y: number } | null>(null);
 
   const handleCodeClick = (codeGuid: string, e: MouseEvent) => {
@@ -103,7 +102,7 @@ const SelectionMatchItem: Component<SelectionMatchItemProps> = (props) => {
                     props.onSelectionCreate?.(props.group.sourcePath, props.group.start + region().offsetInGroup + start, props.group.start + region().offsetInGroup + end);
                   }}
                   onSelectionUpdate={(selectionGuid, start, end) =>
-                    props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + region().offsetInGroup + start, props.group.start + region().offsetInGroup + end)
+                    actions.resizeSelection(props.group.sourcePath, selectionGuid, props.group.start + region().offsetInGroup + start, props.group.start + region().offsetInGroup + end)
                   }
                   onSelectionClear={props.onSelectionClear}
                   selectedCode={props.selectedCode}
@@ -123,7 +122,7 @@ const SelectionMatchItem: Component<SelectionMatchItemProps> = (props) => {
               props.onSelectionCreate?.(props.group.sourcePath, props.group.start + start, props.group.start + end);
             }}
             onSelectionUpdate={(selectionGuid, start, end) =>
-              props.onSelectionUpdate?.(props.group.sourcePath, selectionGuid, props.group.start + start, props.group.start + end)
+              actions.resizeSelection(props.group.sourcePath, selectionGuid, props.group.start + start, props.group.start + end)
             }
             onSelectionClear={props.onSelectionClear}
             selectedCode={props.selectedCode}
