@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { hashBytes, debounce, buildSegments, isPlainText, fileTreeCompare, sanitizeFileName, validateCodebook, validateSource, validateQuery } from '../helpers';
+import { hashBytes, debounce, buildSegments, isPlainText, fileTreeCompare, sanitizeFileName, validateCodebook, validateSource, validateQuery, getBinaryPreviewType } from '../helpers';
 import type { TextSelection } from '../models/files';
 
 // ── hashBytes ──────────────────────────────────────────────────────────────
@@ -203,6 +203,30 @@ describe('isPlainText', () => {
 
   it('returns true for Unicode text', () => {
     expect(isPlainText('こんにちは 世界')).toBe(true);
+  });
+});
+
+// ── getBinaryPreviewType ──────────────────────────────────────────────────
+
+describe('getBinaryPreviewType', () => {
+  it('detects image previews from MIME type', () => {
+    expect(getBinaryPreviewType('image/png', 'notes.dat')).toBe('image');
+  });
+
+  it('detects pdf previews from MIME type', () => {
+    expect(getBinaryPreviewType('application/pdf', 'notes.bin')).toBe('pdf');
+  });
+
+  it('falls back to file extension when MIME type is empty', () => {
+    expect(getBinaryPreviewType('', 'figures/photo.JPG')).toBe('image');
+  });
+
+  it('uses extension fallback for pdf files', () => {
+    expect(getBinaryPreviewType('', 'papers/report.pdf')).toBe('pdf');
+  });
+
+  it('returns null for unsupported binary files', () => {
+    expect(getBinaryPreviewType('application/octet-stream', 'archive.bin')).toBeNull();
   });
 });
 

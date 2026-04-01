@@ -161,6 +161,7 @@
     flex: 1;
     position: relative;
     overflow: hidden;
+    padding: 10px;
 }
 
 /* Active/hidden view layers */
@@ -191,6 +192,22 @@
     bottom: 0;
     overflow: auto;
     padding: 10px;
+}
+
+.binaryPreviewImage {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+}
+
+.binaryPreviewFrame {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: #fff;
 }
 
 .selectedCodeNotice {

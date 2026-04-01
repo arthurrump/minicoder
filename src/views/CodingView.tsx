@@ -75,11 +75,38 @@ const CodingView: Component = () => {
   const [pendingSelection, setPendingSelection] = createSignal<{ sourcePath: string; start: number; end: number } | null>(null);
   const [pendingScrollOffset, setPendingScrollOffset] = createSignal<number | null>(null);
   const [hashMismatchWarning, setHashMismatchWarning] = createSignal<boolean>(false);
+  const [binaryPreviewUrl, setBinaryPreviewUrl] = createSignal<string | null>(null);
+  const [binaryPreviewLoading, setBinaryPreviewLoading] = createSignal<boolean>(false);
+  const [binaryPreviewError, setBinaryPreviewError] = createSignal<string | null>(null);
+  type PreviewableBinaryTarget = { path: string; previewType: 'image' | 'pdf' };
   const nonPlainTextWarning = createMemo(() => {
     const path = selectedFilePath();
     if (!path) return false;
     const fc = store.fileContents[path];
     return fc?.type === 'binary';
+  });
+  const previewableBinary = createMemo<PreviewableBinaryTarget | null>(() => {
+    const path = selectedFilePath();
+    if (!path) return null;
+
+    const fileState = store.fileContents[path];
+    if (!fileState || fileState.type !== 'binary' || fileState.previewType === null) {
+      return null;
+    }
+
+    const previewType = fileState.previewType === 'image'
+      ? 'image'
+      : fileState.previewType === 'pdf'
+        ? 'pdf'
+        : null;
+    if (!previewType) {
+      return null;
+    }
+
+    return {
+      path,
+      previewType,
+    };
   });
 
   // Clear pending selection when switching tabs
@@ -130,6 +157,63 @@ const CodingView: Component = () => {
     return fc?.type === 'plain-text' ? fc.content : undefined;
   });
 
+  let activeBinaryPreviewUrl: string | null = null;
+  let binaryPreviewRequestId = 0;
+  createEffect(on(previewableBinary, async (target) => {
+    const requestId = ++binaryPreviewRequestId;
+
+    if (activeBinaryPreviewUrl) {
+      URL.revokeObjectURL(activeBinaryPreviewUrl);
+      activeBinaryPreviewUrl = null;
+    }
+
+    setBinaryPreviewUrl(null);
+    setBinaryPreviewError(null);
+    setBinaryPreviewLoading(false);
+
+    if (!target) return;
+
+    const loc = store.fileLocations[`content:${target.path}`];
+    if (!loc) {
+      setBinaryPreviewError('Preview unavailable because the file location could not be resolved.');
+      return;
+    }
+
+    setBinaryPreviewLoading(true);
+    try {
+      const fileHandle = await loc.dirHandle.getFileHandle(loc.fileName);
+      const file = await fileHandle.getFile();
+      const previewUrl = URL.createObjectURL(file);
+
+      if (requestId !== binaryPreviewRequestId) {
+        URL.revokeObjectURL(previewUrl);
+        return;
+      }
+
+      activeBinaryPreviewUrl = previewUrl;
+      setBinaryPreviewUrl(previewUrl);
+    } catch (err) {
+      if (requestId !== binaryPreviewRequestId) {
+        return;
+      }
+
+      console.warn(`Failed to create preview for ${target.path}:`, err);
+      setBinaryPreviewError('Preview unavailable for this file.');
+    } finally {
+      if (requestId === binaryPreviewRequestId) {
+        setBinaryPreviewLoading(false);
+      }
+    }
+  }, { defer: true }));
+
+  onCleanup(() => {
+    binaryPreviewRequestId += 1;
+    if (activeBinaryPreviewUrl) {
+      URL.revokeObjectURL(activeBinaryPreviewUrl);
+      activeBinaryPreviewUrl = null;
+    }
+  });
+
   // Restore scroll position when file content loads or path changes (text files only)
   createEffect(on([() => fileContent(), selectedFilePath], () => {
     const path = selectedFilePath();
@@ -162,8 +246,8 @@ const CodingView: Component = () => {
   });
 
   // Check hash when file content or source changes
-  createEffect(on([selectedFilePath, () => fileContent()], ([path, content]) => {
-    if (!path || !content) {
+  createEffect(on([selectedFilePath, () => store.fileContents[selectedFilePath()]], ([path, fileState]) => {
+    if (!path || !fileState) {
       setHashMismatchWarning(false);
       return;
     }
@@ -175,8 +259,7 @@ const CodingView: Component = () => {
     }
 
     // Check hash (pre-computed at load time)
-    const fc = store.fileContents[path];
-    const currentHash = fc?.hash;
+    const currentHash = fileState.hash;
     if (currentHash && source.fileHash !== currentHash) {
       setHashMismatchWarning(true);
       console.warn("File content has changed since selections were saved");
@@ -467,40 +550,78 @@ const CodingView: Component = () => {
               </For>
 
               {/* Text view - conditional rendering (scroll restore works reliably) */}
-              <Show when={selectedFilePath() && !isSpecialFile()}>
+              <Show when={selectedFilePath() && !isSpecialFile() && !nonPlainTextWarning()}>
                 <div class={styles.textViewWrapper} ref={textViewWrapperRef}>
-                  <Show when={nonPlainTextWarning()}>
+                  <Show when={hashMismatchWarning()}>
                     <div class={styles.hashMismatchWarning}>
-                      This file does not appear to be a plain text file. Minicoder only supports coding in plain text files.
+                      ⚠️ Warning: The file content has changed since these selections were saved. Positions may be incorrect.
+                      <button onClick={() => setHashMismatchWarning(false)}>Dismiss</button>
                     </div>
                   </Show>
-                  <Show when={!nonPlainTextWarning()}>
-                    <Show when={hashMismatchWarning()}>
-                      <div class={styles.hashMismatchWarning}>
-                        ⚠️ Warning: The file content has changed since these selections were saved. Positions may be incorrect.
-                        <button onClick={() => setHashMismatchWarning(false)}>Dismiss</button>
-                      </div>
-                    </Show>
-                    <Show when={fileContent()} fallback={
-                      <div class="view-placeholder">
-                        <div class="loading-spinner" />
-                        <p>Loading file...</p>
-                      </div>
-                    }>
-                      {(content) => (
-                        <TextView
-                          content={content()}
-                          selections={selections()}
-                          sourcePath={selectedFilePath()}
-                          onSelectionCreate={handleSelectionCreate}
-                          onSelectionUpdate={handleSelectionUpdate}
-                          onSelectionClear={handleSelectionClear}
-                          selectedCode={selectedCode()}
-                        />
-                      )}
-                    </Show>
+                  <Show when={fileContent()} fallback={
+                    <div class="view-placeholder">
+                      <div class="loading-spinner" />
+                      <p>Loading file...</p>
+                    </div>
+                  }>
+                    {(content) => (
+                      <TextView
+                        content={content()}
+                        selections={selections()}
+                        sourcePath={selectedFilePath()}
+                        onSelectionCreate={handleSelectionCreate}
+                        onSelectionUpdate={handleSelectionUpdate}
+                        onSelectionClear={handleSelectionClear}
+                        selectedCode={selectedCode()}
+                      />
+                    )}
                   </Show>
                 </div>
+              </Show>
+
+              <Show when={selectedFilePath() && !isSpecialFile() && nonPlainTextWarning()}>
+                <div class={styles.hashMismatchWarning}>
+                  This file does not appear to be a plain text file. Minicoder only supports coding in plain text files.
+                </div>
+                <Show when={previewableBinary()}>
+                  {(preview) => (
+                    <Show when={!binaryPreviewLoading()} fallback={
+                      <div class="view-placeholder">
+                        <div class="loading-spinner" />
+                        <p>Loading preview...</p>
+                      </div>
+                    }>
+                      <Show when={binaryPreviewUrl()} fallback={
+                        <Show when={binaryPreviewError()}>
+                          {(message) => (
+                            <div class="view-placeholder">
+                              <p>{message()}</p>
+                            </div>
+                          )}
+                        </Show>
+                      }>
+                        {(previewUrl) => (
+                          preview().previewType === 'image' ? (
+                            <img
+                              class={styles.binaryPreviewImage}
+                              src={previewUrl()}
+                              alt={selectedFilePath()}
+                            />
+                          ) : (
+                            <iframe
+                              class={styles.binaryPreviewFrame}
+                              src={previewUrl()}
+                              title={selectedFilePath()}
+                            />
+                          )
+                        )}
+                      </Show>
+                    </Show>
+                  )}
+                </Show>
+                <Show when={!previewableBinary()}>
+                  <p>This filetype does not support in-browser previews.</p>
+                </Show>
               </Show>
             </div>
           </div>

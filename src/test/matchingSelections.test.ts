@@ -268,7 +268,7 @@ describe('buildMatchGroups', () => {
       'a.bin': { guid: 'src1', fileHash: 'h1', selections: [mkSel('s1', 0, 5, 'c1')] },
     };
     const fileContents: Record<string, FileContent> = {
-      'a.bin': { type: 'binary', hash: 'h1' },
+      'a.bin': { type: 'binary', hash: 'h1', mimeType: 'application/octet-stream', previewType: null },
     };
     const { groups } = buildMatchGroups(new Set(['c1']), sources, fileContents);
     expect(groups).toHaveLength(0);

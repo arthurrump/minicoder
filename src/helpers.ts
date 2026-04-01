@@ -1,5 +1,55 @@
 import type { Codebook, Source, TextSelection, Query } from './models/files';
 
+export type BinaryPreviewType = 'image' | 'pdf';
+
+const IMAGE_EXTENSIONS = new Set([
+    'apng',
+    'avif',
+    'bmp',
+    'gif',
+    'ico',
+    'jpeg',
+    'jpg',
+    'png',
+    'svg',
+    'webp',
+]);
+
+function getFileExtension(path: string): string | null {
+    const fileName = path.split('/').pop();
+    if (!fileName) return null;
+
+    const dotIndex = fileName.lastIndexOf('.');
+    if (dotIndex < 0 || dotIndex === fileName.length - 1) return null;
+
+    return fileName.slice(dotIndex + 1).toLowerCase();
+}
+
+export function getBinaryPreviewType(mimeType: string, path: string): BinaryPreviewType | null {
+    const normalizedMimeType = mimeType.trim().toLowerCase();
+
+    if (normalizedMimeType.startsWith('image/')) {
+        return 'image';
+    }
+
+    if (normalizedMimeType === 'application/pdf') {
+        return 'pdf';
+    }
+
+    const extension = getFileExtension(path);
+    if (!extension) return null;
+
+    if (IMAGE_EXTENSIONS.has(extension)) {
+        return 'image';
+    }
+
+    if (extension === 'pdf') {
+        return 'pdf';
+    }
+
+    return null;
+}
+
 // Hash raw bytes (ArrayBuffer)
 export async function hashBytes(data: ArrayBuffer): Promise<string> {
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);

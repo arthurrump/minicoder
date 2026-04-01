@@ -1,6 +1,6 @@
 import { createContext, createMemo, onCleanup, useContext, type Accessor, type ParentComponent } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
-import { hashBytes, debounce, isPlainText, fileTreeCompare, sanitizeFileName, validateCodebook, validateSource, validateQuery, type Debounced } from './helpers';
+import { hashBytes, debounce, isPlainText, fileTreeCompare, sanitizeFileName, validateCodebook, validateSource, validateQuery, getBinaryPreviewType, type BinaryPreviewType, type Debounced } from './helpers';
 import type { Codebook, Code, TextSelectionReference, Source, TextSelection, AppliedCode, Query, QueryNode } from './models/files';
 
 /** File location — cached directory handle to avoid tree walks on save */
@@ -12,7 +12,7 @@ export interface FileLocation {
 
 export type FileContent =
   | { type: "plain-text", hash: string, content: string }
-  | { type: "binary", hash: string };
+  | { type: "binary", hash: string, mimeType: string | null, previewType: BinaryPreviewType | null };
 
 export interface AppStore {
   dirHandle: FileSystemDirectoryHandle | null;
@@ -250,11 +250,19 @@ export const StoreProvider: ParentComponent = (props) => {
       const file = await fileHandle.getFile();
       const buffer = await file.arrayBuffer();
       const hash = await hashBytes(buffer);
+      const mimeType = file.type || null;
+      const previewType = getBinaryPreviewType(file.type, path);
+
+      if (previewType) {
+        setStore('fileContents', path, { type: 'binary', hash, mimeType, previewType });
+        return;
+      }
+
       const content = new TextDecoder().decode(buffer);
       if (isPlainText(content)) {
         setStore('fileContents', path, { type: 'plain-text', hash, content });
       } else {
-        setStore('fileContents', path, { type: 'binary', hash });
+        setStore('fileContents', path, { type: 'binary', hash, mimeType, previewType: null });
       }
     } catch (err) {
       console.warn(`Failed to load file content for ${path}:`, err);
