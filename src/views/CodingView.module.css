@@ -162,6 +162,8 @@
     position: relative;
     overflow: hidden;
     padding: 10px;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Active/hidden view layers */
@@ -204,6 +206,7 @@
 .binaryPreviewFrame {
     display: block;
     box-sizing: border-box;
+    flex-grow: 1;
     width: 100%;
     border: 1px solid var(--border-color);
     border-radius: 4px;
