@@ -65,3 +65,33 @@
     border: 1px solid rgba(0, 0, 0, 0.2);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
+
+.hoverTooltip {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1001;
+    max-width: 320px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-system);
+    font-size: 0.78em;
+    line-height: 1.35;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+}
+
+.hoverTooltipMain {
+    font-weight: 600;
+}
+
+.hoverTooltipMeta {
+    opacity: 0.75;
+}
+
+.hoverTooltipNote {
+    margin-top: 4px;
+    opacity: 0.9;
+    white-space: pre-wrap;
+}

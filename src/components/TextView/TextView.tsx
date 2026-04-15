@@ -103,10 +103,7 @@ const TextView: Component<TextViewProps> = (props) => {
     function handleContainerMouseMove(e: MouseEvent) {
         const selection = findHoveredSelection(e.clientX, e.clientY);
         setHoveredSelectionGuid(selection?.guid ?? null);
-        // Track mouse position for cursor chip when a code is selected
-        if (props.selectedCode) {
-            setMousePosition({ x: e.clientX, y: e.clientY });
-        }
+        setMousePosition({ x: e.clientX, y: e.clientY });
     }
     
     function handleContainerMouseLeave() {
@@ -171,6 +168,24 @@ const TextView: Component<TextViewProps> = (props) => {
         const guid = activeSelectionGuid();
         if (!guid) return null;
         return props.selections.find(s => s.guid === guid) ?? null;
+    });
+
+    const hoveredSelection = createMemo(() => {
+        const guid = hoveredSelectionGuid();
+        if (!guid) return null;
+        return props.selections.find(s => s.guid === guid) ?? null;
+    });
+
+    const hoveredSelectionDetails = createMemo(() => {
+        const selection = hoveredSelection();
+        if (!selection) return null;
+
+        const info = codeIndex()[selection.code.codeGuid];
+        return {
+            codeName: info?.code.name ?? 'Unknown code',
+            codebookName: info?.codebook.name ?? 'Unknown codebook',
+            note: selection.note?.trim(),
+        };
     });
     
     // Handle resize drag
@@ -292,6 +307,28 @@ const TextView: Component<TextViewProps> = (props) => {
                         />
                     );
                 }}
+            </Show>
+
+            <Show when={hoveredSelectionDetails()}>
+                {(details) => (
+                    <Show when={mousePosition()}>
+                        {(mousePos) => (
+                            <div
+                                class={styles.hoverTooltip}
+                                style={{
+                                    left: `${mousePos().x + 12}px`,
+                                    top: `${mousePos().y + 12}px`
+                                }}
+                            >
+                                <div class={styles.hoverTooltipMain}>{details().codeName}</div>
+                                <div class={styles.hoverTooltipMeta}>{details().codebookName}</div>
+                                <Show when={details().note}>
+                                    <div class={styles.hoverTooltipNote}>{details().note}</div>
+                                </Show>
+                            </div>
+                        )}
+                    </Show>
+                )}
             </Show>
             
             {/* Cursor chip when a code is selected and mouse is in this TextView */}
