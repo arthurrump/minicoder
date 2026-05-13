@@ -1,6 +1,7 @@
 import Icon from '../Icon';
-import { type Component, type JSX, Show, createMemo, createSignal, For, onCleanup } from 'solid-js';
+import { type Component, type JSX, Show, createMemo, createSignal, onCleanup } from 'solid-js';
 import ColorChip from '../ColorChip';
+import InlineCodePicker from './InlineCodePicker';
 import { useStore } from '../../store';
 import { flattenCodesWithDepth } from '../../utils/codeTree';
 import type { Code, Codebook } from '../../models/files';
@@ -128,27 +129,7 @@ const Popover: Component<PopoverProps> = (props) => {
                 </div>
             </Show>
             <Show when={showCodePicker()}>
-                <div class={styles.popoverCodePicker}>
-                    <For each={codebookGroups()}>
-                        {(group) => (
-                            <>
-                                <div class={styles.pickerHeading}>{group.codebook.name}</div>
-                                <For each={group.codes}>
-                                    {(item) => (
-                                        <button
-                                            class={styles.pickerItem}
-                                            style={{ "padding-left": `${8 + item.depth * 14}px` }}
-                                            onClick={() => handleChangeCode(item.code, group.codebook)}
-                                        >
-                                            <ColorChip color={item.code.color} />
-                                            <span>{item.code.name}</span>
-                                        </button>
-                                    )}
-                                </For>
-                            </>
-                        )}
-                    </For>
-                </div>
+                <InlineCodePicker groups={codebookGroups()} mainCodebook={codeInfo().codebook} onSelect={handleChangeCode} />
             </Show>
             <textarea
                 class={styles.popoverNote}

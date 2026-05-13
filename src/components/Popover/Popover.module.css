@@ -126,3 +126,45 @@
 .pickerItem:hover {
     background: var(--code-hover);
 }
+
+.pickerItemActive {
+    background: var(--code-hover);
+}
+
+.pickerItemCodebook {
+    margin-left: auto;
+    opacity: 0.5;
+    font-size: 0.85em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+}
+
+.pickerFilterRow {
+    padding: 4px;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    background: var(--bg-color);
+    z-index: 1;
+}
+
+.pickerFilter {
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    /* https://github.com/eslint/css/issues/387 */
+    /* eslint-disable-next-line css/font-family-fallbacks */
+    font-family: inherit;
+    font-size: inherit;
+    box-sizing: border-box;
+}
+
+.pickerFilter:focus {
+    outline: none;
+    border-color: var(--accent-color, var(--border-color));
+}
