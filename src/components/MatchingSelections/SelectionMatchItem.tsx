@@ -136,15 +136,20 @@ const SelectionMatchItem: Component<SelectionMatchItemProps> = (props) => {
       </Show>
     </MatchItemBase>
     <Show when={popover()}>
-      {(p) => (
-        <SelectionPopover
-          sourcePath={props.group.sourcePath}
-          selection={p().selection}
-          x={p().x}
-          y={p().y}
-          onClose={handleClosePopover}
-        />
-      )}
+      {(p) => {
+        const liveSelection = createMemo(() =>
+          props.group.selections.find(s => s.guid === p().selection.guid) ?? p().selection
+        );
+        return (
+          <SelectionPopover
+            sourcePath={props.group.sourcePath}
+            selection={liveSelection()}
+            x={p().x}
+            y={p().y}
+            onClose={handleClosePopover}
+          />
+        );
+      }}
     </Show>
     </>
   );

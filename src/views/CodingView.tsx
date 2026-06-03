@@ -522,7 +522,7 @@ const CodingView: Component = () => {
                   return (
                     <Show when={guid()}>
                       <div class={tabPath === selectedFilePath() ? styles.viewActive : styles.viewHidden}>
-                        <CodebookEditor codebookGuid={guid()} />
+                        <CodebookEditor codebookGuid={guid()} onOpenSource={handleOpenSource} />
                       </div>
                     </Show>
                   );

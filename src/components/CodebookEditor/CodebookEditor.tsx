@@ -15,6 +15,7 @@ interface CodebookEditorProps {
   scrollRef?: (el: HTMLDivElement) => void;
   expandedCodeGuids?: Set<string>;
   onExpandedCodeGuidsChange?: (next: Set<string>) => void;
+  onOpenSource?: (sourcePath: string, charOffset: number) => void;
 }
 
 const CodebookEditor: Component<CodebookEditorProps> = (props) => {
@@ -204,6 +205,7 @@ const CodebookEditor: Component<CodebookEditorProps> = (props) => {
                   codeGuid={codeGuid()}
                   codebookGuid={cb().guid}
                   onClose={() => setViewingSelectionsForCode(null)}
+                  onOpenSource={props.onOpenSource}
                 />
               )}
             </Show>
