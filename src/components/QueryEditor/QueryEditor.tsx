@@ -3,7 +3,7 @@ import { useStore } from '../../store';
 import styles from './QueryEditor.module.css';
 import QueryNodeEditor from './QueryNodeEditor';
 import QueryMatchingSelections from './QueryMatchingSelections';
-import type { Code, Codebook } from '../../models/files';
+import type { Code, Codebook, QueryClause, QueryUnderlineStyle } from '../../models/files';
 
 interface QueryEditorProps {
   queryGuid: string;
@@ -47,6 +47,50 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
     const q = query();
     if (!q) return;
     actions.updateQuery({ ...q, showOnlyMatching: value });
+  };
+
+  const updateClauses = (updater: (clauses: QueryClause[]) => QueryClause[]) => {
+    const q = query();
+    if (!q) return;
+    const next = updater(q.clauses ?? []);
+    actions.updateQuery({ ...q, clauses: next });
+  };
+
+  const addClause = () => {
+    updateClauses((clauses) => [
+      ...clauses,
+      {
+        guid: crypto.randomUUID(),
+        query: null,
+        style: 'solid',
+        fileFilter: '',
+        userFilter: [],
+      },
+    ]);
+  };
+
+  const removeClause = (clauseGuid: string) => {
+    updateClauses((clauses) => clauses.filter((clause) => clause.guid !== clauseGuid));
+  };
+
+  const updateClause = (clauseGuid: string, patch: Partial<QueryClause>) => {
+    updateClauses((clauses) => clauses.map((clause) => {
+      if (clause.guid !== clauseGuid) return clause;
+      return { ...clause, ...patch };
+    }));
+  };
+
+  const toggleClauseUserFilter = (clauseGuid: string, user: string | undefined) => {
+    const q = query();
+    if (!q) return;
+    const clauses = q.clauses ?? [];
+    const clause = clauses.find(c => c.guid === clauseGuid);
+    if (!clause) return;
+    const current = clause.userFilter ?? [];
+    const next = current.includes(user)
+      ? current.filter(u => u !== user)
+      : [...current, user];
+    updateClause(clauseGuid, { userFilter: next });
   };
 
   // Collect all unique user IDs from selections
@@ -182,6 +226,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
             
             
             <div class={styles.queryBuilder}>
+              <h3 class={styles.queryBuilderSectionHeader}>Base Query</h3>
               <Show when={q().query} fallback={
                 <div class={styles.addChildButtons}>
                   <button class={styles.addChildBtn} onClick={() => {
@@ -202,6 +247,109 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                   path={[]}
                   depth={0}
                 />
+              </Show>
+              <div class={styles.clauseHeaderRow}>
+                <h3 class={styles.queryBuilderSectionHeader}>Styled Clauses</h3>
+                <button class={styles.addChildBtn} onClick={addClause}>+ Add Clause</button>
+              </div>
+
+              <Show when={(q().clauses ?? []).length > 0} fallback={
+                <p class={styles.noQueryMessage}>No clauses configured. Add a clause to apply custom underline styles.</p>
+              }>
+                <div class={styles.clauseList}>
+                  <For each={q().clauses ?? []}>
+                    {(clause, index) => (
+                      <div class={styles.clauseCard}>
+                        <div class={styles.clauseCardHeader}>
+                          <span class={styles.clauseCardTitle}>Clause {index() + 1}</span>
+                          <button
+                            class={styles.deleteBtn}
+                            title="Remove clause"
+                            onClick={() => removeClause(clause.guid)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <div class={styles.clauseGrid}>
+                          <label class={styles.queryFilterLabel}>Style</label>
+                          <select
+                            class={styles.queryFilterInput}
+                            value={clause.style ?? 'solid'}
+                            onChange={(e) => updateClause(clause.guid, { style: e.currentTarget.value as QueryUnderlineStyle })}
+                          >
+                            <option value="solid">Solid</option>
+                            <option value="dashed">Dashed</option>
+                            <option value="dotted">Dotted</option>
+                            <option value="double">Double</option>
+                          </select>
+
+                          <label class={styles.queryFilterLabel}>Filter files</label>
+                          <input
+                            class={styles.queryFilterInput}
+                            type="text"
+                            placeholder="Optional extra file filter"
+                            value={clause.fileFilter ?? ''}
+                            onInput={(e) => updateClause(clause.guid, { fileFilter: e.currentTarget.value })}
+                          />
+
+                          <Show when={allUsers().length > 0}>
+                            <label class={styles.queryFilterLabel}>Filter users</label>
+                            <div class={styles.userFilterContainer}>
+                              <div class={styles.userChips}>
+                                <For each={[undefined, ...allUsers()]}>
+                                  {(user) => {
+                                    const isSelected = () => (clause.userFilter ?? []).includes(user);
+                                    return (
+                                      <label
+                                        class={styles.userChip}
+                                        classList={{ [styles.userChipChecked]: isSelected() }}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected()}
+                                          onChange={() => toggleClauseUserFilter(clause.guid, user)}
+                                        />
+                                        <span>{user || <code>undefined</code>}</span>
+                                      </label>
+                                    );
+                                  }}
+                                </For>
+                              </div>
+                            </div>
+                          </Show>
+                        </div>
+
+                        <div class={styles.queryChildren}>
+                          <Show when={clause.query} fallback={
+                            <div class={styles.addChildButtons}>
+                              <button
+                                class={styles.addChildBtn}
+                                onClick={() => updateClause(clause.guid, { query: { type: 'code', codeGuid: '', includeSubcodes: true } })}
+                              >
+                                + Add Clause Code
+                              </button>
+                              <button
+                                class={styles.addChildBtn}
+                                onClick={() => updateClause(clause.guid, { query: { type: 'operator', operator: 'AND', children: [] } })}
+                              >
+                                + Add Clause Operator
+                              </button>
+                            </div>
+                          }>
+                            <QueryNodeEditor
+                              node={clause.query!}
+                              controlledRoot={clause.query}
+                              onControlledRootChange={(next) => updateClause(clause.guid, { query: next })}
+                              path={[]}
+                              depth={0}
+                            />
+                          </Show>
+                        </div>
+                      </div>
+                    )}
+                  </For>
+                </div>
               </Show>
             </div>
             

@@ -1,10 +1,104 @@
 import { buildSegments } from '../helpers';
-import type { AppliedCode, QueryNode, TextSelection } from '../models/files';
+import type { AppliedCode, QueryClause, QueryNode, QueryUnderlineStyle, TextSelection } from '../models/files';
+
+export function combineQueryNodes(base: QueryNode | null, extra: QueryNode | null): QueryNode | null {
+  if (base && extra) {
+    return {
+      type: 'operator',
+      operator: 'AND',
+      children: [base, extra],
+    };
+  }
+  return base ?? extra;
+}
+
+export function mergeUserFilters(
+  base: (string | undefined)[],
+  extra?: (string | undefined)[],
+): (string | undefined)[] {
+  const clauseFilter = extra ?? [];
+  if (base.length === 0) return clauseFilter;
+  if (clauseFilter.length === 0) return base;
+  const clauseSet = new Set(clauseFilter);
+  return base.filter(user => clauseSet.has(user));
+}
 
 export interface QueryResult {
   matchingSelections: TextSelection[];
   fileMatch: boolean;
   fileMatchCodes: AppliedCode[];
+}
+
+export interface StyledQueryResult extends QueryResult {
+  selectionStyles: Record<string, QueryUnderlineStyle>;
+}
+
+export function evaluateQueryWithClausesOnSource(
+  baseNode: QueryNode | null,
+  baseUserFilter: (string | undefined)[],
+  clauses: QueryClause[],
+  subcodeIndex: Record<string, Set<string>>,
+  codebookIndex: Record<string, Set<string>>,
+  selections: TextSelection[],
+  sourceCodes?: AppliedCode[],
+): StyledQueryResult {
+  const baseResult = evaluateQueryOnSource(
+    baseNode,
+    baseUserFilter,
+    subcodeIndex,
+    codebookIndex,
+    selections,
+    sourceCodes,
+  );
+
+  const byGuid = new Map<string, TextSelection>();
+  const selectionStyles: Record<string, QueryUnderlineStyle> = {};
+  const fileMatchCodesByKey = new Map<string, AppliedCode>();
+
+  for (const sel of baseResult.matchingSelections) {
+    byGuid.set(sel.guid, sel);
+    selectionStyles[sel.guid] = 'solid';
+  }
+
+  for (const sourceCode of baseResult.fileMatchCodes) {
+    const key = `${sourceCode.code.codebookGuid}:${sourceCode.code.codeGuid}:${sourceCode.creatingUser ?? ''}:${sourceCode.note ?? ''}`;
+    fileMatchCodesByKey.set(key, sourceCode);
+  }
+
+  for (const clause of clauses) {
+    const mergedNode = combineQueryNodes(baseNode, clause.query);
+    const mergedUserFilter = mergeUserFilters(baseUserFilter, clause.userFilter);
+    const clauseResult = evaluateQueryOnSource(
+      mergedNode,
+      mergedUserFilter,
+      subcodeIndex,
+      codebookIndex,
+      selections,
+      sourceCodes,
+    );
+
+    for (const sel of clauseResult.matchingSelections) {
+      if (!byGuid.has(sel.guid)) {
+        byGuid.set(sel.guid, sel);
+      }
+      selectionStyles[sel.guid] = clause.style ?? 'solid';
+    }
+
+    for (const sourceCode of clauseResult.fileMatchCodes) {
+      const key = `${sourceCode.code.codebookGuid}:${sourceCode.code.codeGuid}:${sourceCode.creatingUser ?? ''}:${sourceCode.note ?? ''}`;
+      fileMatchCodesByKey.set(key, sourceCode);
+    }
+  }
+
+  const matchingSelections = Array.from(byGuid.values()).sort((a, b) => a.start - b.start || b.end - a.end);
+  const fileMatchCodes = Array.from(fileMatchCodesByKey.values());
+
+  return {
+    matchingSelections,
+    selectionStyles,
+    fileMatch: fileMatchCodes.length > 0,
+    fileMatchCodes,
+  };
 }
 
 /**

@@ -1,6 +1,6 @@
 import { lightenColor } from './colors';
 import type { Segment } from '../helpers';
-import type { Code, Codebook, TextSelection } from '../models/files';
+import type { Code, Codebook, QueryUnderlineStyle, TextSelection } from '../models/files';
 
 export const UNDERLINE_HEIGHT = 4;
 export const UNDERLINE_GAP = 1;
@@ -55,7 +55,8 @@ export function getUnderlineStyle(
     selectionLayers: Map<string, number>,
     codeIndex: Record<string, { code: Code; codebook: Codebook }>,
     totalLayers: number,
-    hoveredSelectionGuid: string | null
+    hoveredSelectionGuid: string | null,
+    selectionUnderlineStyles?: Record<string, string>
 ): Record<string, string> {
     if (segmentSelections.length === 0) {
         return {
@@ -75,10 +76,29 @@ export function getUnderlineStyle(
     const images: string[] = [];
     const sizes: string[] = [];
     const positions: string[] = [];
+
+    const styleToImage = (color: string, style: QueryUnderlineStyle): string => {
+        switch (style) {
+            case 'dashed':
+                return `repeating-linear-gradient(to right, ${color} 0 8px, transparent 8px 12px)`;
+            case 'dotted':
+                return `repeating-linear-gradient(to right, ${color} 0 3px, transparent 3px 7px)`;
+            case 'double':
+                return `linear-gradient(to bottom, ${color} 0 1px, transparent 1px 3px, ${color} 3px 4px)`;
+            case 'solid':
+            default:
+                return `linear-gradient(${color}, ${color})`;
+        }
+    };
     
     for (const { layer, sel } of layerData) {
         const info = codeIndex[sel.code.codeGuid];
         let color = info?.code.color || '#888';
+        const styleValue = selectionUnderlineStyles?.[sel.guid];
+        const underlineStyle: QueryUnderlineStyle =
+            styleValue === 'dashed' || styleValue === 'dotted' || styleValue === 'double' || styleValue === 'solid'
+                ? styleValue
+                : 'solid';
         
         // Apply hover effect
         if (sel.guid === hoveredSelectionGuid) {
@@ -88,7 +108,7 @@ export function getUnderlineStyle(
         // Offset from bottom: layer 0 gets largest offset (furthest from text)
         const offsetFromBottom = (totalLayers - layer - 1) * (UNDERLINE_HEIGHT + UNDERLINE_GAP);
         
-        images.push(`linear-gradient(${color}, ${color})`);
+        images.push(styleToImage(color, underlineStyle));
         sizes.push(`100% ${UNDERLINE_HEIGHT}px`);
         positions.push(`bottom ${offsetFromBottom}px left`);
     }

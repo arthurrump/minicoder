@@ -9,7 +9,11 @@ import type { QueryNode, QueryOperator } from '../../models/files';
 
 interface QueryNodeEditorProps {
   node: QueryNode;
-  queryGuid: string;
+  queryGuid?: string;
+  /** Optional controlled root node for editing non-base queries (e.g. clauses). */
+  controlledRoot?: QueryNode | null;
+  /** Called when controlledRoot changes. */
+  onControlledRootChange?: (next: QueryNode | null) => void;
   /** Index path from the query root to this node ([] for root) */
   path: number[];
   depth: number;
@@ -23,6 +27,14 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
   const isCodeLike = () => props.node.type === 'code' || props.node.type === 'codebook';
 
   const updateNode = (replacement: QueryNode) => {
+    if (props.onControlledRootChange) {
+      if (!props.controlledRoot) return;
+      const updated = updateQueryNodeAtPath(props.controlledRoot, props.path, replacement);
+      props.onControlledRootChange(updated);
+      return;
+    }
+
+    if (!props.queryGuid) return;
     const q = store.queries[props.queryGuid];
     if (!q?.query) return;
     const updated = updateQueryNodeAtPath(q.query, props.path, replacement);
@@ -30,6 +42,14 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
   };
 
   const deleteNode = () => {
+    if (props.onControlledRootChange) {
+      if (!props.controlledRoot) return;
+      const updated = updateQueryNodeAtPath(props.controlledRoot, props.path, null);
+      props.onControlledRootChange(updated);
+      return;
+    }
+
+    if (!props.queryGuid) return;
     const q = store.queries[props.queryGuid];
     if (!q?.query) return;
     const updated = updateQueryNodeAtPath(q.query, props.path, null);
@@ -224,6 +244,8 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
               <QueryNodeEditor
                 node={child}
                 queryGuid={props.queryGuid}
+                controlledRoot={props.controlledRoot}
+                onControlledRootChange={props.onControlledRootChange}
                 path={[...props.path, index()]}
                 depth={props.depth + 1}
               />

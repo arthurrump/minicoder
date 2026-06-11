@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateQueryOnSource, updateQueryNodeAtPath } from '../utils/query';
+import { evaluateQueryOnSource, evaluateQueryWithClausesOnSource, updateQueryNodeAtPath } from '../utils/query';
 import type { AppliedCode, QueryNode, TextSelection } from '../models/files';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -363,6 +363,103 @@ describe('evaluateQueryOnSource — source codes', () => {
     const result = evaluateQueryOnSource(node, ['alice'], emptySubcodes, emptyCodebooks, sels, scs);
     expect(result.fileMatch).toBe(false);
     expect(result.matchingSelections).toEqual([]);
+  });
+});
+
+// ── clause styles on top of base query ────────────────────────────────────
+
+describe('evaluateQueryWithClausesOnSource', () => {
+  it('keeps unmatched base selections with solid style', () => {
+    const sels = [
+      mkSel('s1', 0, 5, 'c1', 'cb1', 'alice'),
+      mkSel('s2', 10, 15, 'c1', 'cb1', 'bob'),
+      mkSel('s3', 20, 25, 'c2', 'cb1', 'alice'),
+    ];
+    const baseNode: QueryNode = { type: 'code', codeGuid: 'c1', includeSubcodes: false };
+
+    const result = evaluateQueryWithClausesOnSource(
+      baseNode,
+      [],
+      [
+        {
+          guid: 'clause-a',
+          query: null,
+          userFilter: ['alice'],
+          style: 'dashed',
+        },
+      ],
+      emptySubcodes,
+      emptyCodebooks,
+      sels,
+    );
+
+    expect(result.matchingSelections.map(s => s.guid)).toEqual(['s1', 's2']);
+    expect(result.selectionStyles.s1).toBe('dashed');
+    expect(result.selectionStyles.s2).toBe('solid');
+  });
+
+  it('applies clause style overrides in order while retaining base matches', () => {
+    const sels = [
+      mkSel('s1', 0, 5, 'c1', 'cb1', 'alice'),
+      mkSel('s2', 10, 15, 'c1', 'cb1', 'bob'),
+    ];
+    const baseNode: QueryNode = { type: 'code', codeGuid: 'c1', includeSubcodes: false };
+
+    const result = evaluateQueryWithClausesOnSource(
+      baseNode,
+      [],
+      [
+        {
+          guid: 'all',
+          query: null,
+          userFilter: [],
+          style: 'dotted',
+        },
+        {
+          guid: 'bob-only',
+          query: null,
+          userFilter: ['bob'],
+          style: 'double',
+        },
+      ],
+      emptySubcodes,
+      emptyCodebooks,
+      sels,
+    );
+
+    expect(result.matchingSelections.map(s => s.guid)).toEqual(['s1', 's2']);
+    expect(result.selectionStyles.s1).toBe('dotted');
+    expect(result.selectionStyles.s2).toBe('double');
+  });
+
+  it('intersects base userFilter with clause userFilter', () => {
+    const sels = [
+      mkSel('s1', 0, 5, 'c1', 'cb1', 'alice'),
+      mkSel('s2', 10, 15, 'c1', 'cb1', 'bob'),
+      mkSel('s3', 20, 25, 'c1', 'cb1', 'carol'),
+    ];
+    const baseNode: QueryNode = { type: 'code', codeGuid: 'c1', includeSubcodes: false };
+
+    const result = evaluateQueryWithClausesOnSource(
+      baseNode,
+      ['alice', 'bob'],
+      [
+        {
+          guid: 'bob-clause',
+          query: null,
+          userFilter: ['bob', 'carol'],
+          style: 'double',
+        },
+      ],
+      emptySubcodes,
+      emptyCodebooks,
+      sels,
+    );
+
+    expect(result.matchingSelections.map(s => s.guid)).toEqual(['s1', 's2']);
+    expect(result.selectionStyles.s1).toBe('solid');
+    expect(result.selectionStyles.s2).toBe('double');
+    expect(result.selectionStyles.s3).toBeUndefined();
   });
 });
 

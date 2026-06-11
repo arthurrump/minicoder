@@ -96,6 +96,7 @@ const SelectionMatchItem: Component<SelectionMatchItemProps> = (props) => {
                   content={region().content}
                   selections={region().selections}
                   sourcePath={props.group.sourcePath}
+                  selectionUnderlineStyles={props.group.selectionStyles}
                   nonResizableGuids={region().clippedGuids.size > 0 ? region().clippedGuids : undefined}
                   onSelectionCreate={(start, end) => {
                     props.onEnsureExpanded();
@@ -116,6 +117,7 @@ const SelectionMatchItem: Component<SelectionMatchItemProps> = (props) => {
             content={props.group.content}
             selections={props.group.selections}
             sourcePath={props.group.sourcePath}
+            selectionUnderlineStyles={props.group.selectionStyles}
             nonResizableGuids={boundaryGuids().size > 0 ? boundaryGuids() : undefined}
             onSelectionCreate={(start, end) => {
               props.onEnsureExpanded();

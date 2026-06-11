@@ -42,6 +42,51 @@
     margin-bottom: 8px;
 }
 
+.queryBuilderSectionHeader {
+    font-size: 1rem;
+    margin-bottom: 2px;
+}
+
+.clauseHeaderRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.clauseList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.clauseCard {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px;
+}
+
+.clauseCardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.clauseCardTitle {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.clauseGrid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 6px 8px;
+}
+
 .queryFilterGrid {
     display: grid;
     grid-template-columns: auto 1fr;

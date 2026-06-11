@@ -10,6 +10,7 @@ export interface TextSegmentProps {
     codeIndex: Record<string, { code: Code; codebook: Codebook }>;
     totalLayers: number;
     hoveredSelectionGuid: string | null;
+    selectionUnderlineStyles?: Record<string, string>;
     segmentRef: (el: HTMLSpanElement) => void;
 }
 
@@ -29,7 +30,8 @@ const TextSegment: Component<TextSegmentProps> = (props) => {
                 props.selectionLayers,
                 props.codeIndex,
                 props.totalLayers,
-                props.hoveredSelectionGuid
+                props.hoveredSelectionGuid,
+                props.selectionUnderlineStyles
             )}
         >
             {props.segment.text}

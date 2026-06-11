@@ -1,8 +1,8 @@
 import { createMemo, type Component } from 'solid-js';
 import { useStore } from '../../store';
 import { findOverlapping, MatchingSelectionsList, type MatchGroup, type FileMatch } from '../MatchingSelections';
-import { evaluateQueryOnSource, parseFilterList, compileGlobs, matchesAnyGlob } from '../../utils/query';
-import type { Code, Codebook, Query } from '../../models/files';
+import { evaluateQueryWithClausesOnSource, parseFilterList, compileGlobs, matchesAnyGlob } from '../../utils/query';
+import type { Code, Codebook, Query, QueryClause } from '../../models/files';
 
 interface QueryMatchingSelectionsProps {
   query: Query;
@@ -24,21 +24,37 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
     let matchCount = 0;
 
     const query = props.query;
-    const queryNode = query.query;
-    const fileFilter = compileGlobs(parseFilterList(query.fileFilter));
+    const baseQueryNode = query.query;
+    const baseFileFilter = compileGlobs(parseFilterList(query.fileFilter));
+    const clauses = query.clauses ?? [];
     
     for (const [sourcePath, source] of Object.entries(store.sources).sort(([a], [b]) => a.localeCompare(b))) {
-      // Skip files that don't match any of the file filters
-      if (!matchesAnyGlob(sourcePath, fileFilter)) continue;
+      // Skip files that don't match the base file filter
+      if (!matchesAnyGlob(sourcePath, baseFileFilter)) continue;
 
       const fc = store.fileContents[sourcePath];
       const content = fc?.type === 'plain-text' ? fc.content : '';
       
-      // Evaluate the query on all source selections (including source codes)
       const subcodeIndex = indices.subcodesByGuid();
       const codebookIndex = indices.codesByCodebook();
-      const result = evaluateQueryOnSource(queryNode, query.userFilter, subcodeIndex, codebookIndex, source.selections, source.sourceCodes);
+
+      const applicableClauses: QueryClause[] = clauses.filter((clause) => {
+        const clauseFileFilter = compileGlobs(parseFilterList(clause.fileFilter));
+        return matchesAnyGlob(sourcePath, clauseFileFilter);
+      });
+
+      const result = evaluateQueryWithClausesOnSource(
+        baseQueryNode,
+        query.userFilter,
+        applicableClauses,
+        subcodeIndex,
+        codebookIndex,
+        source.selections,
+        source.sourceCodes,
+      );
+
       const selections = result.matchingSelections;
+      const selectionStyles = result.selectionStyles;
       matchCount += selections.length;
 
       if (result.fileMatch) {
@@ -128,6 +144,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
             content: "",
             selections: [{ ...sel, start: 0, end: sel.end - sel.start }],
             matchingGuids,
+            selectionStyles,
           });
         }
       }

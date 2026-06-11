@@ -9,6 +9,7 @@ export interface MatchGroup {
   content: string;
   selections: TextSelection[]; // All selections that overlap with this region (with adjusted offsets)
   matchingGuids?: Set<string>; // GUIDs of selections that directly match the query (vs overlapping context)
+  selectionStyles?: Record<string, string>; // Optional per-selection underline style overrides
 }
 
 /** A sub-region of a MatchGroup shown in the collapsed view. */

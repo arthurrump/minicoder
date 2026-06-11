@@ -24,6 +24,7 @@ interface TextViewProps {
     onSelectionUpdate?: (selectionGuid: string, start: number, end: number) => void;
     onSelectionClear?: () => void;
     selectedCode?: { code: Code; codebook: Codebook } | null;
+    selectionUnderlineStyles?: Record<string, string>;
     /** GUIDs of selections that should not show resize handles (e.g. clipped or boundary selections) */
     nonResizableGuids?: Set<string>;
 }
@@ -255,6 +256,7 @@ const TextView: Component<TextViewProps> = (props) => {
                             codeIndex={codeIndex()}
                             totalLayers={totalLayers()}
                             hoveredSelectionGuid={hoveredSelectionGuid()}
+                            selectionUnderlineStyles={props.selectionUnderlineStyles}
                             segmentRef={(el) => {
                                 if (el) {
                                     segmentElements.set(index(), el);
