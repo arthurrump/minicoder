@@ -3,6 +3,7 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "compare:mcs-users": "node scripts/compare-mcs-by-user.mjs",
     "typecheck": "tsc -b",
     "lint": "eslint src",
     "check": "npm run typecheck && npm run lint",
