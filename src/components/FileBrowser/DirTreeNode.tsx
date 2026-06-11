@@ -24,7 +24,7 @@ function DirTreeNode(nodeProps: {
       for await (const entry of nodeProps.node.handle.values()) {
         if (entry.kind === 'directory') {
           const relativePath = `${nodeProps.node.relativePath}/${entry.name}`;
-          dirs.push({ name: entry.name, relativePath, handle: entry as FileSystemDirectoryHandle });
+          dirs.push({ name: entry.name, relativePath, handle: entry });
         }
       }
       setChildren(dirs.sort((a, b) => a.name.localeCompare(b.name)));

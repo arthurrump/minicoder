@@ -107,7 +107,7 @@ export function debounce<T extends (...args: never[]) => unknown>(
         savedArgs = null;
     };
 
-    return debounced as Debounced<T>;
+    return debounced;
 }
 
 /**

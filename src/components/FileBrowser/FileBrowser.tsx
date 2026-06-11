@@ -119,14 +119,14 @@ export function FileBrowser(props: FileBrowserProps) {
         }
         nodes.push({
           name: entry.name,
-          handle: entry as FileSystemFileHandle,
+          handle: entry,
           parentDir: dirHandle,
           relativePath,
         });
       } else if (entry.kind === 'directory') {
         nodes.push({
           name: entry.name,
-          handle: entry as FileSystemDirectoryHandle,
+          handle: entry,
           parentDir: dirHandle,
           relativePath,
         });

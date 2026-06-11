@@ -16,7 +16,7 @@ function DirTreePicker(pickerProps: {
       const dirs: DirNode[] = [];
       for await (const entry of handle.values()) {
         if (entry.kind === 'directory') {
-          dirs.push({ name: entry.name, relativePath: entry.name, handle: entry as FileSystemDirectoryHandle });
+          dirs.push({ name: entry.name, relativePath: entry.name, handle: entry });
         }
       }
       setRootChildren(dirs.sort((a, b) => a.name.localeCompare(b.name)));

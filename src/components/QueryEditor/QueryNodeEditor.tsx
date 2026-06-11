@@ -142,7 +142,7 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
                   updateNode({
                     type: 'code',
                     codeGuid: props.node.codeGuid,
-                    includeSubcodes: (e.target as HTMLInputElement).checked,
+                    includeSubcodes: e.currentTarget.checked,
                   });
                 }
               }}

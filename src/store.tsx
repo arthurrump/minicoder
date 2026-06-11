@@ -119,13 +119,13 @@ export const StoreProvider: ParentComponent = (props) => {
 
       if (handle.kind === 'file' && extensions.some(ext => name.endsWith(ext))) {
         results.push({
-          file: handle as FileSystemFileHandle,
+          file: handle,
           path: fullPath,
           dirHandle: dir,
           fileName: name,
         });
       } else if (handle.kind === 'directory') {
-        const subResults = await findAllFiles(handle as FileSystemDirectoryHandle, extensions, fullPath);
+        const subResults = await findAllFiles(handle, extensions, fullPath);
         results.push(...subResults);
       }
     }

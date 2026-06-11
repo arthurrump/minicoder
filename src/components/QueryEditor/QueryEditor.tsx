@@ -136,7 +136,7 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                 type="text"
                 placeholder="e.g. interviews/**/*.txt, notes/*.md"
                 value={q().fileFilter}
-                onInput={(e) => updateFileFilter((e.target as HTMLInputElement).value)}
+                onInput={(e) => updateFileFilter(e.currentTarget.value)}
               />
               <Show when={allUsers().length > 0}>
                   <label class={styles.queryFilterLabel}>Filter users</label>
