@@ -1,12 +1,10 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import solidPlugin from 'vite-plugin-solid';
-import devtools from 'solid-devtools/vite';
 import { patchCssModules } from 'vite-css-modules';
 
 export default defineConfig({
   plugins: [
-    devtools(), 
     solidPlugin(), 
     patchCssModules({
       generateSourceTypes: true,
