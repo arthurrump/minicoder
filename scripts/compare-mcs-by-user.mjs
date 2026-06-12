@@ -86,13 +86,34 @@ function walkFiles(dir, extension, results = []) {
   return results;
 }
 
-function buildCodeNameMap(codebookDir) {
-  const map = new Map();
-  if (!codebookDir || !fs.existsSync(codebookDir)) {
-    return map;
+function fileTreeCompare(pathA, pathB) {
+  const partsA = pathA.split('/');
+  const partsB = pathB.split('/');
+  const minLen = Math.min(partsA.length, partsB.length);
+
+  for (let i = 0; i < minLen; i += 1) {
+    const isLastA = i === partsA.length - 1;
+    const isLastB = i === partsB.length - 1;
+
+    if (isLastA && !isLastB) return -1;
+    if (!isLastA && isLastB) return 1;
+
+    const cmp = partsA[i].localeCompare(partsB[i], undefined, { sensitivity: 'base' });
+    if (cmp !== 0) return cmp;
   }
 
-  const mccFiles = walkFiles(path.resolve(codebookDir), '.mcc');
+  return partsA.length - partsB.length;
+}
+
+function buildCodeNameMap(codebookDir) {
+  const codeNameMap = new Map();
+  const codebookMetaByGuid = new Map();
+  if (!codebookDir || !fs.existsSync(codebookDir)) {
+    return { codeNameMap, codebookMetaByGuid };
+  }
+
+  const resolvedCodebookDir = path.resolve(codebookDir);
+  const mccFiles = walkFiles(resolvedCodebookDir, '.mcc');
   for (const filePath of mccFiles) {
     try {
       const codebook = readJson(filePath);
@@ -100,12 +121,19 @@ function buildCodeNameMap(codebookDir) {
         continue;
       }
       const codebookName = typeof codebook.name === 'string' ? codebook.name : codebook.guid;
+      const relativePath = path.relative(resolvedCodebookDir, filePath).replace(/\\/g, '/');
+      codebookMetaByGuid.set(codebook.guid, {
+        guid: codebook.guid,
+        name: codebookName,
+        relativePath,
+      });
+
       const visit = (codes, parents) => {
         for (const code of codes) {
           if (!code || typeof code.guid !== 'string') continue;
           const name = typeof code.name === 'string' ? code.name : code.guid;
           const lineage = [...parents, name];
-          map.set(`${codebook.guid}:${code.guid}`, `${codebookName} > ${lineage.join(' > ')}`);
+          codeNameMap.set(`${codebook.guid}:${code.guid}`, `${codebookName} > ${lineage.join(' > ')}`);
           if (Array.isArray(code.subcodes) && code.subcodes.length > 0) {
             visit(code.subcodes, lineage);
           }
@@ -117,7 +145,7 @@ function buildCodeNameMap(codebookDir) {
     }
   }
 
-  return map;
+  return { codeNameMap, codebookMetaByGuid };
 }
 
 function overlaps(a, b) {
@@ -260,6 +288,14 @@ function printGroupSection(title, type, groups, sourceText, codeNameMap) {
   }
 }
 
+function incrementCount(map, key, by = 1) {
+  map.set(key, (map.get(key) ?? 0) + by);
+}
+
+function getCodebookGuid(selection) {
+  return selection.code.codebookGuid;
+}
+
 function main() {
   const { sourceOrMcs, usersCsv, codebookDir } = parseArgs(process.argv.slice(2));
   const { sourcePath, mcsPath } = normalizePaths(sourceOrMcs);
@@ -302,7 +338,7 @@ function main() {
     .sort((a, b) => a.start - b.start || a.end - b.end || a.guid.localeCompare(b.guid));
 
   const itemsByGuid = new Map(filtered.map(s => [s.guid, s]));
-  const codeNameMap = buildCodeNameMap(codebookDir || path.dirname(sourcePath));
+  const { codeNameMap, codebookMetaByGuid } = buildCodeNameMap(codebookDir || path.dirname(sourcePath));
 
   const matchAdjacency = buildAdjacency(filtered, (a, b) => {
     return overlaps(a, b)
@@ -325,18 +361,70 @@ function main() {
 
   const lonelySelections = remainingAfterMatch.filter(s => !conflictGuids.has(s.guid));
   const lonelyGroups = lonelySelections.map(s => [s]);
+  const sortedUsers = [...activeUsers].sort((a, b) => a.localeCompare(b));
+
+  const matchingByCodebook = new Map();
+  const conflictingByCodebook = new Map();
+  const lonelyByCodebook = new Map();
+  const lonelyByCodebookAndUser = new Map();
+
+  for (const selection of filtered) {
+    const codebookGuid = getCodebookGuid(selection);
+    if (!codebookMetaByGuid.has(codebookGuid)) {
+      codebookMetaByGuid.set(codebookGuid, {
+        guid: codebookGuid,
+        name: codebookGuid,
+        relativePath: codebookGuid,
+      });
+    }
+
+    if (matchedGuids.has(selection.guid)) {
+      incrementCount(matchingByCodebook, codebookGuid);
+    }
+    if (conflictGuids.has(selection.guid)) {
+      incrementCount(conflictingByCodebook, codebookGuid);
+    }
+  }
+
+  for (const selection of lonelySelections) {
+    const codebookGuid = getCodebookGuid(selection);
+    incrementCount(lonelyByCodebook, codebookGuid);
+
+    if (!lonelyByCodebookAndUser.has(codebookGuid)) {
+      lonelyByCodebookAndUser.set(codebookGuid, new Map());
+    }
+    incrementCount(lonelyByCodebookAndUser.get(codebookGuid), selection.creatingUser);
+  }
+
+  const sortedCodebooks = [...codebookMetaByGuid.values()].sort((a, b) => {
+    const byTree = fileTreeCompare(a.relativePath, b.relativePath);
+    if (byTree !== 0) return byTree;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  });
 
   console.log('# MCS User Comparison');
   console.log(`- Source file: ${sourcePath}`);
   console.log(`- MCS file: ${mcsPath}`);
   console.log(`- Codebook directory: ${path.resolve(codebookDir || path.dirname(sourcePath))}`);
-  console.log(`- Users: ${[...activeUsers].sort((a, b) => a.localeCompare(b)).join(', ') || '(none)'}`);
+  console.log(`- Users: ${sortedUsers.join(', ') || '(none)'}`);
   console.log(`- Selections considered: ${filtered.length}`);
 
   console.log('\nCounts');
   console.log(`- Matching selections: ${matchedGuids.size}`);
   console.log(`- Conflicting selections: ${conflictGuids.size}`);
   console.log(`- Lonely selections: ${lonelySelections.length}`);
+  for (const user of sortedUsers) console.log(`  - By ${user}: ${lonelySelections.filter(s => s.creatingUser === user).length}`);
+
+  console.log('\nPer codebook');
+  console.log(`| Codebook | Matching | Conflicting | Lonely | ${sortedUsers.map(u => `Lonely by ${u}`).join(' | ')} |`);
+  console.log(`|----------|----------|-------------|--------|${sortedUsers.map(u => '-'.repeat(`Lonely by ${u}`.length + 2)).join('|')}|`);
+  for (const codebook of sortedCodebooks) {
+    const lonelyByUser = lonelyByCodebookAndUser.get(codebook.guid) ?? new Map();
+    const lonelyUserCols = sortedUsers.map((user) => lonelyByUser.get(user) ?? 0);
+    console.log(
+      `| ${codebook.name} | ${matchingByCodebook.get(codebook.guid) ?? 0} | ${conflictingByCodebook.get(codebook.guid) ?? 0} | ${lonelyByCodebook.get(codebook.guid) ?? 0} | ${lonelyUserCols.join(' | ')} |`
+    );
+  }
 
   printGroupSection('Matching', 'Match', matchGroups, sourceText, codeNameMap);
   printGroupSection('Conflicting', 'Conflict', conflictGroups, sourceText, codeNameMap);
