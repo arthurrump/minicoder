@@ -4,8 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 function printUsage() {
-  console.log('Usage: node scripts/compare-mcs-by-user.mjs <source-or-mcs-file> [usersCsv] [codebookDir]');
-  console.log('Example: node scripts/compare-mcs-by-user.mjs ./data/interview.txt alice,bob ./data');
+  console.log('Usage: node scripts/compare-mcs-by-user.mjs <source-or-mcs-file-or-dir> [...more] [--users usersCsv] [--codebooks dir]');
+  console.log('Example: node scripts/compare-mcs-by-user.mjs ./data/interview.txt ./data/other.txt --users alice,bob --codebooks ./data');
 }
 
 function parseArgs(argv) {
@@ -34,21 +34,29 @@ function parseArgs(argv) {
     positional.push(arg);
   }
 
-  const sourceOrMcs = positional[0];
-  if (!sourceOrMcs) {
+  if (positional.length === 0) {
     printUsage();
     process.exit(1);
   }
 
-  if (!options.usersCsv && positional[1]) {
+  let sourceInputs = positional;
+
+  // Backward compatibility for old positional form:
+  // <source> [usersCsv] [codebookDir]
+  if (
+    !options.usersCsv
+    && positional.length >= 2
+    && !fs.existsSync(path.resolve(positional[1]))
+  ) {
+    sourceInputs = [positional[0]];
     options.usersCsv = positional[1];
-  }
-  if (!options.codebookDir && positional[2]) {
-    options.codebookDir = positional[2];
+    if (!options.codebookDir && positional[2]) {
+      options.codebookDir = positional[2];
+    }
   }
 
   return {
-    sourceOrMcs,
+    sourceInputs,
     usersCsv: options.usersCsv,
     codebookDir: options.codebookDir,
   };
@@ -84,6 +92,73 @@ function walkFiles(dir, extension, results = []) {
     }
   }
   return results;
+}
+
+function unique(values) {
+  return [...new Set(values)];
+}
+
+function expandSourceInputs(sourceInputs) {
+  const expanded = [];
+  for (const input of sourceInputs) {
+    const resolved = path.resolve(input);
+    if (!fs.existsSync(resolved)) {
+      expanded.push(resolved);
+      continue;
+    }
+
+    const stat = fs.statSync(resolved);
+    if (stat.isDirectory()) {
+      const mcsFiles = walkFiles(resolved, '.mcs');
+      for (const mcsPath of mcsFiles) {
+        expanded.push(mcsPath);
+      }
+      continue;
+    }
+
+    expanded.push(resolved);
+  }
+
+  return unique(expanded);
+}
+
+function disambiguatePaths(paths) {
+  const result = new Map();
+  const byFileName = new Map();
+
+  for (const p of paths) {
+    const fileName = p.split('/').pop() || p;
+    if (!byFileName.has(fileName)) byFileName.set(fileName, []);
+    byFileName.get(fileName).push(p);
+  }
+
+  for (const [fileName, group] of byFileName) {
+    if (group.length === 1) {
+      result.set(group[0], fileName);
+      continue;
+    }
+
+    const parts = group.map((p) => p.split('/').reverse());
+    for (let i = 0; i < group.length; i += 1) {
+      const current = parts[i];
+      let segmentsNeeded = 1;
+
+      for (let j = 0; j < group.length; j += 1) {
+        if (i === j) continue;
+        const other = parts[j];
+        let k = 0;
+        while (k < current.length && k < other.length && current[k] === other[k]) {
+          k += 1;
+        }
+        segmentsNeeded = Math.max(segmentsNeeded, k + 1);
+      }
+
+      const label = current.slice(0, Math.min(segmentsNeeded, current.length)).reverse().join('/');
+      result.set(group[i], label);
+    }
+  }
+
+  return result;
 }
 
 function fileTreeCompare(pathA, pathB) {
@@ -296,13 +371,12 @@ function getCodebookGuid(selection) {
   return selection.code.codebookGuid;
 }
 
-function main() {
-  const { sourceOrMcs, usersCsv, codebookDir } = parseArgs(process.argv.slice(2));
+function analyzeSingleSource(sourceOrMcs, usersCsv, codebookDir) {
   const { sourcePath, mcsPath } = normalizePaths(sourceOrMcs);
 
   if (!fs.existsSync(mcsPath)) {
     console.error(`Missing .mcs file: ${mcsPath}`);
-    process.exit(1);
+    return null;
   }
 
   let sourceText = null;
@@ -402,33 +476,148 @@ function main() {
     return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
   });
 
-  console.log('# MCS User Comparison');
-  console.log(`- Source file: ${sourcePath}`);
-  console.log(`- MCS file: ${mcsPath}`);
-  console.log(`- Codebook directory: ${path.resolve(codebookDir || path.dirname(sourcePath))}`);
-  console.log(`- Users: ${sortedUsers.join(', ') || '(none)'}`);
-  console.log(`- Selections considered: ${filtered.length}`);
+  return {
+    sourcePath,
+    mcsPath,
+    resolvedCodebookDir: path.resolve(codebookDir || path.dirname(sourcePath)),
+    filteredCount: filtered.length,
+    matched: matchedGuids.size,
+    conflicted: conflictGuids.size,
+    lonely: lonelySelections.length,
+    sortedUsers,
+    sourceText,
+    codeNameMap,
+    matchGroups,
+    conflictGroups,
+    lonelyGroups,
+    sortedCodebooks,
+    codebookMetaByGuid,
+    matchingByCodebook,
+    conflictingByCodebook,
+    lonelyByCodebook,
+    lonelyByCodebookAndUser,
+  };
+}
+
+function printCombinedSummary(analyses, failedCount) {
+  const users = unique(analyses.flatMap((a) => a.sortedUsers)).sort((a, b) => a.localeCompare(b));
+  const codebookMetaByGuid = new Map();
+  const matchingByCodebook = new Map();
+  const conflictingByCodebook = new Map();
+  const lonelyByCodebook = new Map();
+  const lonelyByCodebookAndUser = new Map();
+
+  let matched = 0;
+  let conflicted = 0;
+  let lonely = 0;
+  let considered = 0;
+
+  for (const analysis of analyses) {
+    matched += analysis.matched;
+    conflicted += analysis.conflicted;
+    lonely += analysis.lonely;
+    considered += analysis.filteredCount;
+
+    for (const [guid, meta] of analysis.codebookMetaByGuid.entries()) {
+      if (!codebookMetaByGuid.has(guid)) codebookMetaByGuid.set(guid, meta);
+    }
+
+    for (const [guid, count] of analysis.matchingByCodebook.entries()) incrementCount(matchingByCodebook, guid, count);
+    for (const [guid, count] of analysis.conflictingByCodebook.entries()) incrementCount(conflictingByCodebook, guid, count);
+    for (const [guid, count] of analysis.lonelyByCodebook.entries()) incrementCount(lonelyByCodebook, guid, count);
+
+    for (const [guid, byUser] of analysis.lonelyByCodebookAndUser.entries()) {
+      if (!lonelyByCodebookAndUser.has(guid)) lonelyByCodebookAndUser.set(guid, new Map());
+      for (const [user, count] of byUser.entries()) {
+        incrementCount(lonelyByCodebookAndUser.get(guid), user, count);
+      }
+    }
+  }
+
+  const sortedCodebooks = [...codebookMetaByGuid.values()].sort((a, b) => {
+    const byTree = fileTreeCompare(a.relativePath, b.relativePath);
+    if (byTree !== 0) return byTree;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  });
+
+  console.log(`- Files processed: ${analyses.length}`);
+  console.log(`- Files failed: ${failedCount}`);
+  console.log(`- Users: ${users.join(', ') || '(none)'}`);
+  console.log(`- Selections considered: ${considered}`);
 
   console.log('\nCounts');
-  console.log(`- Matching selections: ${matchedGuids.size}`);
-  console.log(`- Conflicting selections: ${conflictGuids.size}`);
-  console.log(`- Lonely selections: ${lonelySelections.length}`);
-  for (const user of sortedUsers) console.log(`  - By ${user}: ${lonelySelections.filter(s => s.creatingUser === user).length}`);
+  console.log(`- Matching selections: ${matched}`);
+  console.log(`- Conflicting selections: ${conflicted}`);
+  console.log(`- Lonely selections: ${lonely}`);
+  for (const user of users) {
+    const lonelyByUser = analyses.reduce((sum, analysis) => {
+      let fileCount = 0;
+      for (const byUser of analysis.lonelyByCodebookAndUser.values()) {
+        fileCount += byUser.get(user) ?? 0;
+      }
+      return sum + fileCount;
+    }, 0);
+    console.log(`  - By ${user}: ${lonelyByUser}`);
+  }
 
   console.log('\nPer codebook');
-  console.log(`| Codebook | Matching | Conflicting | Lonely | ${sortedUsers.map(u => `Lonely by ${u}`).join(' | ')} |`);
-  console.log(`|----------|----------|-------------|--------|${sortedUsers.map(u => '-'.repeat(`Lonely by ${u}`.length + 2)).join('|')}|`);
+  console.log(`| Codebook | Matching | Conflicting | Lonely | ${users.map(u => `Lonely by ${u}`).join(' | ')} |`);
+  console.log(`|----------|----------|-------------|--------|${users.map(u => '-'.repeat(`Lonely by ${u}`.length + 2)).join('|')}|`);
   for (const codebook of sortedCodebooks) {
     const lonelyByUser = lonelyByCodebookAndUser.get(codebook.guid) ?? new Map();
-    const lonelyUserCols = sortedUsers.map((user) => lonelyByUser.get(user) ?? 0);
+    const lonelyUserCols = users.map((user) => lonelyByUser.get(user) ?? 0);
     console.log(
       `| ${codebook.name} | ${matchingByCodebook.get(codebook.guid) ?? 0} | ${conflictingByCodebook.get(codebook.guid) ?? 0} | ${lonelyByCodebook.get(codebook.guid) ?? 0} | ${lonelyUserCols.join(' | ')} |`
     );
   }
+}
 
-  printGroupSection('Matching', 'Match', matchGroups, sourceText, codeNameMap);
-  printGroupSection('Conflicting', 'Conflict', conflictGroups, sourceText, codeNameMap);
-  printGroupSection('Lonely', 'Lonely', lonelyGroups, sourceText, codeNameMap);
+function printFileDetails(analyses) {
+  const labels = disambiguatePaths(analyses.map((a) => a.sourcePath));
+
+  for (const analysis of analyses) {
+    console.log(`\n\n# ${labels.get(analysis.sourcePath)}`);
+    console.log(`- Source file: ${analysis.sourcePath}`);
+    console.log(`- MCS file: ${analysis.mcsPath}`);
+    console.log(`- Codebook directory: ${analysis.resolvedCodebookDir}`);
+    console.log(`- Selections considered: ${analysis.filteredCount}`);
+
+    printGroupSection('Matching', 'Match', analysis.matchGroups, analysis.sourceText, analysis.codeNameMap);
+    printGroupSection('Conflicting', 'Conflict', analysis.conflictGroups, analysis.sourceText, analysis.codeNameMap);
+    printGroupSection('Lonely', 'Lonely', analysis.lonelyGroups, analysis.sourceText, analysis.codeNameMap);
+  }
+}
+
+function main() {
+  const { sourceInputs, usersCsv, codebookDir } = parseArgs(process.argv.slice(2));
+  const expandedInputs = expandSourceInputs(sourceInputs);
+
+  if (expandedInputs.length === 0) {
+    console.error('No source files found.');
+    process.exit(1);
+  }
+
+  const analyses = [];
+  let failed = 0;
+
+  for (let i = 0; i < expandedInputs.length; i += 1) {
+    const input = expandedInputs[i];
+
+    const result = analyzeSingleSource(input, usersCsv, codebookDir);
+    if (!result) {
+      failed += 1;
+      continue;
+    }
+
+    analyses.push(result);
+  }
+
+  if (analyses.length === 0) {
+    process.exit(1);
+  }
+
+  printCombinedSummary(analyses, failed);
+  printFileDetails(analyses);
 }
 
 main();
