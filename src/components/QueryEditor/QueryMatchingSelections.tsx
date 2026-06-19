@@ -17,6 +17,31 @@ interface QueryMatchingSelectionsProps {
 const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props) => {
   const { store, indices } = useStore();
 
+  const exampleSelectionGuids = createMemo(() => {
+    const guids = new Set<string>();
+
+    function collectExamples(code: Code) {
+      if (Array.isArray(code.examples)) {
+        for (const example of code.examples) {
+          guids.add(example.textSelectionGuid);
+        }
+      }
+      const subcodes = Array.isArray(code.subcodes) ? code.subcodes : [];
+      for (const subcode of subcodes) {
+        collectExamples(subcode);
+      }
+    }
+
+    for (const codebook of Object.values(store.codebooks)) {
+      const codes = Array.isArray(codebook.codes) ? codebook.codes : [];
+      for (const code of codes) {
+        collectExamples(code);
+      }
+    }
+
+    return guids;
+  });
+
   // Compute match groups via query evaluation
   const matches = createMemo((): { matchCount: number, groups: MatchGroup[], fileMatches: FileMatch[] } => {
     const groups: MatchGroup[] = [];
@@ -53,11 +78,13 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
         source.sourceCodes,
       );
 
-      const selections = result.matchingSelections;
+      const selections = query.showOnlyExampleQuotes
+        ? result.matchingSelections.filter(sel => exampleSelectionGuids().has(sel.guid))
+        : result.matchingSelections;
       const selectionStyles = result.selectionStyles;
       matchCount += selections.length;
 
-      if (result.fileMatch) {
+      if (!query.showOnlyExampleQuotes && result.fileMatch) {
         fileMatches.push({ path: sourcePath, sourceCodes: result.fileMatchCodes });
       }
 
@@ -73,7 +100,7 @@ const QueryMatchingSelections: Component<QueryMatchingSelectionsProps> = (props)
       // Extend with all selections that transitively overlap the matches.
       // We need a closure: overlapping selections may extend the range,
       // pulling in further selections that overlap the extended range.
-      if (!query.showOnlyMatching) {
+      if (!query.showOnlyMatching && !query.showOnlyExampleQuotes) {
         const seen = new Set(selections.map(s => s.guid));
         // Merge matched selections into contiguous ranges
         let ranges: { start: number; end: number }[] = [];

@@ -49,6 +49,12 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
     actions.updateQuery({ ...q, showOnlyMatching: value });
   };
 
+  const updateShowOnlyExampleQuotes = (value: boolean) => {
+    const q = query();
+    if (!q) return;
+    actions.updateQuery({ ...q, showOnlyExampleQuotes: value });
+  };
+
   const updateClauses = (updater: (clauses: QueryClause[]) => QueryClause[]) => {
     const q = query();
     if (!q) return;
@@ -221,6 +227,13 @@ const QueryEditor: Component<QueryEditorProps> = (props) => {
                 type="checkbox"
                 checked={q().showOnlyMatching || false} 
                 onChange={(e) => updateShowOnlyMatching(e.target.checked)} 
+              />
+              <label class={styles.queryFilterLabel}>Only show example quotes</label>
+              <input
+                class={styles.queryFilterCheckbox}
+                type="checkbox"
+                checked={q().showOnlyExampleQuotes || false}
+                onChange={(e) => updateShowOnlyExampleQuotes(e.target.checked)}
               />
             </div>
             

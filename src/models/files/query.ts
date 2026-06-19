@@ -12,6 +12,7 @@ export interface Query {
     // Base user filter constraint applied to all matches.
     userFilter: (string | undefined)[]; // List of user IDs
     showOnlyMatching?: boolean;
+    showOnlyExampleQuotes?: boolean;
 }
 
 export interface QueryClause {
