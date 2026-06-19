@@ -4,6 +4,7 @@ import { useStore } from '../../store';
 import { updateQueryNodeAtPath } from '../../utils/query';
 import styles from './QueryEditor.module.css';
 import ColorChip from '../ColorChip';
+import InlineCodePicker, { type InlineCodePickerGroup } from '../InlineCodePicker';
 import { flattenCodes } from '../MatchingSelections';
 import type { QueryNode, QueryOperator } from '../../models/files';
 
@@ -68,6 +69,30 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
       return store.codebooks[props.node.codebookGuid] ?? null;
     }
     return null;
+  });
+
+  const codebookGroups = createMemo(() => {
+    const flattened = allCodes();
+    return indices.sortedCodebooks().map((codebook): InlineCodePickerGroup => ({
+      codebook,
+      codes: flattened
+        .filter((item) => item.codebook.guid === codebook.guid)
+        .map((item) => ({
+          code: item.code,
+          depth: Math.max(item.path.length - 2, 0),
+          label: item.path.slice(1).join(' › '),
+        })),
+    }));
+  });
+
+  const selectedCodebook = createMemo(() => {
+    if (props.node.type === 'code') {
+      return codeInfo()?.codebook;
+    }
+    if (props.node.type === 'codebook') {
+      return codebookInfo() ?? undefined;
+    }
+    return undefined;
   });
 
   const handleOperatorChange = (operator: QueryOperator) => {
@@ -208,31 +233,12 @@ const QueryNodeEditor: Component<QueryNodeEditorProps> = (props) => {
             <span>Select a code or codebook:</span>
             <button onClick={() => setShowCodePicker(false)}>×</button>
           </div>
-          <div class={styles.codePickerList}>
-            <For each={indices.sortedCodebooks()}>
-              {(codebook) => (
-                <>
-                  <div
-                    class={`${styles.codePickerItem} ${styles.codePickerCodebook}`}
-                    onClick={() => handleCodebookSelect(codebook.guid)}
-                  >
-                    <span>{codebook.name}</span>
-                  </div>
-                  <For each={allCodes().filter(c => c.codebook.guid === codebook.guid)}>
-                    {(item) => (
-                      <div
-                        class={styles.codePickerItem}
-                        onClick={() => handleCodeSelect(item.code.guid)}
-                      >
-                        <ColorChip color={item.code.color} class={styles.codeChip} />
-                        <span>{item.path.slice(1).join(' › ')}</span>
-                      </div>
-                    )}
-                  </For>
-                </>
-              )}
-            </For>
-          </div>
+          <InlineCodePicker
+            groups={codebookGroups()}
+            mainCodebook={selectedCodebook()}
+            onSelect={(code) => handleCodeSelect(code.guid)}
+            onSelectCodebook={(codebook) => handleCodebookSelect(codebook.guid)}
+          />
         </div>
       </Show>
       

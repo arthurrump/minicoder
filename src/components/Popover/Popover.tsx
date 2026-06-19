@@ -1,7 +1,7 @@
 import Icon from '../Icon';
 import { type Component, type JSX, Show, createMemo, createSignal, onCleanup } from 'solid-js';
 import ColorChip from '../ColorChip';
-import InlineCodePicker from './InlineCodePicker';
+import InlineCodePicker, { type InlineCodePickerGroup } from '../InlineCodePicker';
 import { useStore } from '../../store';
 import { flattenCodesWithDepth } from '../../utils/codeTree';
 import type { Code, Codebook } from '../../models/files';
@@ -70,7 +70,7 @@ const Popover: Component<PopoverProps> = (props) => {
 
     /** Codebook groups for the change-code picker, excluding the current code */
     const codebookGroups = createMemo(() => {
-        const groups: { codebook: Codebook; codes: { code: Code; depth: number }[] }[] = [];
+        const groups: InlineCodePickerGroup[] = [];
         for (const cb of indices.sortedCodebooks()) {
             const all = flattenCodesWithDepth(cb.codes);
             const filtered = all.filter(item => item.code.guid !== props.codeGuid);
