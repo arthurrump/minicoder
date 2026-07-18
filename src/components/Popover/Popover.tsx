@@ -109,14 +109,6 @@ const Popover: Component<PopoverProps> = (props) => {
                     </Show>
                 </div>
                 <div class={styles.popoverActions}>
-                    <button
-                        class={styles.popoverActionBtn}
-                        onClick={() => {
-                            const copy = async () => navigator.clipboard.writeText(codeInfo().code?.guid || "");
-                            copy().catch(err => console.warn("Copying code guid failed:", err));
-                        }}
-                        title="Copy guid"
-                    ><Icon name="copy" /></button>
                     {props.extraActions}
                     <button
                         class={styles.popoverActionBtn}

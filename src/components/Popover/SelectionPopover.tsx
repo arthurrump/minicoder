@@ -69,13 +69,21 @@ const SelectionPopover: Component<SelectionPopoverProps> = (props) => {
             onRemove={handleRemove}
             onChangeCode={handleChangeCode}
             onNoteChange={handleNoteChange}
-            extraActions={
+            extraActions={<>
+                <button
+                    class={styles.popoverActionBtn}
+                    onClick={() => {
+                        const copy = async () => navigator.clipboard.writeText(props.selection.guid);
+                        copy().catch(err => console.warn("Copying selection guid failed:", err));
+                    }}
+                    title="Copy selection guid"
+                ><Icon name="copy" /></button>
                 <button
                     class={styles.popoverActionBtn}
                     onClick={handleToggleExample}
                     title={isExample() ? 'Remove as example' : 'Mark as example'}
                 ><Icon name={isExample() ? "star-fill" : "star"} /></button>
-            }
+            </>}
         />
     );
 };
