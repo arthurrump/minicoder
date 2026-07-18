@@ -22,7 +22,7 @@ interface CodeSelectionsModalProps {
 const CodeSelectionsModal: Component<CodeSelectionsModalProps> = (props) => {
   const { store, actions, indices } = useStore();
   const [editing, setEditing] = createSignal(false);
-  const [showOnlyMatching, setShowOnlyMatching] = createSignal(false);
+  const [showOnlyMatching, setShowOnlyMatching] = createSignal(true);
 
   // Find the code and codebook
   const codeInfo = createMemo(() => indices.codeByGuid()[props.codeGuid] ?? null);
